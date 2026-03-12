@@ -104,7 +104,6 @@ zSampler <- nimbleFunction(
         z.start.curr <- model$z.start[i]
         N.curr <- model$N
         N.recruit.curr <- model$N.recruit
-        y <- y2D[i,]
         dets <- which(y2D[i,]>0)
         first.det <- min(dets)
         lp.start <- rep(-Inf,n.year)

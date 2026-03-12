@@ -677,7 +677,6 @@ zSampler <- nimbleFunction(
         }
       }
     }
-    
     #copy back to mySaved to update logProbs.
     copy(from = model, to = mvSaved, row = 1, nodes = calcNodes, logProb = TRUE)
   },

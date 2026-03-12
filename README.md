@@ -1,4 +1,5 @@
 # Jolly-Seber-N-Prior-DA
+Jolly-Seber MCMC samplers using N-prior data augmentation
 
 This repository contains efficient MCMC samplers for Jolly-Seber models using N-prior data augmentation where we put Poisson priors directly on the
 entries--the starting population size and yearly recruits, rather than Bernoulli data augmentation where Poisson assumptions only hold as
@@ -16,10 +17,22 @@ In both of these, we assume N ~ Poisson(lambda) and then we allocate the N real 
 the vector z[1:M] at random where order does not matter. There are (M choose N) ways to do this allocation, so the prior for 
 [z[1:M] | N,M] is 1/(M choose N).
 
-Moving to open populations, we assume N[1] ~ Poisson(lambda) and N.recruit[g] ~ Poisson(N[g]*gamma[g]) for g = 1,..., n.primary - 1.
+Moving to open populations, we assume 
+
+N[1] ~ Poisson(lambda) and 
+
+N.recruit[g] ~ Poisson(N[g]*gamma[g]) for g = 1,..., n.primary - 1.
+
 Now, the prior for z.super[1:M], which indicates if an individual is ever in the population, must consider the number of ways to allocate
 each Poisson RV to the indices of z.super[1:M], which is the multinomial coefficient of size M with partition sizes
-N[1], N.recruit[1:(n.primary-1)], and N0=M-N[1]-N.recruit[1:(n.primary-1)]. So the prior [z.super[1:M] | N[1],N.recruit[1:(n.primary-1)],M] is
+
+N[1], N.recruit[1:(n.primary-1)], 
+
+and N0=M-N[1]-N.recruit[1:(n.primary-1)]. 
+
+So the prior [z.super[1:M] | N[1],N.recruit[1:(n.primary-1)],M] is
+
+
 (N[1]!N.recruit[1]!...N.recruit[n.primary-1]!N0!)/ M!, the inverse multinomial coefficient.
 
 This repository also has sex-specific versions with sex-specific population dynamics. For these models, the prior is analogous to that
