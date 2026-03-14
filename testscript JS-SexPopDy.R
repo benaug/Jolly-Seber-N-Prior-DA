@@ -142,11 +142,13 @@ ER.F.nodes <- Rmodel$expandNodeNames(paste0("ER.F[1:",n.year-1,"]"))
 z.nodes <- Rmodel$expandNodeNames(paste0("z[1:",M,",1]"))
 phi.nodes <-  Rmodel$expandNodeNames(paste0("phi"))
 
-calcNodes <- c(N.nodes,N.recruit.nodes,
+calcNodes <- c(N.nodes,
+               ER.M.nodes,ER.F.nodes,
                N.M.nodes,N.recruit.M.nodes,
                N.F.nodes,N.recruit.F.nodes,
-               N.survive.nodes,N.survive.M.nodes,N.survive.F.nodes,
-               y.nodes,z.nodes,phi.nodes) #the ones that need likelihoods updated in mvSaved
+               N.survive.M.nodes,N.survive.F.nodes,
+               N.survive.nodes,N.recruit.nodes,
+               y.nodes,z.nodes,phi.nodes)
 conf$addSampler(target = c("z"),
                 type = 'zSampler',control = list(M=M,n.year=n.year,
                                                  z.obs=z.obs,z.super.ups=z.super.ups,
