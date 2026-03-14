@@ -15,6 +15,7 @@ sim.JS.SCR.Dcov <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   lambda.cell <- InSS*exp(D.beta0 + D.beta1*D.cov)*cellArea
   lambda.y1 <- sum(lambda.cell)
   N[1] <- rpois(1,lambda.y1)
+  if(N[1]==0)stop("Simulated starting population size of 0")
 
   #recreate some Dcov things so we can pass fewer arguments into this function
   x.vals <- seq(xlim[1]+res/2,xlim[2]-res/2,res) #x cell centroids
@@ -34,15 +35,16 @@ sim.JS.SCR.Dcov <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
     #Simulate recruits
     ER[g-1] <- N[g-1]*gamma[g-1]
     N.recruit[g-1] <- rpois(1,ER[g-1])
-    #add recruits to z
-    z.dim.old <- length(cov)
-    z <- rbind(z,matrix(0,nrow=N.recruit[g-1],ncol=n.year))
-    z[(z.dim.old+1):(z.dim.old+N.recruit[g-1]),g] <- 1
-    cov <- c(cov,rep(NA,N.recruit[g-1]))
-    cov[(z.dim.old+1):(z.dim.old+N.recruit[g-1])] <- rnorm(N.recruit[g-1],0,1) #simulate survival cov values for new recruits
-
-    #Simulate survival
-    phi <- rbind(phi,matrix(NA,nrow=N.recruit[g-1],ncol=n.year-1))
+    if(N.recruit[g-1]>0){
+      #add recruits to z
+      z.dim.old <- length(cov)
+      z <- rbind(z,matrix(0,nrow=N.recruit[g-1],ncol=n.year))
+      z[(z.dim.old+1):(z.dim.old+N.recruit[g-1]),g] <- 1
+      cov <- c(cov,rep(NA,N.recruit[g-1]))
+      cov[(z.dim.old+1):(z.dim.old+N.recruit[g-1])] <- rnorm(N.recruit[g-1],0,1) #simulate survival cov values for new recruits
+      #Simulate survival
+      phi <- rbind(phi,matrix(NA,nrow=N.recruit[g-1],ncol=n.year-1))
+    }
     phi[,g-1] <- plogis(beta0.phi+cov*beta1.phi)
 
     idx <- which(z[,g-1]==1)

@@ -1,9 +1,10 @@
-sim.JS <- function(lambda.y1=NA,gamma=NA,beta0.phi=NA,beta1.phi=NA,beta2.phi=NA,
+sim.JS <- function(lambda.y1=NA,gamma=NA,beta0.phi=NA,beta1.phi=NA,
                    p=NA,n.year=NA,K=NA){
   #Population dynamics
   N <- rep(NA,n.year)
   N.recruit <- N.survive <- ER <- rep(NA,n.year-1)
   N[1] <- rpois(1,lambda.y1)
+  if(N[1]==0)stop("Simulated starting population size of 0")
   
   #Easiest to increase dimension of z as we simulate bc size not known in advance.
   z <- matrix(0,N[1],n.year)
@@ -14,17 +15,17 @@ sim.JS <- function(lambda.y1=NA,gamma=NA,beta0.phi=NA,beta1.phi=NA,beta2.phi=NA,
     #Simulate recruits
     ER[g-1] <- N[g-1]*gamma[g-1]
     N.recruit[g-1] <- rpois(1,ER[g-1])
-    #add recruits to z
-    z.dim.old <- length(cov)
-    z <- rbind(z,matrix(0,nrow=N.recruit[g-1],ncol=n.year))
-    z[(z.dim.old+1):(z.dim.old+N.recruit[g-1]),g] <- 1
-    cov <- c(cov,rep(NA,N.recruit[g-1]))
-    cov[(z.dim.old+1):(z.dim.old+N.recruit[g-1])] <- rnorm(N.recruit[g-1],0,1) #simulate survival cov values for new recruits
-    
-    #Simulate survival
-    phi <- rbind(phi,matrix(NA,nrow=N.recruit[g-1],ncol=n.year-1))
+    if(N.recruit[g-1]>0){
+      #add recruits to z
+      z.dim.old <- length(cov)
+      z <- rbind(z,matrix(0,nrow=N.recruit[g-1],ncol=n.year))
+      z[(z.dim.old+1):(z.dim.old+N.recruit[g-1]),g] <- 1
+      cov <- c(cov,rep(NA,N.recruit[g-1]))
+      cov[(z.dim.old+1):(z.dim.old+N.recruit[g-1])] <- rnorm(N.recruit[g-1],0,1) #simulate survival cov values for new recruits
+      #Simulate survival
+      phi <- rbind(phi,matrix(NA,nrow=N.recruit[g-1],ncol=n.year-1))
+    }
     phi[,g-1] <- plogis(beta0.phi+cov*beta1.phi)
-    
     idx <- which(z[,g-1]==1)
     z[idx,g] <- rbinom(length(idx),1,phi[idx,g-1])
     N.survive[g-1] <- sum(z[,g-1]==1&z[,g]==1)

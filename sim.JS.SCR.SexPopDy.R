@@ -15,6 +15,8 @@ sim.JS.SCR.SexPopDy <- function(lambda.y1.M=NA,lambda.y1.F=NA,n.year=NA,
   N.M[1] <- rpois(1,lambda.y1.M)
   N.F[1] <- rpois(1,lambda.y1.F)
   N[1] <- N.M[1]+N.F[1]
+  if(N.M[1]==0)stop("Simulated starting male population size of 0")
+  if(N.F[1]==0)stop("Simulated starting female population size of 0")
   
   #Easiest to increase dimension of z as we simulate bc size not known in advance.
   z <- matrix(0,N[1],n.year)
@@ -27,15 +29,17 @@ sim.JS.SCR.SexPopDy <- function(lambda.y1.M=NA,lambda.y1.F=NA,n.year=NA,
     ER.F[g-1] <- N[g-1]*gamma.sex[2]
     N.recruit.M[g-1] <- rpois(1,ER.M[g-1])
     N.recruit.F[g-1] <- rpois(1,ER.F[g-1])
-    #add recruits to z
-    z.dim.old <- nrow(z)
-    z <- rbind(z,matrix(0,nrow=N.recruit.M[g-1]+N.recruit.F[g-1],ncol=n.year))
-    z[(z.dim.old+1):(z.dim.old+N.recruit.M[g-1]+N.recruit.F[g-1]),g] <- 1
-    #record sexes
-    sex <- c(sex,rep(1,N.recruit.M[g-1]),rep(2,N.recruit.F[g-1]))
-    
-    #Simulate survival
-    phi <- rbind(phi,matrix(NA,nrow=N.recruit.M[g-1]+N.recruit.F[g-1],ncol=n.year-1))
+    if((N.recruit.M[g-1]+N.recruit.F[g-1])>0){
+      #add recruits to z
+      z.dim.old <- nrow(z)
+      z <- rbind(z,matrix(0,nrow=N.recruit.M[g-1]+N.recruit.F[g-1],ncol=n.year))
+      z[(z.dim.old+1):(z.dim.old+N.recruit.M[g-1]+N.recruit.F[g-1]),g] <- 1
+      #record sexes
+      sex <- c(sex,rep(1,N.recruit.M[g-1]),rep(2,N.recruit.F[g-1]))
+      
+      #Simulate survival
+      phi <- rbind(phi,matrix(NA,nrow=N.recruit.M[g-1]+N.recruit.F[g-1],ncol=n.year-1))
+    }
     phi[,g-1] <- phi.sex[sex]
     
     idx <- which(z[,g-1]==1)
@@ -55,8 +59,10 @@ sim.JS.SCR.SexPopDy <- function(lambda.y1.M=NA,lambda.y1.F=NA,n.year=NA,
   
   #detection
   #get maximal x and y extent across yearly grids plus buffer
-  xlim <- c(max(unlist(lapply(X,function(x){min(x[,1])}))),max(unlist(lapply(X,function(x){max(x[,1])})))) + c(-buff,buff)
-  ylim <- c(max(unlist(lapply(X,function(x){min(x[,2])}))),max(unlist(lapply(X,function(x){max(x[,2])})))) + c(-buff,buff)
+  xlim <- c(min(unlist(lapply(X, function(x) min(x[,1])))),
+            max(unlist(lapply(X, function(x) max(x[,1]))))) + c(-buff, buff)
+  ylim <- c(min(unlist(lapply(X, function(x) min(x[,2])))),
+            max(unlist(lapply(X, function(x) max(x[,2]))))) + c(-buff, buff)
   J <- unlist(lapply(X,nrow)) #extract number of traps per year
   J.max <- max(J)
   
@@ -95,7 +101,7 @@ sim.JS.SCR.SexPopDy <- function(lambda.y1.M=NA,lambda.y1.F=NA,n.year=NA,
   }
   
   #store true data for model buildling/debugging
-  truth <- list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,
+  truth <- list(y=y,N=N,N.recruit=N.recruit,N.survive=N.survive,
              N.M=N.M,N.F=N.F,N.recruit.M=N.recruit.M,N.recruit.F=N.recruit.F,
              N.survive.M=N.survive.M,N.survive.F=N.survive.F,
              sex=sex,z=z,s=s)

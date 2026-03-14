@@ -22,6 +22,17 @@ sim.JS.SCR.Dcov.SexPopDy <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   N.M[1] <- rpois(1,lambda.y1.M)
   N.F[1] <- rpois(1,lambda.y1.F)
   N[1] <- N.M[1]+N.F[1]
+  if(N.M[1]==0)stop("Simulated starting male population size of 0")
+  if(N.F[1]==0)stop("Simulated starting female population size of 0")
+  
+  #recreate some Dcov things so we can pass fewer arguments into this function
+  x.vals <- seq(xlim[1]+res/2,xlim[2]-res/2,res) #x cell centroids
+  y.vals <- seq(ylim[1]+res/2,ylim[2]-res/2,res) #y cell centroids
+  dSS <- as.matrix(cbind(expand.grid(x.vals,y.vals)))
+  cells <- matrix(1:nrow(dSS),nrow=length(x.vals),ncol=length(y.vals))
+  n.cells <- nrow(dSS)
+  n.cells.x <- length(x.vals)
+  n.cells.y <- length(y.vals)
   
   #Easiest to increase dimension of z as we simulate bc size not known in advance.
   z <- matrix(0,N[1],n.year)
@@ -35,14 +46,15 @@ sim.JS.SCR.Dcov.SexPopDy <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
     N.recruit.M[g-1] <- rpois(1,ER.M[g-1])
     N.recruit.F[g-1] <- rpois(1,ER.F[g-1])
     #add recruits to z
-    z.dim.old <- nrow(z)
-    z <- rbind(z,matrix(0,nrow=N.recruit.M[g-1]+N.recruit.F[g-1],ncol=n.year))
-    z[(z.dim.old+1):(z.dim.old+N.recruit.M[g-1]+N.recruit.F[g-1]),g] <- 1
-    #record sexes
-    sex <- c(sex,rep(1,N.recruit.M[g-1]),rep(2,N.recruit.F[g-1]))
-    
-    #Simulate survival
-    phi <- rbind(phi,matrix(NA,nrow=N.recruit.M[g-1]+N.recruit.F[g-1],ncol=n.year-1))
+    if((N.recruit.M[g-1]+N.recruit.F[g-1])>0){
+      z.dim.old <- nrow(z)
+      z <- rbind(z,matrix(0,nrow=N.recruit.M[g-1]+N.recruit.F[g-1],ncol=n.year))
+      z[(z.dim.old+1):(z.dim.old+N.recruit.M[g-1]+N.recruit.F[g-1]),g] <- 1
+      #record sexes
+      sex <- c(sex,rep(1,N.recruit.M[g-1]),rep(2,N.recruit.F[g-1]))
+      #Simulate survival
+      phi <- rbind(phi,matrix(NA,nrow=N.recruit.M[g-1]+N.recruit.F[g-1],ncol=n.year-1))
+    }
     phi[,g-1] <- phi.sex[sex]
     
     idx <- which(z[,g-1]==1)
@@ -90,7 +102,7 @@ sim.JS.SCR.Dcov.SexPopDy <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   }
   
   #store true data for model buildling/debugging
-  truth <- list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,
+  truth <- list(y=y,N=N,N.recruit=N.recruit,N.survive=N.survive,
              N.M=N.M,N.F=N.F,N.recruit.M=N.recruit.M,N.recruit.F=N.recruit.F,
              N.survive.M=N.survive.M,N.survive.F=N.survive.F,
              lambda.y1.F=lambda.y1.F,lambda.y1.M=lambda.y1.M,
@@ -112,6 +124,6 @@ sim.JS.SCR.Dcov.SexPopDy <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
               X=X,K=K,truth=truth,
               xlim=xlim,ylim=ylim,x.vals=x.vals,y.vals=y.vals,dSS=dSS,cells=cells,
               n.cells=n.cells,n.cells.x=n.cells.x,n.cells.y=n.cells.y,s.cell=s.cell,
-              D.cov=D.cov,InSS=InSS,res=res,cellArea=cellArea,N=N,lambda.y1.M=lambda.y1.M,
-              lambda.y1.F=lambda.y1.F,truth=truth))
+              D.cov=D.cov,InSS=InSS,res=res,cellArea=cellArea,lambda.y1.M=lambda.y1.M,
+              lambda.y1.F=lambda.y1.F))
 }

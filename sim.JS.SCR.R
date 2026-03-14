@@ -11,6 +11,7 @@ sim.JS.SCR <- function(lambda.y1=NA,gamma=NA,n.year=NA,
   N <- rep(NA,n.year)
   N.recruit <- N.survive <- ER <- rep(NA,n.year-1)
   N[1] <- rpois(1,lambda.y1)
+  if(N.M[1]==0)stop("Simulated starting male population size of 0")
   
   #Easiest to increase dimension of z as we simulate bc size not known in advance.
   z <- matrix(0,N[1],n.year)
@@ -21,15 +22,17 @@ sim.JS.SCR <- function(lambda.y1=NA,gamma=NA,n.year=NA,
     #Simulate recruits
     ER[g-1] <- N[g-1]*gamma[g-1]
     N.recruit[g-1] <- rpois(1,ER[g-1])
-    #add recruits to z
-    z.dim.old <- length(cov)
-    z <- rbind(z,matrix(0,nrow=N.recruit[g-1],ncol=n.year))
-    z[(z.dim.old+1):(z.dim.old+N.recruit[g-1]),g]=1
-    cov <- c(cov,rep(NA,N.recruit[g-1]))
-    cov[(z.dim.old+1):(z.dim.old+N.recruit[g-1])] <- rnorm(N.recruit[g-1],0,1) #simulate survival cov values for new recruits
-    
-    #Simulate survival
-    phi <- rbind(phi,matrix(NA,nrow=N.recruit[g-1],ncol=n.year-1))
+    if(N.recruit[g-1]>0){
+      #add recruits to z
+      z.dim.old <- length(cov)
+      z <- rbind(z,matrix(0,nrow=N.recruit[g-1],ncol=n.year))
+      z[(z.dim.old+1):(z.dim.old+N.recruit[g-1]),g]=1
+      cov <- c(cov,rep(NA,N.recruit[g-1]))
+      cov[(z.dim.old+1):(z.dim.old+N.recruit[g-1])] <- rnorm(N.recruit[g-1],0,1) #simulate survival cov values for new recruits
+      
+      #Simulate survival
+      phi <- rbind(phi,matrix(NA,nrow=N.recruit[g-1],ncol=n.year-1))
+    }
     phi[,g-1] <- plogis(beta0.phi+cov*beta1.phi)
     
     idx <- which(z[,g-1]==1)
@@ -46,8 +49,10 @@ sim.JS.SCR <- function(lambda.y1=NA,gamma=NA,n.year=NA,
   
   #detection
   #get maximal x and y extent across yearly grids plus buffer
-  xlim  <-  c(max(unlist(lapply(X,function(x){min(x[,1])}))),max(unlist(lapply(X,function(x){max(x[,1])})))) + c(-buff,buff)
-  ylim  <-  c(max(unlist(lapply(X,function(x){min(x[,2])}))),max(unlist(lapply(X,function(x){max(x[,2])})))) + c(-buff,buff)
+  xlim <- c(min(unlist(lapply(X, function(x) min(x[,1])))),
+            max(unlist(lapply(X, function(x) max(x[,1]))))) + c(-buff, buff)
+  ylim <- c(min(unlist(lapply(X, function(x) min(x[,2])))),
+            max(unlist(lapply(X, function(x) max(x[,2]))))) + c(-buff, buff)
   J  <-  unlist(lapply(X,nrow)) #extract number of traps per year
   J.max <- max(J)
   
@@ -89,6 +94,6 @@ sim.JS.SCR <- function(lambda.y1=NA,gamma=NA,n.year=NA,
   keep.idx <- which(rowSums(y)>0)
   y <- y[keep.idx,,]
   cov <- cov[keep.idx]
-  return(list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,X=X,K=K,n.year=n.year,
+  return(list(y=y,N=N,N.recruit=N.recruit,N.survive=N.survive,X=X,K=K,n.year=n.year,
               xlim=xlim,ylim=ylim,truth=truth))
 }
