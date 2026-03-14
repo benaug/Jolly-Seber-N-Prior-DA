@@ -562,6 +562,9 @@ zSampler <- nimbleFunction(
           mvSaved["N.F",1] <<- model[["N.F"]]
           mvSaved["N.survive.F",1] <<- model[["N.survive.F"]]
           mvSaved["N.recruit.F",1] <<- model[["N.recruit.F"]]
+          for(g in 1:(n.year-1)){
+            mvSaved["phi",1][i,g] <<- model[["phi"]][i,g]
+          }
           entry.counts.curr <- entry.counts.prop
         }else{
           model[["z.start"]][i] <<- mvSaved["z.start",1][i]

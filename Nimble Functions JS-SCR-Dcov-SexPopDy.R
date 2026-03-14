@@ -633,6 +633,9 @@ zSampler <- nimbleFunction(
               mvSaved["pd",1][i,g,j] <<- model[["pd"]][i,g,j]
             }
           }
+          for(g in 1:(n.year-1)){
+            mvSaved["phi",1][pick,g] <<- model[["phi"]][pick,g]
+          }
         }else{
           model[["z.start"]][i] <<- mvSaved["z.start",1][i]
           model[["z.stop"]][i] <<- mvSaved["z.stop",1][i]
