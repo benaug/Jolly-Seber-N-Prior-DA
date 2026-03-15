@@ -60,4 +60,6 @@ Model versions:
 7. JS-Typical: This is a nonspatial version of the Jolly-Seber approach of Chandler and Clark (2014) that 
 considers per capita recruitment for comparison.
 
-I will upload mobile AC SCR versions later.
+8. JS-SCR-mobileAC: same as 2 with BVN Markov activity center movement (truncated by state space boundary)
+
+I will upload more mobile AC SCR versions later.
