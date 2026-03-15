@@ -223,7 +223,9 @@ constants <- list(n.year=n.year, M=M, J=J, xlim=xlim, ylim=ylim, K1D=K1D,
 Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
                  ER=N.recruit.init,N.super=N.super.init,z.super=z.super.init,
                  z=z.init,z.start=z.start.init,z.stop=z.stop.init,
-                 s=s.init,beta0.phi=0,beta1.phi=0,D0=N.init[1]/(sum(InSS)*res^2),D.beta1=0)
+                 s=s.init,beta0.phi=0,beta1.phi=0,
+                 phi.cov.mu=mean(data$truth$cov),phi.cov.sd=sd(data$truth$cov),
+                 D0=N.init[1]/(sum(InSS)*res^2),D.beta1=0)
 
 #data for Nimble
 dummy.data <- rep(0,M) #dummy data not used, doesn't really matter what the values are
@@ -239,19 +241,13 @@ nt <- 1 #thinning rate
 # Build the model, configure the mcmc, and compile
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
-
-#OK! what are we doing here? If you just let nimble configure as normal, it will assign incorrect samplers
-#to z and N objects. We could then remove them and replace them, but it is much faster to not let nimble
-#make the assignments in the first place. So! put all terms with priors in config.nodes here except for
-#N.recruit. If you change the model parameters, you will need to make the same changes here. Finally, 
-#we have to tell nimble which nodes to assign samplers for for the individual covariate when manually
-#instructing nimble which samplers to assign.
+#if you add/remove parameters in model file, do so in config.nodes
 config.nodes <- c('beta0.phi','beta1.phi','gamma',paste('phi.cov[',cov.up,']'),
                'phi.cov.mu','phi.cov.sd','p0','sigma','D0','D.beta1')
 conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,
                       nodes=config.nodes,useConjugacy = FALSE)
 
-###*required* sampler replacements###
+#add N/z samplers
 z.super.ups <- round(M*0.25) #how many z.super update proposals per iteration? 
 #25% of M seems reasonable, but optimal will depend on data set
 #loop here bc potentially different numbers of traps to vectorize in each year
@@ -277,7 +273,6 @@ conf$addSampler(target = c("z"),
 
 #activity center sampler. This sampler tunes activity centers when z.super[i]=1 and
 #draws from the prior otherwise.
-# conf$removeSampler(paste0("s[1:",M,", 1:2]")) #dont need to remove if not assigned by nimble above
 for(i in 1:M){
   conf$addSampler(target = paste("s[",i,", 1:2]", sep=""),
                   type = 'sSamplerDcov',control=list(i=i,res=data$res,n.cells.x=data$n.cells.x,n.cells.y=data$n.cells.y,
@@ -287,8 +282,8 @@ for(i in 1:M){
 
 
 #optional (but recommended!) blocking 
-conf$removeSampler(c("beta0.phi"))
-conf$removeSampler(c("beta1.phi"))
+# conf$removeSampler(c("beta0.phi"))
+# conf$removeSampler(c("beta1.phi"))
 conf$addSampler(target = c("beta0.phi","beta1.phi"),type = 'RW_block',
                 control = list(adaptive=TRUE),silent = TRUE)
 conf$addSampler(target = c("D0","D.beta1"),
@@ -314,7 +309,7 @@ plot(mcmc(mvSamples[-c(1:500),]))
 data$N
 data$N.recruit
 data$N.survive
-data$N[1]+sum(data$N.recruit) #N.super
+data$N[1] + sum(data$N.recruit) #N.super
 
 
 # #Some sanity checks I used during debugging. Just checking that final

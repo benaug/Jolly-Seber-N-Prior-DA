@@ -111,22 +111,15 @@ nt <- 1 #thinning rate
 # Build the model, configure the mcmc, and compile
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
-
-#OK! what are we doing here? If you just let nimble configure as normal, it will assign incorrect samplers
-#to z and N objects. We could then remove them and replace them, but it is much faster to not let nimble
-#make the assignments in the first place. So! put all terms with priors in config.nodes here except for
-#N.recruit. If you change the model parameters, you will need to make the same changes here. Finally,
-#we have to tell nimble which nodes to assign samplers for for the individual covariate when manually
-#instructing nimble which samplers to assign.
+#if you add/remove parameters in model file, do so in config.nodes
 config.nodes <- c('phi.sex','gamma.male','gamma.female','lambda.y1.M',
                'lambda.y1.F','p.sex')
-# config.nodes <- c()
 conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,monitors2=parameters2,
                       nodes=config.nodes,useConjugacy = TRUE)
 
-###*required* sampler replacements###
+#add N/z samplers
 z.super.ups <- round(M*0.25) #how many z.super update proposals per iteration?
-#20% of M seems reasonable, but optimal will depend on data set
+#25% of M seems reasonable, but optimal will depend on data set
 y.nodes <- c(Rmodel$expandNodeNames(paste0("y[1:",M,",1:",n.year,"]")) )
 N.nodes <- Rmodel$expandNodeNames(paste0("N"))
 N.M.nodes <- Rmodel$expandNodeNames(paste0("N.M"))

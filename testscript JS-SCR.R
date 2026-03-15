@@ -117,7 +117,9 @@ Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
                  lambda.y1=N.init[1], #initialize consistent with N[1] for faster convergence
                  N.super=N.super.init,z.super=z.super.init,
                  z=z.init,z.start=z.start.init,z.stop=z.stop.init,ER=N.recruit.init,
-                 s=s.init,beta0.phi=0,beta1.phi=0,sigma=1,p0=rep(0.2,n.year))
+                 s=s.init,beta0.phi=0,beta1.phi=0,
+                 phi.cov.mu=mean(data$truth$cov),phi.cov.sd=sd(data$truth$cov),
+                 sigma=1,p0=rep(0.2,n.year))
 
 #data for Nimble
 Nimdata <- list(y=y.nim,phi.cov=phi.cov.data,X=X.nim)
@@ -131,21 +133,15 @@ nt <- 1 #thinning rate
 # Build the model, configure the mcmc, and compile
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
-
-#OK! what are we doing here? If you just let nimble configure as normal, it will assign incorrect samplers
-#to z and N objects. We could then remove them and replace them, but it is much faster to not let nimble
-#make the assignments in the first place. So! put all terms with priors in config.nodes here except for
-#N.recruit. If you change the model parameters, you will need to make the same changes here. Finally, 
-#we have to tell nimble which nodes to assign samplers for for the individual covariate when manually
-#instructing nimble which samplers to assign.
+#if you add/remove parameters in model file, do so in config.nodes
 config.nodes <- c('beta0.phi','beta1.phi','gamma','lambda.y1',paste('phi.cov[',cov.up,']'),
                'phi.cov.mu','phi.cov.sd','p0','sigma')
 conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,
                       nodes=config.nodes,useConjugacy = TRUE)
 
-###*required* sampler replacements###
+#add N/z samplers
 z.super.ups <- round(M*0.25) #how many z.super update proposals per iteration? 
-#20% of M seems reasonable, but optimal will depend on data set
+#25% of M seems reasonable, but optimal will depend on data set
 #loop here bc potentially different numbers of traps to vectorize in each year
 y.nodes <- pd.nodes <- c()
 for(g in 1:n.year){
@@ -169,7 +165,6 @@ conf$addSampler(target = c("z"),
 
 #activity center sampler. This sampler tunes activity centers when z.super[i]=1 and
 #draws from the prior otherwise.
-# conf$removeSampler(paste0("s[1:",M,", 1:2]")) #dont need to remove if not assigned by nimble
 for(i in 1:M){
   conf$addSampler(target = paste0("s[",i,", 1:2]"),
                   type = 'sSampler',control=list(i=i,xlim=xlim,ylim=ylim,scale=1),silent = TRUE)
@@ -178,8 +173,8 @@ for(i in 1:M){
 
 
 #optional (but recommended!) blocking 
-conf$removeSampler(c("beta0.phi"))
-conf$removeSampler(c("beta1.phi"))
+# conf$removeSampler(c("beta0.phi"))
+# conf$removeSampler(c("beta1.phi"))
 conf$addSampler(target = c("beta0.phi","beta1.phi"),type = 'RW_block',
                 control = list(adaptive=TRUE),silent = TRUE)
 

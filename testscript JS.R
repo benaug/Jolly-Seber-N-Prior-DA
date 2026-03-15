@@ -69,7 +69,7 @@ constants <- list(n.year=n.year, K=data$K, M=M)
 Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
                  ER=N.recruit.init,N.super=N.super.init,lambda.y1=N.init[1],
                  z=z.init,z.start=z.start.init,z.stop=z.stop.init,z.super=z.super.init,
-                 beta0.phi=0,beta1.phi=0)
+                 phi.cov.mu=mean(data$truth$cov),phi.cov.sd=sd(data$truth$cov),beta0.phi=0,beta1.phi=0)
 
 #data for Nimble
 Nimdata <- list(y=y.nim,phi.cov=phi.cov.data)
@@ -82,20 +82,14 @@ nt <- 1 #thinning rate
 # Build the model, configure the mcmc, and compile
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
-
-#OK! what are we doing here? If you just let nimble configure as normal, it will assign incorrect samplers
-#to z and N objects. We could then remove them and replace them, but it is much faster to not let nimble
-#make the assignments in the first place. So! put all terms with priors in config.nodes here except for
-#N.recruit. If you change the model parameters, you will need to make the same changes here. Finally, 
-#we have to tell nimble which nodes to assign samplers for for the individual covariate when manually
-#instructing nimble which samplers to assign.
+#if you add/remove parameters in model file, do so in config.nodes
 config.nodes <- c('beta0.phi','beta1.phi','gamma','p','lambda.y1',paste('phi.cov[',cov.up,']'),
                'phi.cov.mu','phi.cov.sd')
 # config.nodes <- c()
 conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,
                       nodes=config.nodes,useConjugacy = TRUE)
 
-###*required* sampler replacement###
+#Add N/z samplers
 z.super.ups <- round(M*0.25) #how many z.super update proposals per iteration? 
 #20% of M seems reasonable, but optimal will depend on data set
 y.nodes <- c(Rmodel$expandNodeNames(paste0("y[1:",M,",1:",n.year,"]")) ) #if you change y structure, change here
@@ -113,8 +107,8 @@ conf$addSampler(target = c("z"),
                                                  calcNodes=calcNodes), silent = TRUE)
 
 #optional (but recommended!) blocking 
-conf$removeSampler(c("beta0.phi"))
-conf$removeSampler(c("beta1.phi"))
+# conf$removeSampler(c("beta0.phi"))
+# conf$removeSampler(c("beta1.phi"))
 conf$addSampler(target = c("beta0.phi","beta1.phi"),type = 'RW_block',
                 control = list(adaptive=TRUE),silent = TRUE)
 
@@ -138,7 +132,7 @@ plot(mcmc(mvSamples[-c(1:250),]))
 data$N
 data$N.recruit
 data$N.survive
-data$N[1]+sum(data$N.recruit) #N.super
+data$N[1] + sum(data$N.recruit) #N.super
 
 #Some sanity checks I used during debugging. Just checking that final
 #model states match between z and N objects

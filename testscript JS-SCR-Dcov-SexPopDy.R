@@ -269,19 +269,12 @@ nt <- 1 #thinning rate
 # Build the model, configure the mcmc, and compile
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
-
-#OK! what are we doing here? If you just let nimble configure as normal, it will assign incorrect samplers
-#to z and N objects. We could then remove them and replace them, but it is much faster to not let nimble
-#make the assignments in the first place. So! put all terms with priors in config.nodes here except for
-#N.recruit. If you change the model parameters, you will need to make the same changes here. Finally,
-#we have to tell nimble which nodes to assign samplers for for the individual covariate when manually
-#instructing nimble which samplers to assign.
+#if you add/remove parameters in model file, do so in config.nodes
 config.nodes <- c('phi.sex','gamma.male','gamma.female', #sex not included here, in custom N/z update, D0, D.beta1 added below
                'p.sex','p0.sex','sigma.sex')
 conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,monitors2=parameters2,
                       nodes=config.nodes,useConjugacy = TRUE)
 
-###*required* sampler replacements###
 #N/z updates + sex updates for guys detected without observed sex
 z.super.ups <- round(M*0.25) #how many z.super update proposals per iteration?
 #25% of M seems reasonable, but optimal will depend on data set
@@ -327,7 +320,6 @@ conf$addSampler(target = c("z"),
 
 #activity center sampler. This sampler tunes activity centers when z.super[i]=1 and
 #draws from the prior otherwise.
-# conf$removeSampler(paste0("s[1:",M,", 1:2]")) #dont need to remove if not assigned by nimble above
 for(i in 1:M){
   conf$addSampler(target = paste("s[",i,", 1:2]", sep=""),
                   type = 'sSamplerDcov',control=list(i=i,res=data$res,n.cells.x=data$n.cells.x,n.cells.y=data$n.cells.y,
