@@ -11,7 +11,7 @@ sim.JS.SCR <- function(lambda.y1=NA,gamma=NA,n.year=NA,
   N <- rep(NA,n.year)
   N.recruit <- N.survive <- ER <- rep(NA,n.year-1)
   N[1] <- rpois(1,lambda.y1)
-  if(N.M[1]==0)stop("Simulated starting male population size of 0")
+  if(N[1]==0)stop("Simulated starting male population size of 0")
   
   #Easiest to increase dimension of z as we simulate bc size not known in advance.
   z <- matrix(0,N[1],n.year)
