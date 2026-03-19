@@ -117,7 +117,6 @@ zSampler <- nimbleFunction(
           N.F.curr <- model$N.F
           N.recruit.F.curr <- model$N.recruit.F
         }
-        y <- y2D[i,]
         dets <- which(y2D[i,]>0)
         first.det <- min(dets)
         lp.start <- rep(-Inf,n.year)
@@ -332,7 +331,6 @@ zSampler <- nimbleFunction(
         }else{
           N.F.curr <- model$N.F
         }
-        y <- y2D[i,]
         dets <- which(y2D[i,]>0)
         last.det <- max(dets)
         lp.stop <- rep(-Inf,n.year)
