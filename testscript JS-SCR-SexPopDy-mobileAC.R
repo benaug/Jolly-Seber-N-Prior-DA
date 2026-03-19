@@ -18,8 +18,7 @@ library(truncnorm) #for data simulator
 source("sim.JS.SCR.SexPopDy.R")
 source("Nimble Model JS-SCR-SexPopDy-mobileAC.R")
 source("Nimble Functions JS-SCR-SexPopDy-mobileAC.R") #contains custom distributions and updates
-source("sSampler Mobile Sex.R") # activity center sampler that proposes from prior when z.super=0.
-#this one works for fixed activity centers over years only
+source("sSampler Mobile Sex.R")
 
 n.year <- 5 #number of years
 lambda.y1.M <- 75 #expected male N in year 1
