@@ -8,8 +8,8 @@ library(nimble)
 library(coda)
 library(truncnorm) #for data simulator
 source("sim.JS.SCR.R")
-source("Nimble Model JS-SCR-mobileAC V2.R")
-source("Nimble Functions JS-SCR-mobileAC V2.R") #contains custom distributions and updates
+source("Nimble Model JS-SCR-mobileAC.R")
+source("Nimble Functions JS-SCR-mobileAC.R") #contains custom distributions and updates
 source("sSampler Mobile.R") # activity center sampler that proposes AC trajectory from prior when z.super=0.
 
 n.year <- 5 #number of years

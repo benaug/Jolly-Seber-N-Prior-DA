@@ -60,6 +60,16 @@ Model versions:
 7. JS-Typical: This is a nonspatial version of the Jolly-Seber approach of Chandler and Clark (2014) that 
 considers per capita recruitment for comparison.
 
-8. JS-SCR-mobileAC: same as 2 with BVN Markov activity center movement (truncated by state space boundary)
+These SCR version below consider activity center movement. A notable difference between the ones below and those above
+is that I gate the activity center likelihood by z.super so that they are not in the model when z.super=0. They are set
+to "0" to indicate they are turned off. Then, a new s trajectory is proposed when turning on a z.super index. This
+improved mixing of the between year movement scale parameter for a few simulated data sets where I made the comparison.
+Another note is that for mobile activity centers, you generally need pretty good SCR data to estimate the movement
+parameter well--many individuals, many survival events that are documented (same inds captured in consecutive years),
+larger trapping arrays, etc. You will also have to run the model for more MCMC iterations to get a good effective sample
+size for the movement parameter. 
 
-I will upload more mobile AC SCR versions later.
+8. JS-SCR-mobileAC: same as 2 with BVN Markov activity center movement (truncated by state space boundary)
+9, JS-SCR-SexPopDy-mobileAC: same as 8 but sex-specific population dynamics, detection, and movement parameters
+
+I will upload mobile AC versions that work with inhomogenous density later.
