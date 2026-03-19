@@ -10,8 +10,9 @@ NimModel <- nimbleCode({
   N.super <- N[1] + sum(N.recruit[1:(n.year-1)]) #size of superpopulation
   
   #Recruitment
+  gamma.fixed ~ dunif(0,2) #sharing gamma across years
   for(g in 1:(n.year-1)){
-    gamma[g] ~ dunif(0,2) # yearly recruitment priors
+    gamma[g] <- gamma.fixed
     ER[g] <- N[g]*gamma[g] #yearly expected recruits
     N.recruit[g] ~ dpois(ER[g]) #yearly realized recruits
   }
@@ -21,21 +22,27 @@ NimModel <- nimbleCode({
   phi.cov.sd ~ T(dt(mu=0, sigma=1, df=7), 0, Inf) #phi individual covariate sd prior
   sigma.move ~ dunif(0,2)
   for(i in 1:M){
-    phi.cov[i] ~ dnorm(phi.cov.mu, sd = phi.cov.sd)
+    phi.cov[i] ~ dnorm(phi.cov.mu,sd=phi.cov.sd)
     #1st year ACs
-    s[i,1,1] ~ dunif(xlim[1],xlim[2])
-    s[i,1,2] ~ dunif(ylim[1],ylim[2])
+    # s[i,1,1] ~ dunif(xlim[1],xlim[2])
+    # s[i,1,2] ~ dunif(ylim[1],ylim[2])
+    #same as above, but vectorized and gated by z.super
+    #all s set to 0 if not in population, z.super[i]=0
+    s[i,1,1:2] ~ dunif2D(xlim=xlim[1:2],ylim=ylim[1:2],z.super=z.super[i])
     for(g in 2:n.year){
-      #If you change movement distribution, need to modify custom s updates (3rd one for z.super=0)
-      s[i,g,1] ~ T(dnorm(s[i,g-1,1],sd=sigma.move),xlim[1],xlim[2])
-      s[i,g,2] ~ T(dnorm(s[i,g-1,2],sd=sigma.move),ylim[1],ylim[2])
+      # s[i,g,1] ~ T(dnorm(s[i,g-1,1],sd=sigma.move),xlim[1],xlim[2])
+      # s[i,g,2] ~ T(dnorm(s[i,g-1,2],sd=sigma.move),ylim[1],ylim[2])
+      #same as above, but vectorized and gated by z.super
+      s[i,g,1:2] ~ dTruncNorm(s.prev=s[i,g-1,1:2],sigma.move=sigma.move, 
+                                       xlim=xlim[1:2],ylim=ylim[1:2],
+                                       z.super=z.super[i])
     }
   }
   
   #Survival (phi must have M x n.year - 1 dimension for custom updates to work)
   #without individual or year effects, use for loop to plug into phi[i,g]
   beta0.phi ~ dlogis(0,1)
-  beta1.phi ~ dnorm(0, sd=10) #individual covariate effect on survival
+  beta1.phi ~ dnorm(0,sd=10) #individual covariate effect on survival
   for(i in 1:M){
     for(g in 1:(n.year-1)){#plugging same individual phi's into each year for custom update
       logit(phi[i,g]) <- beta0.phi + beta1.phi*phi.cov[i] #individual by year survival

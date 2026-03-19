@@ -276,14 +276,15 @@ sSampler2 <- nimbleFunction(
 
 
 #sSampler 3 updates entire individual s vector when z.super=0
+#not using now since I am not keeping s in the model here
 sSampler3 <- nimbleFunction(
   # name = 'sampler_RW',
   contains = sampler_BASE,
   setup = function(model, mvSaved, target, control) {
     i <- control$i
     n.year <- control$n.year
-    xlim<-control$xlim
-    ylim<-control$ylim
+    xlim <- control$xlim
+    ylim <- control$ylim
     ## control list extraction
     # logScale            <- extractControlElement(control, 'log',                 FALSE)
     # reflective          <- extractControlElement(control, 'reflective',          FALSE)

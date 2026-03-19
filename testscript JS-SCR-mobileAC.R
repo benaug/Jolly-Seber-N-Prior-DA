@@ -1,16 +1,18 @@
 #This is an SCR version with mobile activity centers and an individual survival covariate.
 #the movement scale parameter sigma.move generally mixes poorly.
 #better with higher cumulative detection prob, higher survival, more years of data, more individuals
+#I am estimating a fixed per capita recruitment parameter gamma to better estimate sigma.move
+#so, don't simulate different gammas in each year below
 
 library(nimble)
 library(coda)
 library(truncnorm) #for data simulator
 source("sim.JS.SCR.R")
-source("Nimble Model JS-SCR-mobileAC.R")
-source("Nimble Functions JS-SCR-mobileAC.R") #contains custom distributions and updates
+source("Nimble Model JS-SCR-mobileAC V2.R")
+source("Nimble Functions JS-SCR-mobileAC V2.R") #contains custom distributions and updates
 source("sSampler Mobile.R") # activity center sampler that proposes AC trajectory from prior when z.super=0.
 
-n.year <- 4 #number of years
+n.year <- 5 #number of years
 lambda.y1 <- 100 #expected N in year 1
 gamma <- rep(0.2,n.year-1) #yearly per-capita recruitment
 beta0.phi <- qlogis(0.85) #survival intercept
@@ -33,7 +35,7 @@ data <- sim.JS.SCR(lambda.y1=lambda.y1,gamma=gamma,n.year=n.year,
 data$N[1] + sum(data$N.recruit) #N.super
 
 ##Initialize##
-M <- 225 #data augmentation level. Check N.super posterior to make sure it never hits M
+M <- 300 #data augmentation level. Check N.super posterior to make sure it never hits M
 N.super.init <- nrow(data$y)
 X <- data$X #pull X from data (won't be in environment if not simulated directly above)
 if(N.super.init > M) stop("Must augment more than number of individuals captured")
@@ -83,19 +85,9 @@ for(g in 1:n.year){
 #pull out state space with buffer around maximal trap dimensions
 xlim <- data$xlim
 ylim <- data$ylim
-s.init <- array(NA,dim=c(M,n.year,2))
-for(g in 1:n.year){
-  s.init[,g,]=cbind(runif(M,xlim[1],xlim[2]), runif(M,ylim[1],ylim[2])) #assign random locations
-  idx <- which(rowSums(y.nim[,g,])>0) #switch for those actually caught
-  for(i in idx){
-    trps <- matrix(X.nim[g,which(y.nim[i,g,]>0),],ncol=2,byrow=FALSE)
-    if(nrow(trps)>1){
-      s.init[i,g,] <- c(mean(trps[,1]),mean(trps[,2]))
-    }else{
-      s.init[i,g,] <- trps
-    }
-  }
-}
+sigma.move.init <- sigma.move
+#initialize s consistent with sigma.move.init
+s.init <- initialize.s(sigma.move.init,z.super.init,y=y.nim,X=X.nim,xlim=xlim,ylim=ylim)
 
 #constants for Nimble
 constants <- list(n.year=n.year, M=M, J=J, xlim=xlim, ylim=ylim, K1D=K1D)
@@ -104,14 +96,14 @@ Niminits <- list(N=N.init,lambda.y1=N.init[1], #initialize consistent with N[1] 
                  N.survive=N.survive.init,N.recruit=N.recruit.init,
                  z=z.init,z.start=z.start.init,z.stop=z.stop.init,
                  ER=N.recruit.init,N.super=N.super.init,z.super=z.super.init,
-                 s=s.init,beta0.phi=0,beta1.phi=0,
+                 s=s.init,sigma.move=sigma.move.init,beta0.phi=0,beta1.phi=0,
                  phi.cov.mu=mean(data$truth$cov),phi.cov.sd=sd(data$truth$cov))
 
 #data for Nimble
 Nimdata <- list(y=y.nim,phi.cov=phi.cov.data,X=X.nim)
 
 # set parameters to monitor
-parameters <- c('N','gamma','N.recruit','N.survive','N.super',
+parameters <- c('N','gamma.fixed','N.recruit','N.survive','N.super',
                 'lambda.y1','beta0.phi','beta1.phi',
                 'phi.cov.mu','phi.cov.sd','p0','sigma','sigma.move')
 nt <- 1 #thinning rate
@@ -120,7 +112,7 @@ nt <- 1 #thinning rate
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
 #if you add/remove parameters in model file, do so in config.nodes
-config.nodes <- c('beta0.phi','beta1.phi','gamma','lambda.y1',paste('phi.cov[',cov.up,']'),
+config.nodes <- c('beta0.phi','beta1.phi','gamma.fixed','lambda.y1',paste('phi.cov[',cov.up,']'),
                'phi.cov.mu','phi.cov.sd','p0','sigma','sigma.move')
 conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,
                       nodes=config.nodes,useConjugacy = TRUE)
@@ -139,20 +131,22 @@ N.survive.nodes <- Rmodel$expandNodeNames(paste0("N.survive[1:",n.year-1,"]"))
 N.recruit.nodes <- Rmodel$expandNodeNames(paste0("N.recruit[1:",n.year-1,"]"))
 ER.nodes <- Rmodel$expandNodeNames(paste0("ER[1:",n.year-1,"]"))
 z.nodes <- Rmodel$expandNodeNames(paste0("z[1:",M,",1]"))
-calcNodes <- c(N.nodes,ER.nodes,N.recruit.nodes,N.survive.nodes,y.nodes,z.nodes)
+s.nodes <- Rmodel$expandNodeNames(paste0("s"))
+calcNodes <- c(N.nodes,ER.nodes,N.recruit.nodes,N.survive.nodes,s.nodes,z.nodes,y.nodes)
 conf$addSampler(target = c("z"),
-                type = 'zSampler',control = list(M=M,n.year=n.year,J=J,
+                type = 'zSampler',control = list(M=M,n.year=n.year,J=J,xlim=xlim,ylim=ylim,
                                                  z.obs=z.obs,z.super.ups=z.super.ups,
                                                  y.nodes=y.nodes,pd.nodes=pd.nodes,N.nodes=N.nodes,
-                                                 z.nodes=z.nodes,ER.nodes=ER.nodes,
+                                                 z.nodes=z.nodes,ER.nodes=ER.nodes,s.nodes=s.nodes,
                                                  N.survive.nodes=N.survive.nodes,
                                                  N.recruit.nodes=N.recruit.nodes,
                                                  y2D=y.nim2D,calcNodes=calcNodes), silent = TRUE)
 
-#activity center sampler. There are 3 samplers here for these cases
+#activity center sampler. There are 2 samplers here for these cases
 #1) z.super=1 and z=1, sSampler1 uses Metropolis-Hastings
 #2) z.super=1 and z=0, sSampler2 uses Metropolis-Hastings with proposal sd tuned separately from above
-#3) z.super=0, sSampler3 simulates entire new trajectory from priors.
+#z.super=0, do nothing, s[i,1:n.year,1:2] are set to 0
+#N/z sampler proposes activity centers when turning z.super on
 for(i in 1:M){
   for(g in 1:n.year){
     conf$addSampler(target = paste0("s[",i,",",g,",1:2]"),
@@ -161,10 +155,13 @@ for(i in 1:M){
                     type = 'sSampler2',control=list(i=i,g=g,xlim=xlim,ylim=ylim,scale=1),silent = TRUE)
     #scale parameter here is just the starting scale. It will be tuned.
   }
-  conf$addSampler(target = paste0("s[",i,",1:",n.year,",1:2]"),
-                  type = 'sSampler3',control=list(i=i,xlim=xlim,ylim=ylim,n.year=n.year,scale=1),silent = TRUE)
 }
 
+#can replace RW update with slice. nearly as fast as RW in data sets I've tried
+#may be smarter when individual s trajectories move in/out of likelihood with z.super updates
+#may handle funnel behavior better for smaller values
+conf$removeSampler('sigma.move')
+conf$addSampler(target='sigma.move',type='slice')
 
 #optional (but recommended!) blocking 
 conf$addSampler(target = c("beta0.phi","beta1.phi"),type = 'RW_block',
@@ -178,13 +175,14 @@ Cmcmc <- compileNimble(Rmcmc, project = Rmodel)
 
 # Run the model.
 start.time2 <- Sys.time()
-Cmcmc$run(1000,reset=FALSE) #can extend run by rerunning this line
+Cmcmc$run(10000,reset=FALSE) #can extend run by rerunning this line
 end.time <- Sys.time()
-time1 <- end.time-start.time  # total time for compilation, replacing samplers, and fitting
-time2 <- end.time-start.time2 # post-compilation run time
+time1 <- end.time-start.time  #total time for compilation, replacing samplers, and fitting
+time2 <- end.time-start.time2 #post-compilation run time
 
-mvSamples <-  as.matrix(Cmcmc$mvSamples)
+mvSamples <- as.matrix(Cmcmc$mvSamples)
 plot(mcmc(mvSamples[-c(1:500),]))
+plot(mcmc(mvSamples[-c(1:500),"sigma.move"]))
 
 #reminder what the targets are
 data$N
@@ -192,6 +190,13 @@ data$N.recruit
 data$N.survive
 data$N[1] + sum(data$N.recruit) #N.super
 
+rem.idx <- c(grep("N",colnames(mvSamples)),
+             grep("N.recruit",colnames(mvSamples)),
+             grep("N.survive",colnames(mvSamples)))
+tmp <- cor(mvSamples[-c(1:500),-rem.idx])
+diag(tmp) <- NA
+which(abs(tmp)>0.5,arr.ind=TRUE)
+round(tmp,2)
 
 # #Some sanity checks I used during debugging. Just checking that final
 # #model states match between z and N objects
