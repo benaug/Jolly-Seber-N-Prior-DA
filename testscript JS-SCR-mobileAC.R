@@ -132,7 +132,7 @@ N.recruit.nodes <- Rmodel$expandNodeNames(paste0("N.recruit[1:",n.year-1,"]"))
 ER.nodes <- Rmodel$expandNodeNames(paste0("ER[1:",n.year-1,"]"))
 z.nodes <- Rmodel$expandNodeNames(paste0("z[1:",M,",1]"))
 s.nodes <- Rmodel$expandNodeNames(paste0("s"))
-calcNodes <- c(N.nodes,ER.nodes,N.recruit.nodes,N.survive.nodes,s.nodes,z.nodes,y.nodes)
+calcNodes <- c(N.nodes,ER.nodes,N.recruit.nodes,N.survive.nodes,s.nodes,z.nodes,pd.nodes,y.nodes)
 conf$addSampler(target = c("z"),
                 type = 'zSampler',control = list(M=M,n.year=n.year,J=J,xlim=xlim,ylim=ylim,
                                                  z.obs=z.obs,z.super.ups=z.super.ups,

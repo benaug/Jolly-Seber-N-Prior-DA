@@ -195,7 +195,7 @@ calcNodes <- c(N.nodes,
                N.F.nodes,N.recruit.F.nodes,
                N.survive.M.nodes,N.survive.F.nodes,
                N.survive.nodes,N.recruit.nodes,
-               y.nodes,z.nodes,phi.nodes)
+               pd.nodes,y.nodes,z.nodes,phi.nodes)
 conf$addSampler(target = c("z"),
                 type = 'zSampler',control = list(M=M,n.year=n.year,J=J,
                                                  z.obs=z.obs,z.super.ups=z.super.ups,
