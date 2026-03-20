@@ -620,7 +620,6 @@ zSampler <- nimbleFunction(
           model$calculate(ER.nodes) #update ER when N updated
           
           #set s to all 0's
-          log.prop.for.s <- 0
           for(g in 1:n.year){
             model$s[pick,g,1:2] <<- c(0,0)
           }

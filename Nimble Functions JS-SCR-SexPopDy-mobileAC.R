@@ -909,7 +909,6 @@ zSampler <- nimbleFunction(
           model$calculate(ER.F.nodes) #update ER when N updated
           
           #set s to all 0's
-          log.prop.for.s <- 0
           for(g in 1:n.year){
             model$s[pick,g,1:2] <<- c(0,0)
           }
@@ -960,7 +959,7 @@ zSampler <- nimbleFunction(
           log.p.select.back <- log(1/noff.back)
           #log multinomial coefficient prior
           log.z.prior.back <- - (lgamma(M+1) - sum(lgamma(entry.counts.prop+1)))
-          log.prop.for.z <- 0
+          log.prop.for.z <- log.prop.for.s <- 0
           
           #MH step
           log_MH_ratio <- (lp.proposed.total + log.z.prior.back + log.p.select.back + log.prop.back.z + log.prop.back.s) -
