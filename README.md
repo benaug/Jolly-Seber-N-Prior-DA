@@ -33,14 +33,11 @@ and N0=M-N[1]-N.recruit[1:(n.primary-1)].
 So the prior [z.super[1:M] | N[1],N.recruit[1:(n.primary-1)],M] is
 
 
-(N[1]!N.recruit[1]!...N.recruit[n.primary-1]!N0!)/ M!, the inverse multinomial coefficient.
+(N[1]!N.recruit[1]!...N.recruit[n.primary-1]!N0!)/ M!, the inverse multinomial coefficient. This reflects that individuals in each
+entry group are not exchangeable. 
 
 This repository also has sex-specific versions with sex-specific population dynamics. For these models, the prior is analogous to that
 described above except we now have sex-specific partitions for N[1] and N.recruit. There is a single N0 off class, not sex-specific.
-
-My first attempt at this approach (Jolly-Seber Github repo) mistakenly used the same
-prior as for closed populations, which appeared to work as expected with the larger population sizes used to test the code, but not with smaller population sizes,
-especially for sex-specific models where there are more possible partitions in the z.super prior. 
 
 More notes: individuals with z.super[i]=0 do not have a z vector describing entry year and survival (set to all 0). These z states are simulated when proposing to update
 N.super/z.super. In SCR versions, the z.super[i] individuals maintain activity centers for convenience like all other DA approaches in the past,
