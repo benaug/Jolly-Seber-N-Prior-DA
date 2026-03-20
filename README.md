@@ -70,6 +70,6 @@ larger trapping arrays, etc. You will also have to run the model for more MCMC i
 size for the movement parameter. 
 
 8. JS-SCR-mobileAC: same as 2 with BVN Markov activity center movement (truncated by state space boundary)
-9, JS-SCR-SexPopDy-mobileAC: same as 8 but sex-specific population dynamics, detection, and movement parameters
+9. JS-SCR-SexPopDy-mobileAC: same as 8 but sex-specific population dynamics, detection, and movement parameters
 
 I will upload mobile AC versions that work with inhomogenous density later.
