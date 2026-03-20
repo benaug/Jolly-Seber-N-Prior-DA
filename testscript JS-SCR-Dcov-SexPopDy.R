@@ -137,6 +137,8 @@ mask.check(dSS=data$dSS,cells=data$cells,n.cells=data$n.cells,n.cells.x=data$n.c
            x.vals=data$x.vals,y.vals=data$y.vals)
 
 ##Initialize##
+#Hard to predict appropriate M, depends on many factors like detection prob, number of years
+#level of population turnover. Maybe make sure it is at least 1.6*N.super to start
 M <- 250 #data augmentation level.
 # IMPORTANT: Check N.super posterior to make sure it never hits M. Otherwise, estimates will be biased.
 N.super.init <- nrow(data$y)

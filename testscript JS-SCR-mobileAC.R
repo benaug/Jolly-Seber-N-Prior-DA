@@ -35,6 +35,8 @@ data <- sim.JS.SCR(lambda.y1=lambda.y1,gamma=gamma,n.year=n.year,
 data$N[1] + sum(data$N.recruit) #N.super
 
 ##Initialize##
+#Hard to predict appropriate M, depends on many factors like detection prob, number of years
+#level of population turnover. Maybe make sure it is at least 1.6*N.super to start
 M <- 300 #data augmentation level. Check N.super posterior to make sure it never hits M
 N.super.init <- nrow(data$y)
 X <- data$X #pull X from data (won't be in environment if not simulated directly above)
