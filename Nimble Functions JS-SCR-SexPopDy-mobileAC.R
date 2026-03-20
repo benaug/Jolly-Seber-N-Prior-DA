@@ -720,7 +720,7 @@ zSampler <- nimbleFunction(
         #propose year 1 from uniform prior
         log.prop.for.s <- log(1/(xlim[2]-xlim[1])) + log(1/(ylim[2]-ylim[1])) #1st year uniform
         model$s[i,1,1:2] <<- c(runif(1, xlim[1], xlim[2]), runif(1, ylim[1], ylim[2]))
-        #propose subsequent years from movement prior (truncated Normal here)
+        #propose subsequent years from movement distribution (truncated Normal here)
         for(g in 2:n.year){
           model$s[i,g,1:2] <<- rTruncNorm(1,xlim = xlim, ylim = ylim, s.prev=model$s[i,g-1,1:2],
                                           sigma.move=model$sigma.move.sex[model$sex[i]+1],z.super=1)

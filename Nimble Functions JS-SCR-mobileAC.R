@@ -636,7 +636,7 @@ zSampler <- nimbleFunction(
             }
           }
           log.prop.back.s <- -log(xlim[2]-xlim[1]) - log(ylim[2]-ylim[1])
-          #propose subsequent years from movement prior (truncated Normal here)
+          #propose subsequent years from movement distribution (truncated Normal here)
           for(g in 2:n.year){
             log.prop.back.s <- log.prop.back.s + dTruncNorm(s.curr[g,1:2],s.prev=s.curr[g-1,1:2],
                                                           sigma.move=model$sigma.move[1],
