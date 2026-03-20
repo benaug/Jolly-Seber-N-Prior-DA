@@ -68,3 +68,4 @@ NimModel <- nimbleCode({
 #1) for detected individuals: update z.start, then update z.stop
 #2) for undetected individuals: update entire z vectors
 #3) N.super/z.super update
+#4) s update for z.super=1 only

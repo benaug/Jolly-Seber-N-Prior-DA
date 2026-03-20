@@ -83,3 +83,4 @@ NimModel <- nimbleCode({
 #2) for undetected individuals: update entire z vectors
 #3) N.super/z.super update
 #4) sex update: update sex-specific N structures with sex[i] update
+#5) s update for z.super=1 only
