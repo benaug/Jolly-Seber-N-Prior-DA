@@ -68,5 +68,9 @@ size for the movement parameter.
 
 8. JS-SCR-mobileAC: same as 2 with BVN Markov activity center movement (truncated by state space boundary)
 9. JS-SCR-SexPopDy-mobileAC: same as 8 but sex-specific population dynamics, detection, and movement parameters
+10. JS-SCR-Dcov-mobileAC: same as 8 but with year 1 inhomogeneous density and RSF-based activity center movement.
+Availability distribution is BVN (again, truncated by state space boundary), use distribution is normalized
+product of availability distribution
+and RSF.
 
-I will upload mobile AC versions that work with inhomogenous density later.
+Will get to 10 + sex-specificity
