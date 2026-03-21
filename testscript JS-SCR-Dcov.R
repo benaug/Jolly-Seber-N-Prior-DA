@@ -132,9 +132,25 @@ mask.check(dSS=data$dSS,cells=data$cells,n.cells=data$n.cells,n.cells.x=data$n.c
 M <- 250 #data augmentation level. Check N.super posterior to make sure it never hits M
 N.super.init <- nrow(data$y)
 X <- data$X #pull X from data (won't be in environment if not simulated directly above)
+K <- data$K #same for K
 if(N.super.init > M) stop("Must augment more than number of individuals captured")
 J <- unlist(lapply(X,nrow)) #traps per year
 J.max <- max(J)
+
+#pull these out of data object (won't be in environment if it wasn't simulated above, i.e. real data)
+xlim <- data$xlim
+ylim <- data$ylim
+dSS <- data$dSS
+cells <- data$cells
+res <- data$res
+cellArea <- res^2
+D.cov <- data$D.cov
+InSS <- data$InSS
+x.vals <- data$x.vals
+y.vals <- data$y.vals
+n.cells <- data$n.cells
+n.cells.x <- data$n.cells.x
+n.cells.y <- data$n.cells.y
 
 y.nim <- array(0,dim=c(M,n.year,J.max))
 y.nim[1:N.super.init,1:n.year,1:J.max] <- data$y #all these guys must be observed
@@ -177,8 +193,6 @@ for(g in 1:n.year){
 }
 
 #pull out state space with buffer around maximal trap dimensions
-xlim <- data$xlim
-ylim <- data$ylim
 s.init <- cbind(runif(M,xlim[1],xlim[2]), runif(M,ylim[1],ylim[2])) #assign random locations
 idx <- which(rowSums(y.nim)>0) #switch for those actually caught
 for(i in idx){
@@ -205,34 +219,34 @@ e2dist  <-  function (x, y){
 getCell  <-  function(s,res,cells){
   cells[trunc(s[1]/res)+1,trunc(s[2]/res)+1]
 }
-alldists <- e2dist(s.init,data$dSS)
-alldists[,data$InSS==0] <- Inf
+alldists <- e2dist(s.init,dSS)
+alldists[,InSS==0] <- Inf
 for(i in 1:M){
-  this.cell <- data$cells[trunc(s.init[i,1]/data$res)+1,trunc(s.init[i,2]/data$res)+1]
-  if(data$InSS[this.cell]==0){
+  this.cell <- cells[trunc(s.init[i,1]/res)+1,trunc(s.init[i,2]/res)+1]
+  if(InSS[this.cell]==0){
     cands <- alldists[i,]
     new.cell <- which(alldists[i,]==min(alldists[i,]))
-    s.init[i,] <- data$dSS[new.cell,]
+    s.init[i,] <- dSS[new.cell,]
   }
 }
 
 #constants for Nimble
 #might want to center D.cov here. Simulated D.cov in this testscript is already effectively centered.
 constants <- list(n.year=n.year, M=M, J=J, xlim=xlim, ylim=ylim, K1D=K1D,
-                  D.cov=data$D.cov,cellArea=data$cellArea,n.cells=data$n.cells,
-                  res=data$res)
+                  D.cov=D.cov,cellArea=cellArea,n.cells=n.cells,
+                  res=res)
 #inits for Nimble
 Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
                  ER=N.recruit.init,N.super=N.super.init,z.super=z.super.init,
                  z=z.init,z.start=z.start.init,z.stop=z.stop.init,
                  s=s.init,beta0.phi=0,beta1.phi=0,
-                 phi.cov.mu=mean(data$truth$cov),phi.cov.sd=sd(data$truth$cov),
+                 phi.cov.mu=mean(data$cov),phi.cov.sd=sd(data$cov),
                  D0=N.init[1]/(sum(InSS)*res^2),D.beta1=0)
 
 #data for Nimble
 dummy.data <- rep(0,M) #dummy data not used, doesn't really matter what the values are
 Nimdata <- list(y=y.nim,phi.cov=phi.cov.data,X=X.nim,
-                dummy.data=dummy.data,cells=cells,InSS=data$InSS)
+                dummy.data=dummy.data,cells=cells,InSS=InSS)
 
 # set parameters to monitor
 parameters <- c('N','gamma','N.recruit','N.survive','N.super','lambda.y1',
@@ -277,8 +291,8 @@ conf$addSampler(target = c("z"),
 #draws from the prior otherwise.
 for(i in 1:M){
   conf$addSampler(target = paste("s[",i,", 1:2]", sep=""),
-                  type = 'sSamplerDcov',control=list(i=i,res=data$res,n.cells.x=data$n.cells.x,n.cells.y=data$n.cells.y,
-                                                 xlim=data$xlim,ylim=data$ylim),silent = TRUE)
+                  type = 'sSamplerDcov',control=list(i=i,res=res,n.cells.x=n.cells.x,n.cells.y=n.cells.y,
+                                                 xlim=xlim,ylim=ylim),silent = TRUE)
   #scale parameter here is just the starting scale. It will be tuned.
 }
 
@@ -311,7 +325,7 @@ plot(mcmc(mvSamples[-c(1:500),]))
 data$N
 data$N.recruit
 data$N.survive
-data$N[1] + sum(data$N.recruit) #N.super
+data$truth$N.super #N.super
 
 
 # #Some sanity checks I used during debugging. Just checking that final

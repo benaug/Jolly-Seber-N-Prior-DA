@@ -104,7 +104,7 @@ sim.JS.SCR.Dcov.SexPopDy <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   #store true data for model buildling/debugging
   truth <- list(y=y,N=N,N.recruit=N.recruit,N.survive=N.survive,
              N.M=N.M,N.F=N.F,N.recruit.M=N.recruit.M,N.recruit.F=N.recruit.F,
-             N.survive.M=N.survive.M,N.survive.F=N.survive.F,
+             N.survive.M=N.survive.M,N.survive.F=N.survive.F,N.super=N[1]+sum(N.recruit),
              lambda.y1.F=lambda.y1.F,lambda.y1.M=lambda.y1.M,
              sex=sex,z=z,s=s)
   
@@ -121,7 +121,7 @@ sim.JS.SCR.Dcov.SexPopDy <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
               N=N,N.recruit=N.recruit,N.survive=N.survive,
               N.M=N.M,N.recruit.M=N.recruit.M,N.survive.M=N.survive.M,
               N.F=N.F,N.recruit.F=N.recruit.F,N.survive.F=N.survive.F,
-              X=X,K=K,truth=truth,
+              X=X,K=K,n.year=n.year,truth=truth,
               xlim=xlim,ylim=ylim,x.vals=x.vals,y.vals=y.vals,dSS=dSS,cells=cells,
               n.cells=n.cells,n.cells.x=n.cells.x,n.cells.y=n.cells.y,s.cell=s.cell,
               D.cov=D.cov,InSS=InSS,res=res,cellArea=cellArea,lambda.y1.M=lambda.y1.M,

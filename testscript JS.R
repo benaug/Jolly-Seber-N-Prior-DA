@@ -26,14 +26,14 @@ data <- sim.JS(lambda.y1=lambda.y1,gamma=gamma,
             beta0.phi=beta0.phi,beta1.phi=beta1.phi,
             p=p,n.year=n.year,K=K)
 
-data$N[1] + sum(data$N.recruit) #N.super
+data$truth$N.super #N.super
 
 ##Initialize##
 #Hard to predict appropriate M, depends on many factors like detection prob, number of years
 #level of population turnover. Maybe make sure it is at least 1.6*N.super to start
 M <-  250 #data augmentation level. Check N.super posterior to make sure it never hits M
 N.super.init <- nrow(data$y)
-
+K <- data$K #pull K from data (won't be in environment if not simulated directly above)
 if(N.super.init > M) stop("Must augment more than number of individuals captured")
 y.nim <- matrix(0,M,n.year)
 y.nim[1:N.super.init,] <- data$y #all these guys must be observed
@@ -65,13 +65,13 @@ for(g in 2:n.year){
 phi.cov.data <- c(data$cov,rep(NA,M-length(data$cov)))
 cov.up <- which(is.na(phi.cov.data)) #which individuals have missing cov values, used below to help nimble assign samplers
 #constants for Nimble
-constants <- list(n.year=n.year, K=data$K, M=M)
+constants <- list(n.year=n.year, K=K, M=M)
 
 #inits for Nimble
 Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
                  ER=N.recruit.init,N.super=N.super.init,lambda.y1=N.init[1],
                  z=z.init,z.start=z.start.init,z.stop=z.stop.init,z.super=z.super.init,
-                 phi.cov.mu=mean(data$truth$cov),phi.cov.sd=sd(data$truth$cov),beta0.phi=0,beta1.phi=0)
+                 phi.cov.mu=mean(data$cov),phi.cov.sd=sd(data$cov),beta0.phi=0,beta1.phi=0)
 
 #data for Nimble
 Nimdata <- list(y=y.nim,phi.cov=phi.cov.data)
@@ -134,7 +134,7 @@ plot(mcmc(mvSamples[-c(1:250),]))
 data$N
 data$N.recruit
 data$N.survive
-data$N[1] + sum(data$N.recruit) #N.super
+data$truth$N.super #N.super
 
 #Some sanity checks I used during debugging. Just checking that final
 #model states match between z and N objects

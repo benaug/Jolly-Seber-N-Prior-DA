@@ -96,7 +96,7 @@ sim.JS.SCR.Dcov <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   keep.idx <- which(rowSums(y)>0)
   y <- y[keep.idx,,]
   cov <- cov[keep.idx]
-  return(list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,X=X,K=K,
+  return(list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,X=X,K=K,n.year=n.year,
               xlim=xlim,ylim=ylim,x.vals=x.vals,y.vals=y.vals,dSS=dSS,cells=cells,
               n.cells=n.cells,n.cells.x=n.cells.x,n.cells.y=n.cells.y,s.cell=s.cell,
               D.cov=D.cov,InSS=InSS,res=res,cellArea=cellArea,N=N,lambda.y1=lambda.y1,

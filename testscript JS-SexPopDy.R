@@ -35,14 +35,14 @@ data <- sim.JS.SexPopDy(lambda.y1.M=lambda.y1.M,lambda.y1.F=lambda.y1.F,
                         n.year=n.year,gamma.sex=gamma.sex,phi.sex=phi.sex,
                         p.sex=p.sex,K=K,p.obs.sex=p.obs.sex)
 
-data$N[1] + sum(data$N.recruit) #N.super
+data$truth$N.super #N.super
 
 ##Initialize##
 #Hard to predict appropriate M, depends on many factors like detection prob, number of years
 #level of population turnover. Maybe make sure it is at least 1.6*N.super to start
 M <- 250 #data augmentation level. Check N.super posterior to make sure it never hits M
 N.super.init <- nrow(data$y)
-
+K <- data$K #pull K from data (won't be in environment if not simulated directly above)
 if(N.super.init > M) stop("Must augment more than number of individuals captured")
 y.nim <- matrix(0,M,n.year)
 y.nim[1:N.super.init,] <- data$y #all these guys must be observed
@@ -86,7 +86,7 @@ N.survive.init <- N.survive.M.init + N.survive.F.init
 N.recruit.init <- N.recruit.M.init + N.recruit.F.init
 
 #constants for Nimble
-constants <- list(n.year=n.year, M=M, K=data$K)
+constants <- list(n.year=n.year, M=M, K=K)
 #inits for Nimble
 Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
                  N.M=N.M.init,N.survive.M=N.survive.M.init,N.recruit.M=N.recruit.M.init,
@@ -183,7 +183,7 @@ data$N.recruit.M
 data$N.survive
 data$N.survive.F
 data$N.survive.M
-data$N[1] + sum(data$N.recruit) #N.super
+data$truth$N.super #N.super
 
 
 #if you record "sex" here

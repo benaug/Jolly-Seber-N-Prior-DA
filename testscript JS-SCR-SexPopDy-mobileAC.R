@@ -60,9 +60,25 @@ M <- 400 #data augmentation level.
 # IMPORTANT: Check N.super posterior to make sure it never hits M. Otherwise, estimates will be biased.
 N.super.init <- nrow(data$y)
 X <- data$X #pull X from data (won't be in environment if not simulated directly above)
+K <- data$K #same for K
 if(N.super.init > M) stop("Must augment more than number of individuals captured")
 J <- unlist(lapply(X,nrow)) #traps per year
 J.max <- max(J)
+
+#pull these out of data object (won't be in environment if it wasn't simulated above, i.e. real data)
+xlim <- data$xlim
+ylim <- data$ylim
+dSS <- data$dSS
+cells <- data$cells
+res <- data$res
+cellArea <- res^2
+D.cov <- data$D.cov
+InSS <- data$InSS
+x.vals <- data$x.vals
+y.vals <- data$y.vals
+n.cells <- data$n.cells
+n.cells.x <- data$n.cells.x
+n.cells.y <- data$n.cells.y
 
 y.nim <- array(0,dim=c(M,n.year,J.max))
 y.nim[1:N.super.init,1:n.year,1:J.max] <- data$y #all these guys must be observed
@@ -115,9 +131,6 @@ for(g in 1:n.year){
   K1D[g,1:J[g]] <- rep(K[g],J[g])
 }
 
-#pull out state space with buffer around maximal trap dimensions
-xlim <- data$xlim
-ylim <- data$ylim
 sigma.move.sex.init <- sigma.move.sex
 #initialize s consistent with sigma.move.sex.init and sex.init
 s.init <- initialize.s(sigma.move.sex.init,sex.init,z.super.init,y=y.nim,X=X.nim,xlim=xlim,ylim=ylim)

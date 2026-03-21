@@ -120,7 +120,7 @@ Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
                  N.super=N.super.init,z.super=z.super.init,
                  z=z.init,z.start=z.start.init,z.stop=z.stop.init,ER=N.recruit.init,
                  s=s.init,beta0.phi=0,beta1.phi=0,
-                 phi.cov.mu=mean(data$truth$cov),phi.cov.sd=sd(data$truth$cov),
+                 phi.cov.mu=mean(data$cov),phi.cov.sd=sd(data$cov),
                  sigma=1,p0=rep(0.2,n.year))
 
 #data for Nimble
