@@ -129,7 +129,7 @@ points(X.all,pch=4,cex=0.75)
 points(data$truth$s,pch=16)
 
 #super population size
-data$N[1] + sum(data$N.recruit)
+data$truth$N.super
 
 #function to test for errors in mask set up. 
 mask.check(dSS=data$dSS,cells=data$cells,n.cells=data$n.cells,n.cells.x=data$n.cells.x,
@@ -360,7 +360,7 @@ data$N.recruit.M
 data$N.survive
 data$N.survive.F
 data$N.survive.M
-data$N[1] + sum(data$N.recruit) #N.super
+data$truth$N.super #N.super
 
 #Plot relative density for last MCMC iteration
 image(x.vals,y.vals,matrix(Cmodel$lambda.cell,n.cells.x,n.cells.y),main="Relative Density",xlab="X",ylab="Y",col=cols1)

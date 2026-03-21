@@ -37,7 +37,7 @@ data <- sim.JS.SCR(lambda.y1=lambda.y1,gamma=gamma,n.year=n.year,
             beta0.phi=beta0.phi,beta1.phi=beta1.phi,
             p0=p0,sigma=sigma,X=X,buff=buff,K=K)
 
-data$N[1] + sum(data$N.recruit) #N.super
+data$truth$N.super #N.super
 
 ##Initialize##
 #Hard to predict appropriate M, depends on many factors like detection prob, number of years

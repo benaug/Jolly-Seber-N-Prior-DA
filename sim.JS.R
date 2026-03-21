@@ -45,7 +45,7 @@ sim.JS <- function(lambda.y1=NA,gamma=NA,beta0.phi=NA,beta1.phi=NA,
   }
   
   #store true data for model buildling/debugging
-  truth <- list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,z=z)
+  truth <- list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,N.super=N[1]+sum(N.recruit),z=z)
   
   #discard undetected individuals
   keep.idx <- which(rowSums(y)>0)

@@ -51,7 +51,7 @@ data <- sim.JS.SCR.SexPopDy(lambda.y1.M=lambda.y1.M,lambda.y1.F=lambda.y1.F,
                    p0.sex=p0.sex,sigma.sex=sigma.sex,X=X,buff=buff,K=K,p.obs.sex=p.obs.sex,
                    sigma.move.sex=sigma.move.sex)
 
-data$N[1] + sum(data$N.recruit) #N.super
+data$truth$N.super #N.super
 
 ##Initialize##
 #Hard to predict appropriate M, depends on many factors like detection prob, number of years
@@ -251,7 +251,7 @@ data$N.recruit.M
 data$N.survive
 data$N.survive.F
 data$N.survive.M
-data$N[1] + sum(data$N.recruit) #N.super
+data$truth$N.super #N.super
 
 
 #if you record "sex" here

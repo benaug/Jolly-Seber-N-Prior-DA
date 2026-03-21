@@ -89,7 +89,8 @@ sim.JS.SCR.Dcov <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   }
 
   #store true data for model building/debugging
-  truth <- list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,z=z,s=s)
+  truth <- list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,
+                N.super=N[1]+sum(N.recruit),z=z,s=s)
 
   #discard undetected individuals
   keep.idx <- which(rowSums(y)>0)

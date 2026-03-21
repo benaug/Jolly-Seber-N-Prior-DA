@@ -103,7 +103,7 @@ sim.JS.SCR.SexPopDy <- function(lambda.y1.M=NA,lambda.y1.F=NA,n.year=NA,
   #store true data for model buildling/debugging
   truth <- list(y=y,N=N,N.recruit=N.recruit,N.survive=N.survive,
              N.M=N.M,N.F=N.F,N.recruit.M=N.recruit.M,N.recruit.F=N.recruit.F,
-             N.survive.M=N.survive.M,N.survive.F=N.survive.F,
+             N.survive.M=N.survive.M,N.survive.F=N.survive.F,N.super=N[1]+sum(N.recruit),
              sex=sex,z=z,s=s)
   
   #discard undetected individuals
