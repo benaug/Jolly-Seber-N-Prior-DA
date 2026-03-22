@@ -111,7 +111,7 @@ sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   pi.cell <- array(NA,dim=c(n.year,n.cells))
   pi.cell[1,] <- lambda.cell/sum(lambda.cell)
   for(g in 2:n.year){
-    pi.cell[g,] <- colSums(use.dist[z[,g]==1,g-1,])
+    pi.cell[g,] <- colSums(use.dist[z[,g]==1,g-1,])*InSS
     pi.cell[g,] <- pi.cell[g,]/sum(pi.cell[g,])
   }
   

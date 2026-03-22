@@ -77,9 +77,7 @@ library(geoR)
 D.cov <- grf(n.cells,grid=dSS,cov.pars=c(25,25),messages=FALSE)[[2]]
 D.cov <- as.numeric(scale(D.cov)) #scale
 par(mfrow=c(1,1),ask=FALSE)
-image(x.vals,y.vals,matrix(D.cov,n.cells.x,n.cells.y),main="D.cov",xlab="X",ylab="Y",col=cols1)
-
-image(x.vals,y.vals,matrix(D.cov,n.cells.x,n.cells.y),main="Covariate Value",col=cols1)
+image(x.vals,y.vals,matrix(D.cov*InSS,n.cells.x,n.cells.y),main="D.cov",xlab="X",ylab="Y",col=cols1)
 points(X.all,pch=4,cex=0.75,col="darkred",lwd=2)
 
 #Additionally, maybe we want to exclude "non-habitat"
@@ -130,7 +128,8 @@ data <- sim.JS.SCR.Dcov.mobileAC(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,InS
 #               "#F15BB5","#00F5D4","#FEE440","#FF595E","#6A4C93")
 # n.colors <- length(ind.cols)
 # par(mfrow=c(1,1), ask=FALSE)
-# image(x.vals, y.vals, matrix(D.cov, n.cells.x, n.cells.y), col=cols1,
+# #can use just InSS to make sure all s inside state space
+# image(x.vals, y.vals, matrix(D.cov*InSS, n.cells.x, n.cells.y), col=cols1,
 #       main="Movement Trajectories over D.cov")
 # for(i in 1:data$truth$N.super){
 #   #skip individuals alive for less than 2 years
@@ -162,12 +161,14 @@ data <- sim.JS.SCR.Dcov.mobileAC(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,InS
 # i <- 1
 # g <- 1
 # par(mfrow=c(3,1))
-# image(x.vals,y.vals,matrix(data$truth$avail.dist[i,g,],n.cells.x,n.cells.y),main="Availability Distribution")
-# points(data$truth$s[i,g,1],data$truth$s[i,g,2],pch=16,col="lightblue")
-# image(x.vals,y.vals,matrix(D.cov,n.cells.x,n.cells.y),main="RSF Cov")
-# points(data$truth$s[i,g,1],data$truth$s[i,g,2],pch=16,col="lightblue")
-# image(x.vals,y.vals,matrix(data$truth$use.dist[i,g,],n.cells.x,n.cells.y),main="Use Distribution")
-# points(data$truth$s[i,g,1],data$truth$s[i,g,2],pch=16,col="lightblue")
+# image(x.vals,y.vals,matrix(data$truth$avail.dist[i,g,],n.cells.x,n.cells.y),
+#       main="Availability Distribution",col=cols1)
+# points(data$truth$s[i,g,1],data$truth$s[i,g,2],pch=16,col="darkred")
+# image(x.vals,y.vals,matrix(D.cov*InSS,n.cells.x,n.cells.y),main="RSF Cov",col=cols1)
+# points(data$truth$s[i,g,1],data$truth$s[i,g,2],pch=16,col="darkred")
+# image(x.vals,y.vals,matrix(data$truth$use.dist[i,g,],n.cells.x,n.cells.y),col=cols1,
+#       main="Use Distribution")
+# points(data$truth$s[i,g,1],data$truth$s[i,g,2],pch=16,col="darkred")
 # par(mfrow=c(1,1))
 
 #function to test for errors in mask set up. 
