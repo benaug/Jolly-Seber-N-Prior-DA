@@ -124,6 +124,8 @@ sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   keep.idx <- which(rowSums(y)>0)
   y <- y[keep.idx,,]
   cov <- cov[keep.idx]
+  s <- s[keep.idx,,]
+  s.cell <- s.cell[keep.idx,]
   return(list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,X=X,K=K,n.year=n.year,
               xlim=xlim,ylim=ylim,x.vals=x.vals,y.vals=y.vals,dSS=dSS,cells=cells,
               n.cells=n.cells,n.cells.x=n.cells.x,n.cells.y=n.cells.y,s.cell=s.cell,s=s,

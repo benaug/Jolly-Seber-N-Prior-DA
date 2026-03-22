@@ -110,12 +110,17 @@ sim.JS.SCR.SexPopDy <- function(lambda.y1.M=NA,lambda.y1.F=NA,n.year=NA,
   keep.idx <- which(rowSums(y)>0)
   y <- y[keep.idx,,]
   sex <- sex[keep.idx]
+  if(!is.null(sigma.move.sex)){
+    s <- s[keep.idx,,]
+  }else{
+    s <- s[keep.idx,]
+  }
   
   #discard unobserved sexes
   is.missing <- rbinom(length(sex),1,1-p.obs.sex)
   sex[which(is.missing==1)] <- NA
   
-  return(list(y=y,sex=sex,
+  return(list(y=y,sex=sex,s=s,
               N=N,N.recruit=N.recruit,N.survive=N.survive,
               N.M=N.M,N.recruit.M=N.recruit.M,N.survive.M=N.survive.M,
               N.F=N.F,N.recruit.F=N.recruit.F,N.survive.F=N.survive.F,

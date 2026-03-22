@@ -112,6 +112,8 @@ sim.JS.SCR.Dcov.SexPopDy <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   keep.idx <- which(rowSums(y)>0)
   y <- y[keep.idx,,]
   sex <- sex[keep.idx]
+  s <- s[keep.idx,]
+  s.cell <- s.cell[keep.idx]
   
   #discard unobserved sexes
   is.missing <- rbinom(length(sex),1,1-p.obs.sex)
@@ -123,7 +125,7 @@ sim.JS.SCR.Dcov.SexPopDy <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
               N.F=N.F,N.recruit.F=N.recruit.F,N.survive.F=N.survive.F,
               X=X,K=K,n.year=n.year,truth=truth,
               xlim=xlim,ylim=ylim,x.vals=x.vals,y.vals=y.vals,dSS=dSS,cells=cells,
-              n.cells=n.cells,n.cells.x=n.cells.x,n.cells.y=n.cells.y,s.cell=s.cell,
+              n.cells=n.cells,n.cells.x=n.cells.x,n.cells.y=n.cells.y,s.cell=s.cell,s=s,
               D.cov=D.cov,InSS=InSS,res=res,cellArea=cellArea,lambda.y1.M=lambda.y1.M,
               lambda.y1.F=lambda.y1.F))
 }
