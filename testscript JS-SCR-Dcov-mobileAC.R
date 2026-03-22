@@ -1,5 +1,3 @@
-#Should be correct, need to test
-
 #This is an SCR version with spatial density covariates, RSF activity center movement,
 #and an individual survival covariate. Activity centers are in continuous space.
 #Activity center relocation uses a proper resource selection model with an availability 
@@ -256,6 +254,11 @@ s.init <- initialize.s.hab(sigma.move.init=sigma.move.init,rsf.beta.init=rsf.bet
                             z.super.init=z.super.init,D.beta1.init=D.beta1.init,
                             y=y.nim,X=X.nim,xlim=xlim,ylim=ylim,dSS=dSS,
                             cells=cells,res=res,D.cov=D.cov,InSS=InSS,x.vals=x.vals,y.vals=y.vals)
+
+#can verify all s start inside habitat mask
+image(data$x.vals,data$y.vals,matrix(data$InSS,data$n.cells.x,data$n.cells.y),
+      main="Habitat Mask",xlab="X",ylab="Y",col=cols1)
+points(s.init[,,1],s.init[,,2],pch=16)
 
 #constants for Nimble
 #might want to center D.cov here. Simulated D.cov in this testscript is already effectively centered.

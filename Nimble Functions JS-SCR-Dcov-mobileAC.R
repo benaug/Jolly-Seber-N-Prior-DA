@@ -20,31 +20,45 @@ initialize.s.hab <- function(sigma.move.init=NA,rsf.beta.init=0,z.super.init=NA,
       last.det <- max(dets)
       #set detected years to mean trap location
       for(g in dets){
-        trps <- matrix(X[g, which(y[i,g,] > 0), ], ncol=2)
-        s.init[i,g,] <- c(mean(trps[,1]), mean(trps[,2]))
+        trps <- matrix(X[g,which(y[i,g,]>0),], ncol=2)
+        mean.loc <- c(mean(trps[,1]), mean(trps[,2]))
+        #check if mean location is in valid habitat
+        mean.cell.x <- trunc(mean.loc[1]/res) + 1
+        mean.cell.y <- trunc(mean.loc[2]/res) + 1
+        mean.cell <- cells[mean.cell.x, mean.cell.y]
+        if(InSS[mean.cell]== 1){
+          s.init[i,g,] <- mean.loc
+        }else{
+          # snap to nearest InSS=1 cell by Euclidean distance
+          dists <- sqrt((dSS[,1] - mean.loc[1])^2 + (dSS[,2] - mean.loc[2])^2)
+          dists[InSS==0] <- Inf
+          pick <- which.min(dists)
+          s.init[i,g,1] <- runif(1,dSS[pick,1] - res/2,dSS[pick,1] + res/2)
+          s.init[i,g,2] <- runif(1,dSS[pick,2] - res/2,dSS[pick,2] + res/2)
+        }
       }
       #simulate backwards from first detection
       if(first.det > 1){
         for(g in (first.det-1):1){
-          avail <- getAvail(s=s.init[i,g+1,], sigma=sigma.move.init, res=res,
-                            x.vals=x.vals, y.vals=y.vals,
-                            n.cells.x=n.cells.x, n.cells.y=n.cells.y, z.super=1)
-          use <- getUse(rsf=rsf, avail.dist=avail, z.super=1)
+          avail <- getAvail(s=s.init[i,g+1,],sigma=sigma.move.init,res=res,
+                            x.vals=x.vals,y.vals=y.vals,
+                            n.cells.x=n.cells.x,n.cells.y=n.cells.y, z.super=1)
+          use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
           s.cell <- sample(n.cells, 1, prob=use)
-          s.init[i,g,1] <- runif(1, dSS[s.cell,1] - res/2, dSS[s.cell,1] + res/2)
-          s.init[i,g,2] <- runif(1, dSS[s.cell,2] - res/2, dSS[s.cell,2] + res/2)
+          s.init[i,g,1] <- runif(1,dSS[s.cell,1] - res/2,dSS[s.cell,1] + res/2)
+          s.init[i,g,2] <- runif(1,dSS[s.cell,2] - res/2,dSS[s.cell,2] + res/2)
         }
       }
       #simulate forwards from last detection
       if(last.det < n.year){
         for(g in (last.det+1):n.year){
-          avail <- getAvail(s=s.init[i,g-1,], sigma=sigma.move.init, res=res,
-                            x.vals=x.vals, y.vals=y.vals,
-                            n.cells.x=n.cells.x, n.cells.y=n.cells.y, z.super=1)
-          use <- getUse(rsf=rsf, avail.dist=avail, z.super=1)
+          avail <- getAvail(s=s.init[i,g-1,],sigma=sigma.move.init,res=res,
+                            x.vals=x.vals,y.vals=y.vals,
+                            n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
+          use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
           s.cell <- sample(n.cells, 1, prob=use)
-          s.init[i,g,1] <- runif(1, dSS[s.cell,1] - res/2, dSS[s.cell,1] + res/2)
-          s.init[i,g,2] <- runif(1, dSS[s.cell,2] - res/2, dSS[s.cell,2] + res/2)
+          s.init[i,g,1] <- runif(1,dSS[s.cell,1] - res/2,dSS[s.cell,1] + res/2)
+          s.init[i,g,2] <- runif(1,dSS[s.cell,2] - res/2,dSS[s.cell,2] + res/2)
         }
       }
       
@@ -52,29 +66,29 @@ initialize.s.hab <- function(sigma.move.init=NA,rsf.beta.init=0,z.super.init=NA,
       if(last.det > first.det){
         for(g in first.det:(last.det-1)){
           if(!(g+1) %in% dets){
-            avail <- getAvail(s=s.init[i,g,], sigma=sigma.move.init, res=res,
-                              x.vals=x.vals, y.vals=y.vals,
-                              n.cells.x=n.cells.x, n.cells.y=n.cells.y, z.super=1)
-            use <- getUse(rsf=rsf, avail.dist=avail, z.super=1)
-            s.cell <- sample(n.cells, 1, prob=use)
-            s.init[i,g+1,1] <- runif(1, dSS[s.cell,1] - res/2, dSS[s.cell,1] + res/2)
-            s.init[i,g+1,2] <- runif(1, dSS[s.cell,2] - res/2, dSS[s.cell,2] + res/2)
+            avail <- getAvail(s=s.init[i,g,],sigma=sigma.move.init,res=res,
+                              x.vals=x.vals,y.vals=y.vals,
+                              n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
+            use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
+            s.cell <- sample(n.cells,1,prob=use)
+            s.init[i,g+1,1] <- runif(1,dSS[s.cell,1] - res/2,dSS[s.cell,1] + res/2)
+            s.init[i,g+1,2] <- runif(1,dSS[s.cell,2] - res/2,dSS[s.cell,2] + res/2)
           }
         }
       }
     }else{
       # undetected z.super=1: draw year 1 from pi.cell, subsequent from use distribution
-      s.cell <- sample(n.cells, 1, prob=pi.cell)
-      s.init[i,1,1] <- runif(1, dSS[s.cell,1] - res/2, dSS[s.cell,1] + res/2)
-      s.init[i,1,2] <- runif(1, dSS[s.cell,2] - res/2, dSS[s.cell,2] + res/2)
+      s.cell <- sample(n.cells,1,prob=pi.cell)
+      s.init[i,1,1] <- runif(1,dSS[s.cell,1] - res/2,dSS[s.cell,1] + res/2)
+      s.init[i,1,2] <- runif(1,dSS[s.cell,2] - res/2,dSS[s.cell,2] + res/2)
       for(g in 2:n.year){
-        avail <- getAvail(s=s.init[i,g-1,], sigma=sigma.move.init, res=res,
-                          x.vals=x.vals, y.vals=y.vals,
-                          n.cells.x=n.cells.x, n.cells.y=n.cells.y, z.super=1)
-        use <- getUse(rsf=rsf, avail.dist=avail, z.super=1)
-        s.cell <- sample(n.cells, 1, prob=use)
-        s.init[i,g,1] <- runif(1, dSS[s.cell,1] - res/2, dSS[s.cell,1] + res/2)
-        s.init[i,g,2] <- runif(1, dSS[s.cell,2] - res/2, dSS[s.cell,2] + res/2)
+        avail <- getAvail(s=s.init[i,g-1,],sigma=sigma.move.init,res=res,
+                          x.vals=x.vals,y.vals=y.vals,
+                          n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
+        use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
+        s.cell <- sample(n.cells,1,prob=use)
+        s.init[i,g,1] <- runif(1,dSS[s.cell,1] - res/2,dSS[s.cell,1] + res/2)
+        s.init[i,g,2] <- runif(1,dSS[s.cell,2] - res/2,dSS[s.cell,2] + res/2)
       }
     }
   }
