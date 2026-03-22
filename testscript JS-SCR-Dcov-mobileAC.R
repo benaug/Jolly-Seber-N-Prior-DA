@@ -21,7 +21,7 @@ gamma <- rep(0.2,n.year-1) #yearly per-capita recruitment
 beta0.phi <- qlogis(0.85) #survival intercept
 beta1.phi <- 0.5 #phi response to individual covariate
 p0 <- rep(0.1,n.year) #yearly detection probabilities at activity center
-sigma <- rep(0.75,n.year) #yearly detection function scale
+sigma <- rep(0.5,n.year) #yearly detection function scale
 sigma.move <- 2 #movement sigma, fixed over primary periods
 rsf.beta <- 0.5 #selection coefficient for activity center relocation btwn primary periods
 K <- rep(10,n.year) #yearly sampling occasions
