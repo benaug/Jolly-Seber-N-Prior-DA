@@ -68,9 +68,13 @@ size for the movement parameter.
 
 8. JS-SCR-mobileAC: same as 2 with BVN Markov activity center movement (truncated by state space boundary)
 9. JS-SCR-SexPopDy-mobileAC: same as 8 but sex-specific population dynamics, detection, and movement parameters
-10. JS-SCR-Dcov-mobileAC: same as 8 but with year 1 inhomogeneous density and RSF-based activity center movement.
+10a. JS-SCR-Dcov-mobileAC: same as 8 but with year 1 inhomogeneous density and RSF-based activity center movement.
 Availability distribution is BVN (again, truncated by state space boundary), use distribution is normalized
 product of availability distribution
 and RSF.
+10b. JS-SCR-Dcov-mobileAC-patchy: This is 10a except A) data simulator state space is set up to be patchy which
+can be challenging for the activity center sampler and B) we use a third activity center sampler motivated to better
+jump over gaps in the state space. A discrete proposal using use.dist for each individual would be better,
+but very slow. This continuous approach should work well in practice in many scenarios, but should test via simulation.
 
 Will get to 10 + sex-specificity

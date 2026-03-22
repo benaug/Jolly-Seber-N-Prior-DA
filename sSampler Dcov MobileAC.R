@@ -273,3 +273,44 @@ sSampler2 <- nimbleFunction(
     }
   )
 )
+
+#This one is designed to better jump over gaps in habitat mask
+sSampler3 <- nimbleFunction(
+  contains = sampler_BASE,
+  setup = function(model, mvSaved, target, control) {
+    g <- control$g
+    i <- control$i
+    xlim <- control$xlim
+    ylim <- control$ylim
+    jump.multiplier <- control$jump.multiplier
+    sig.move.fixed <- control$sig.move.fixed
+    calcNodes <- control$calcNodes
+  },
+  run = function(){
+    if(model$z.super[i]==1){#fixed sigma.move
+      if(sig.move.fixed==TRUE){
+        scale.jump <- jump.multiplier*model$sigma.move[1]
+      }else{#individual sigma.move
+        scale.jump <- jump.multiplier*model$sigma.move[i]
+      }
+      s.cand <- c(rnorm(1,model$s[i,g,1],scale.jump),
+                  rnorm(1,model$s[i,g,2],scale.jump))
+      inbox <- s.cand[1] < xlim[2] & s.cand[1] > xlim[1] & s.cand[2] < ylim[2] & s.cand[2] > ylim[1]
+      if(inbox){
+        model_lp_initial <- model$getLogProb(calcNodes)
+        model$s[i,g,1:2] <<- s.cand
+        model_lp_proposed <- model$calculate(calcNodes)
+        log_MH_ratio <- model_lp_proposed - model_lp_initial
+        accept <- decide(log_MH_ratio)
+        if(accept){
+          copy(from=model, to=mvSaved, row=1, nodes=calcNodes, logProb=TRUE)
+        }else{
+          copy(from=mvSaved, to=model, row=1, nodes=calcNodes, logProb=TRUE)
+        }
+      }
+    }
+  },
+  methods = list(
+    reset = function() {}
+  )
+)
