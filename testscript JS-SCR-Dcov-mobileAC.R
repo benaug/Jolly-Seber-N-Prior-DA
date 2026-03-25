@@ -77,7 +77,7 @@ library(geoR)
 D.cov <- grf(n.cells,grid=dSS,cov.pars=c(25,25),messages=FALSE)[[2]]
 D.cov <- as.numeric(scale(D.cov)) #scale
 par(mfrow=c(1,1),ask=FALSE)
-image(x.vals,y.vals,matrix(D.cov*InSS,n.cells.x,n.cells.y),main="D.cov",xlab="X",ylab="Y",col=cols1)
+image(x.vals,y.vals,matrix(D.cov,n.cells.x,n.cells.y),main="D.cov",xlab="X",ylab="Y",col=cols1)
 points(X.all,pch=4,cex=0.75,col="darkred",lwd=2)
 
 #Additionally, maybe we want to exclude "non-habitat"
