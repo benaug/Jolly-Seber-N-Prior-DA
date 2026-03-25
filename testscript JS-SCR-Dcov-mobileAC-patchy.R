@@ -309,7 +309,7 @@ s.nodes <- Rmodel$expandNodeNames(paste0("s"))
 z.nodes <- Rmodel$expandNodeNames(paste0("z[1:",M,",1]"))
 calcNodes <- c(N.nodes,ER.nodes,N.recruit.nodes,N.survive.nodes,s.nodes,z.nodes,pd.nodes,y.nodes)
 #need to convert cells to double to use inside custom sampler
-cells.double <- matrix(as.double(cells),n.cells.y,n.cells.x)
+cells.double <- matrix(as.double(cells),n.cells.x,n.cells.y)
 conf$addSampler(target = c("z"),
                 type = 'zSampler',control = list(M=M,n.year=n.year,J=J,cells=cells.double,
                                                  dSS=dSS,res=res,n.cells=n.cells,
