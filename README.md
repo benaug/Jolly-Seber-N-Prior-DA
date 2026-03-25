@@ -78,3 +78,7 @@ jump over gaps in the state space. A discrete proposal using use.dist for each i
 but very slow. This continuous approach should work well in practice in many scenarios, but should test via simulation.
 
 Will get to 10 + sex-specificity
+For 10, I need to add code to check the starting logProbs for the activity centers to make sure they are all finite at initialization.
+If not, the sampler may not be able to recover and will crash R. Didn't see this in simulated data sets when initializing sigma.move
+at the truth. More likely to happen in real data sets where model assumptions not perfectly met, e.g., small set of very large movements 
+relative to the others.
