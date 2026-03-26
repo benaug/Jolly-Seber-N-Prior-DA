@@ -24,10 +24,8 @@ source("mask.check.R")
 library(RColorBrewer)
 cols1 <- brewer.pal(9,"Greens")
 
-#If using Nimble version 0.13.1 and you must run this line 
+#you must run this line 
 nimbleOptions(determinePredictiveNodesInModel = FALSE)
-# #If using Nimble before version 0.13.1, run this line instead
-# nimble:::setNimbleOption('MCMCjointlySamplePredictiveBranches', FALSE)
 
 n.year <- 4 #number of years
 gamma <- rep(0.2,n.year-1) #yearly per-capita recruitment
@@ -259,7 +257,7 @@ start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
 #if you add/remove parameters in model file, do so in config.nodes
 config.nodes <- c('beta0.phi','beta1.phi','gamma',paste('phi.cov[',cov.up,']'),
-               'phi.cov.mu','phi.cov.sd','p0','sigma','D0','D.beta1')
+               'phi.cov.mu','phi.cov.sd','p0','sigma')
 conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,
                       nodes=config.nodes,useConjugacy = FALSE)
 
@@ -303,7 +301,7 @@ for(i in 1:M){
 conf$addSampler(target = c("beta0.phi","beta1.phi"),type = 'RW_block',
                 control = list(adaptive=TRUE),silent = TRUE)
 conf$addSampler(target = c("D0","D.beta1"),
-                type = 'RW_block',control=list(adaptive=TRUE),silent = TRUE)
+                type = 'AF_slice',control=list(adaptive=TRUE),silent = TRUE)
 
 # Build and compile
 Rmcmc <- buildMCMC(conf)

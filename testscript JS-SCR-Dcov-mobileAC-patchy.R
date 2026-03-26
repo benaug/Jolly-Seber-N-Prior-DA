@@ -11,10 +11,8 @@ source("Nimble Functions JS-SCR-Dcov-mobileAC.R") #contains custom distributions
 source("sSampler Dcov MobileAC.R") # required activity center samplers
 source("mask.check.R")
 
-#If using Nimble version 0.13.1 and you must run this line 
+#you must run this line 
 nimbleOptions(determinePredictiveNodesInModel = FALSE)
-# #If using Nimble before version 0.13.1, run this line instead
-# nimble:::setNimbleOption('MCMCjointlySamplePredictiveBranches', FALSE)
 
 n.year <- 5 #number of years
 gamma <- rep(0.2,n.year-1) #yearly per-capita recruitment
