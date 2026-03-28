@@ -106,7 +106,7 @@ zSampler <- nimbleFunction(
   },
   run = function(){
     #precompute entry counts
-    entry.counts.curr <- rep(0, n.year+1)
+    entry.counts.curr <- rep(0,n.year+1)
     for(g in 1:n.year){
       entry.counts.curr[g] <- sum(model$z.start==g & model$z.super==1)
     }
@@ -120,7 +120,6 @@ zSampler <- nimbleFunction(
         z.start.curr <- model$z.start[i]
         N.curr <- model$N
         N.recruit.curr <- model$N.recruit
-        y <- y2D[i,]
         dets <- which(y2D[i,]>0)
         first.det <- min(dets)
         lp.start <- rep(-Inf,n.year)
@@ -390,7 +389,6 @@ zSampler <- nimbleFunction(
         
         #MH step
         log_MH_ratio <- (lp.proposed.total + log.prop.back) - (lp.initial.total + log.prop.for)
-        # log_MH_ratio <- (lp.proposed) - (lp.initial)
         accept <- decide(log_MH_ratio)
         
         if(accept) {
