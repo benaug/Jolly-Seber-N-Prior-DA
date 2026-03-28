@@ -92,6 +92,25 @@ initialize.s.hab <- function(sigma.move.init=NA,rsf.beta.init=0,z.super.init=NA,
       }
     }
   }
+  #check starting logProb
+  # logProb <- 0
+  logProb <- matrix(0,M,n.year-1)
+  for(i in 1:M){
+    if(z.super.init[i]==1){
+      for(g in 2:n.year){
+        avail.dist.prev <- getAvail(s=s.init[i,g-1,1:2],sigma=sigma.move.init,res=res,
+                                    x.vals=x.vals[1:n.cells.x],y.vals=y.vals[1:n.cells.y],
+                                    n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=z.super.init[i])
+        use.dist.prev <- getUse(rsf=rsf[1:n.cells],avail.dist=avail.dist.prev,z.super=1)
+        logProb[i,g-1] <- dHabMove(x=s.init[i,g,1:2],s.prev=s.init[i,g-1,1:2],use.dist=use.dist.prev,
+                              dSS=dSS[1:n.cells,1:2],cells=cells[1:n.cells.x,1:n.cells.y],
+                              res=res,sigma.move=sigma.move.init,z.super=z.super.init[i],log=TRUE)
+      }
+    }
+  }
+  if(!all(is.finite(logProb))){ #can inspect LogProb object to identify problem individual-years
+    stop("Starting logProb for activity centers is not finite, raise sigma.move.init. If that doesnt work, you may need to modify model or initialization algorithm.")
+  }
   return(s.init)
 }
 
