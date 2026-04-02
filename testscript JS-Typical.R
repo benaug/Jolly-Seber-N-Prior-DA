@@ -22,6 +22,7 @@ K <- rep(10,n.year) #yearly sampling occasions
 #will artificially decrease through time. Generally, M needs to be set much higher than
 #we would like for efficient MCMC to achieve this. This is a drawback of this parameterization.
 #current parameter settings above do not allow for good Poisson approximation for recruits
+#if gamma.prime is 0.05, poisson recruit variance underestimated 5%. if 0.1, 10%, if 0.2, 20%, etc.
 
 data <- sim.JS.typical(psi=psi,gamma=gamma,
             beta0.phi=beta0.phi,beta1.phi=beta1.phi,
@@ -31,7 +32,7 @@ data$N.super #superpopulation size
 
 #you may need to raise M from what was used to simulate for model fitting.
 #monitoring A.raw lets you see if you run out of possible recruits.
-#also, gamma.prime needs to be <0.05-0.1 for Poisson recruitment approximation to hold
+#also, gamma.prime needs to be <0.05-0.1 for Poisson recruitment variance approximation to hold within 5-10%
 data$gamma.prime #can check for simulated data sets
 
 ##### Initialize z using observed data #####
