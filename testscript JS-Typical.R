@@ -13,6 +13,8 @@ beta1.phi <- 0.5
 p <- rep(0.2,n.year) #yearly detection probability
 K <- rep(10,n.year) #yearly sampling occasions
 
+M*psi #expected N[1]
+
 #data simulator will give error messages if M not set large enough
 #there are two criteria to consider
 #1) you max out M and run out of individuals to recruit. 
