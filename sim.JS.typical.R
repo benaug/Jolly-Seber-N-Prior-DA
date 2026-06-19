@@ -1,17 +1,17 @@
 sim.JS.typical <- function(psi=NA,gamma=NA,beta0.phi=NA,beta1.phi=NA,
-                   p=NA,n.year=NA,K=NA,M=NA){
+                   p=NA,n.primary=NA,K=NA,M=NA){
   #####Population Dynamics############
   N1 <- rbinom(1,M,psi)
   if(N1==M)stop("Maxed out M in year 1")
-  z <- a <- matrix(NA,M,n.year)
+  z <- a <- matrix(NA,M,n.primary)
   z[1:N1,1] <- 1
   z[(N1+1):M,1] <- 0
   a[,1] <- z[,1] # Available to be recruited?
-  gamma.prime <- rep(NA,n.year-1)
+  gamma.prime <- rep(NA,n.primary-1)
   phi.cov <- rnorm(M,0,1) #simulate ind survival covariate
   phi <- plogis(beta0.phi + phi.cov * beta1.phi)  # individual survival probs, constant across time
   
-  for(g in 2:n.year){
+  for(g in 2:n.primary){
     ER <- sum(z[,g-1])*gamma[g-1]
     A <- M - sum(a[,g-1])
     if(A <= 0)stop("Ran out of recruits, raise M")
@@ -27,7 +27,7 @@ sim.JS.typical <- function(psi=NA,gamma=NA,beta0.phi=NA,beta1.phi=NA,
   
   #detection
   y <- z*0
-  for(g in 1:n.year){
+  for(g in 1:n.primary){
     y[,g] <- rbinom(M,K[g],p[g]*z[,g])
   }
   

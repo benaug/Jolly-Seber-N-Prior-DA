@@ -7,7 +7,7 @@
 #Need to modify custom updates in this case
 #2) Object names that cannot be changed in the nimble model without changes in custom updates:
 #N, N.recruit, N.survive, ER, lambda.y1, z.start, z.stop, z.obs, pd
-#phi[i,g] (must be of dimension M x n.year),
+#phi[i,g] (must be of dimension M x n.primary),
 #Poisson assumptions on N[1] and N.recruit (but can include overdispersion with random effects)
 #y can change dimension (e.g., for SCR), but need to account for that in defining "y.nodes"
 #below to add custom updates. I think that is all...
@@ -27,24 +27,24 @@ cols1 <- brewer.pal(9,"Greens")
 #you must run this line 
 nimbleOptions(determinePredictiveNodesInModel = FALSE)
 
-n.year <- 4 #number of years
-gamma <- rep(0.2,n.year-1) #yearly per-capita recruitment
+n.primary <- 4 #number of years
+gamma <- rep(0.2,n.primary-1) #yearly per-capita recruitment
 beta0.phi <- qlogis(0.85) #survival intercept
 beta1.phi <- 0.5 #phi response to individual covariate
-p0 <- rep(0.1,n.year) #yearly detection probabilities at activity center
-sigma <- rep(0.5,n.year) #yearly detection function scale
-K <- rep(10,n.year) #yearly sampling occasions
+p0 <- rep(0.1,n.primary) #yearly detection probabilities at activity center
+sigma <- rep(0.5,n.primary) #yearly detection function scale
+K <- rep(10,n.primary) #yearly sampling occasions
 
 buff <- 3 #state space buffer. Buffers maximal x and y dimensions of X below across years
-X <- vector("list",n.year) #one trapping array per year
-for(g in 1:n.year){ #using same trapping array every year here
+X <- vector("list",n.primary) #one trapping array per year
+for(g in 1:n.primary){ #using same trapping array every year here
   X[[g]] <- as.matrix(expand.grid(3:11,3:11))
 }
 
 ### Habitat Covariate stuff###
 #buffer maximal trap extent
 X.all <- matrix(NA,nrow=0,ncol=2)
-for(g in 1:n.year){
+for(g in 1:n.primary){
   X.all <- rbind(X.all,X[[g]])
 }
 
@@ -58,7 +58,7 @@ x.shift <- xlim[1]
 y.shift <- ylim[1]
 xlim <- xlim-x.shift
 ylim <- ylim-y.shift
-for(g in 1:n.year){
+for(g in 1:n.primary){
   X[[g]][,1] <- X[[g]][,1]-x.shift
   X[[g]][,2] <- X[[g]][,2]-y.shift
 }
@@ -108,7 +108,7 @@ sum(lambda.cell) #expected N in state space
 
 #simulate some data
 data <- sim.JS.SCR.Dcov(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,InSS=InSS,
-            gamma=gamma,n.year=n.year,beta0.phi=beta0.phi,beta1.phi=beta1.phi,
+            gamma=gamma,n.primary=n.primary,beta0.phi=beta0.phi,beta1.phi=beta1.phi,
             p0=p0,sigma=sigma,X=X,K=K,xlim=xlim,ylim=ylim,res=res)
 
 #visualize realized activity centers
@@ -150,11 +150,11 @@ n.cells <- data$n.cells
 n.cells.x <- data$n.cells.x
 n.cells.y <- data$n.cells.y
 
-y.nim <- array(0,dim=c(M,n.year,J.max))
-y.nim[1:N.super.init,1:n.year,1:J.max] <- data$y #all these guys must be observed
+y.nim <- array(0,dim=c(M,n.primary,J.max))
+y.nim[1:N.super.init,1:n.primary,1:J.max] <- data$y #all these guys must be observed
 #initialize z, start with observed guys
 z.init <- 1*(y.nim>0)
-z.init <- matrix(0,M,n.year)
+z.init <- matrix(0,M,n.primary)
 z.start.init <- z.stop.init <- rep(0,M)
 y.nim2D <- apply(y.nim,c(1,2),sum)
 for(i in 1:N.super.init){
@@ -170,8 +170,8 @@ z.obs <- 1*(rowSums(y.nim)>0) #indicator for "ever observed"
 
 #initialize N structures from z.init
 N.init <- colSums(z.init[z.super.init==1,])
-N.survive.init <- N.recruit.init <- rep(NA,n.year-1)
-for(g in 2:n.year){
+N.survive.init <- N.recruit.init <- rep(NA,n.primary-1)
+for(g in 2:n.primary){
   N.survive.init[g-1] <- sum(z.init[,g-1]==1&z.init[,g]==1&z.super.init==1)
   N.recruit.init[g-1] <- N.init[g]-N.survive.init[g-1]
 }
@@ -183,9 +183,9 @@ cov.up <- which(is.na(phi.cov.data)) #which individuals have missing cov values,
 #remaining SCR stuff to initialize
 #put X in ragged array
 #also make K1D, year by trap operation history, as ragged array.
-X.nim <- array(0,dim=c(n.year,J.max,2))
-K1D <- matrix(0,n.year,J.max)
-for(g in 1:n.year){
+X.nim <- array(0,dim=c(n.primary,J.max,2))
+K1D <- matrix(0,n.primary,J.max)
+for(g in 1:n.primary){
   X.nim[g,1:J[g],1:2] <- X[[g]]
   K1D[g,1:J[g]] <- rep(K[g],J[g])
 }
@@ -195,7 +195,7 @@ s.init <- cbind(runif(M,xlim[1],xlim[2]), runif(M,ylim[1],ylim[2])) #assign rand
 idx <- which(rowSums(y.nim)>0) #switch for those actually caught
 for(i in idx){
   trps <- matrix(0,nrow=0,ncol=2) #get locations of traps of capture across years for ind i
-  for(g in 1:n.year){
+  for(g in 1:n.primary){
     if(sum(y.nim[i,g,])>0){
       trps.g <- matrix(X.nim[g,which(y.nim[i,g,]>0),],ncol=2,byrow=FALSE)
       trps <- rbind(trps,trps.g)
@@ -230,7 +230,7 @@ for(i in 1:M){
 
 #constants for Nimble
 #might want to center D.cov here. Simulated D.cov in this testscript is already effectively centered.
-constants <- list(n.year=n.year, M=M, J=J, xlim=xlim, ylim=ylim, K1D=K1D,
+constants <- list(n.primary=n.primary, M=M, J=J, xlim=xlim, ylim=ylim, K1D=K1D,
                   D.cov=D.cov,cellArea=cellArea,n.cells=n.cells,
                   res=res)
 #inits for Nimble
@@ -266,18 +266,18 @@ z.super.ups <- round(M*0.25) #how many z.super update proposals per iteration?
 #25% of M seems reasonable, but optimal will depend on data set
 #loop here bc potentially different numbers of traps to vectorize in each year
 y.nodes <- pd.nodes <- c()
-for(g in 1:n.year){
+for(g in 1:n.primary){
   y.nodes <- c(y.nodes,Rmodel$expandNodeNames(paste0("y[1:",M,",",g,",1:",J[g],"]"))) #if you change y structure, change here
   pd.nodes <- c(pd.nodes,Rmodel$expandNodeNames(paste0("pd[1:",M,",",g,",1:",J[g],"]"))) #if you change y structure, change here
 }
 N.nodes <- Rmodel$expandNodeNames(paste0("N"))
-N.survive.nodes <- Rmodel$expandNodeNames(paste0("N.survive[1:",n.year-1,"]"))
-N.recruit.nodes <- Rmodel$expandNodeNames(paste0("N.recruit[1:",n.year-1,"]"))
-ER.nodes <- Rmodel$expandNodeNames(paste0("ER[1:",n.year-1,"]"))
+N.survive.nodes <- Rmodel$expandNodeNames(paste0("N.survive[1:",n.primary-1,"]"))
+N.recruit.nodes <- Rmodel$expandNodeNames(paste0("N.recruit[1:",n.primary-1,"]"))
+ER.nodes <- Rmodel$expandNodeNames(paste0("ER[1:",n.primary-1,"]"))
 z.nodes <- Rmodel$expandNodeNames(paste0("z[1:",M,",1]"))
 calcNodes <- c(N.nodes,ER.nodes,N.recruit.nodes,N.survive.nodes,pd.nodes,y.nodes,z.nodes)
 conf$addSampler(target = c("z"),
-                type = 'zSampler',control = list(M=M,n.year=n.year,J=J,
+                type = 'zSampler',control = list(M=M,n.primary=n.primary,J=J,
                                                  z.obs=z.obs,z.super.ups=z.super.ups,
                                                  y.nodes=y.nodes,pd.nodes=pd.nodes,N.nodes=N.nodes,
                                                  z.nodes=z.nodes,ER.nodes=ER.nodes,
@@ -330,24 +330,24 @@ data$truth$N.super #N.super
 # #model states match between z and N objects
 # 
 # #check N count
-# N.count <- rep(NA,n.year)
-# for(g2 in 1:n.year){
+# N.count <- rep(NA,n.primary)
+# for(g2 in 1:n.primary){
 #   N.count[g2] <- sum(Cmodel$z[Cmodel$z.super==1,g2]==1)
 # }
 # N.count
 # Cmodel$N
 # 
 # #check N.recruit count
-# N.count <- rep(NA,n.year-1)
-# for(g2 in 2:n.year){
+# N.count <- rep(NA,n.primary-1)
+# for(g2 in 2:n.primary){
 #   N.count[g2-1] <- sum(Cmodel$z[Cmodel$z.super==1,g2-1]==0&Cmodel$z[Cmodel$z.super==1,g2]==1)
 # }
 # N.count
 # Cmodel$N.recruit
 # 
 # #check N.survive count
-# N.count <- rep(NA,n.year-1)
-# for(g2 in 2:n.year){
+# N.count <- rep(NA,n.primary-1)
+# for(g2 in 2:n.primary){
 #   N.count[g2-1] <- sum(Cmodel$z[Cmodel$z.super==1,g2-1]==1&Cmodel$z[Cmodel$z.super==1,g2]==1)
 # }
 # N.count

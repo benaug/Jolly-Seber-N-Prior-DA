@@ -280,7 +280,7 @@ sSampler3 <- nimbleFunction(
   contains = sampler_BASE,
   setup = function(model, mvSaved, target, control) {
     i <- control$i
-    n.year <- control$n.year
+    n.primary <- control$n.primary
     xlim <- control$xlim
     ylim <- control$ylim
     ## control list extraction
@@ -319,14 +319,14 @@ sSampler3 <- nimbleFunction(
   run <- function() {
     z.super <- model$z.super[i]
     if(z.super==0){
-      s.prop <- matrix(NA,n.year,2)
+      s.prop <- matrix(NA,n.primary,2)
       #propose year 1 from uniform prior
       s.prop[1,1:2] <- c(runif(1, xlim[1], xlim[2]), runif(1, ylim[1], ylim[2]))
       #propose subsequent years from movement prior (truncated Normal here)
-      for(g in 2:n.year){
+      for(g in 2:n.primary){
         s.prop[g,1:2] <- rTruncNorm(1,xlim = xlim, ylim = ylim, s.prev=s.prop[g-1,1:2],sigma.move=model$sigma.move.sex[model$sex[i]+1])
       }
-      model$s[i,1:n.year,1:2] <<- s.prop
+      model$s[i,1:n.primary,1:2] <<- s.prop
       model$calculate(calcNodes)
       copy(from = model, to = mvSaved, row = 1, nodes = calcNodes, logProb = TRUE)
     }

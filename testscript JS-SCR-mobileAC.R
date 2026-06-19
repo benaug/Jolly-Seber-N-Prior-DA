@@ -12,23 +12,23 @@ source("Nimble Model JS-SCR-mobileAC.R")
 source("Nimble Functions JS-SCR-mobileAC.R") #contains custom distributions and updates
 source("sSampler Mobile.R")
 
-n.year <- 5 #number of years
+n.primary <- 5 #number of years
 lambda.y1 <- 100 #expected N in year 1
-gamma <- rep(0.2,n.year-1) #yearly per-capita recruitment
+gamma <- rep(0.2,n.primary-1) #yearly per-capita recruitment
 beta0.phi <- qlogis(0.85) #survival intercept
 beta1.phi <- 0.5 #phi response to individual covariate
-p0 <- rep(0.1,n.year) #yearly detection probabilities at activity center
-sigma <- rep(0.5,n.year) #yearly detection function scale
+p0 <- rep(0.1,n.primary) #yearly detection probabilities at activity center
+sigma <- rep(0.5,n.primary) #yearly detection function scale
 sigma.move <- 0.75 #movement sigma, fixed over primary periods
-K <- rep(10,n.year) #yearly sampling occasions
+K <- rep(10,n.primary) #yearly sampling occasions
 
 buff <- 2 #state space buffer. Buffers maximal x and y dimensions of X below across years
-X <- vector("list",n.year) #one trapping array per year
-for(g in 1:n.year){ #using same trapping array every year here
+X <- vector("list",n.primary) #one trapping array per year
+for(g in 1:n.primary){ #using same trapping array every year here
   X[[g]] <- as.matrix(expand.grid(3:11,3:11))
 }
 
-data <- sim.JS.SCR(lambda.y1=lambda.y1,gamma=gamma,n.year=n.year,
+data <- sim.JS.SCR(lambda.y1=lambda.y1,gamma=gamma,n.primary=n.primary,
             beta0.phi=beta0.phi,beta1.phi=beta1.phi,
             p0=p0,sigma=sigma,X=X,buff=buff,K=K,sigma.move=sigma.move)
 
@@ -60,11 +60,11 @@ n.cells <- data$n.cells
 n.cells.x <- data$n.cells.x
 n.cells.y <- data$n.cells.y
 
-y.nim <- array(0,dim=c(M,n.year,J.max))
-y.nim[1:N.super.init,1:n.year,1:J.max] <- data$y #all these guys must be observed
+y.nim <- array(0,dim=c(M,n.primary,J.max))
+y.nim[1:N.super.init,1:n.primary,1:J.max] <- data$y #all these guys must be observed
 #initialize z, start with observed guys
 z.init <- 1*(y.nim>0)
-z.init <- matrix(0,M,n.year)
+z.init <- matrix(0,M,n.primary)
 z.start.init <- z.stop.init <- rep(0,M)
 y.nim2D <- apply(y.nim,c(1,2),sum)
 for(i in 1:N.super.init){
@@ -80,8 +80,8 @@ z.obs <- 1*(rowSums(y.nim)>0) #indicator for "ever observed"
 
 #initialize N structures from z.init
 N.init <- colSums(z.init[z.super.init==1,])
-N.survive.init <- N.recruit.init <- rep(NA,n.year-1)
-for(g in 2:n.year){
+N.survive.init <- N.recruit.init <- rep(NA,n.primary-1)
+for(g in 2:n.primary){
   N.survive.init[g-1] <- sum(z.init[,g-1]==1&z.init[,g]==1&z.super.init==1)
   N.recruit.init[g-1] <- N.init[g]-N.survive.init[g-1]
 }
@@ -93,9 +93,9 @@ cov.up <- which(is.na(phi.cov.data)) #which individuals have missing cov values,
 #remaining SCR stuff to initialize
 #put X in ragged array
 #also make K1D, year by trap operation history, as ragged array.
-X.nim <- array(0,dim=c(n.year,J.max,2))
-K1D <- matrix(0,n.year,J.max)
-for(g in 1:n.year){
+X.nim <- array(0,dim=c(n.primary,J.max,2))
+K1D <- matrix(0,n.primary,J.max)
+for(g in 1:n.primary){
   X.nim[g,1:J[g],1:2] <- X[[g]]
   K1D[g,1:J[g]] <- rep(K[g],J[g])
 }
@@ -105,7 +105,7 @@ sigma.move.init <- sigma.move
 s.init <- initialize.s(sigma.move.init,z.super.init,y=y.nim,X=X.nim,xlim=xlim,ylim=ylim)
 
 #constants for Nimble
-constants <- list(n.year=n.year, M=M, J=J, xlim=xlim, ylim=ylim, K1D=K1D)
+constants <- list(n.primary=n.primary, M=M, J=J, xlim=xlim, ylim=ylim, K1D=K1D)
 #inits for Nimble
 Niminits <- list(N=N.init,lambda.y1=N.init[1], #initialize consistent with N[1] for faster convergence
                  N.survive=N.survive.init,N.recruit=N.recruit.init,
@@ -137,19 +137,19 @@ z.super.ups <- round(M*0.25) #how many z.super update proposals per iteration?
 #205 of M seems reasonable, but optimal will depend on data set
 #loop here bc potentially different numbers of traps to vectorize in each year
 y.nodes <- pd.nodes <- c()
-for(g in 1:n.year){
+for(g in 1:n.primary){
   y.nodes <- c(y.nodes,Rmodel$expandNodeNames(paste0("y[1:",M,",",g,",1:",J[g],"]"))) #if you change y structure, change here
   pd.nodes <- c(pd.nodes,Rmodel$expandNodeNames(paste0("pd[1:",M,",",g,",1:",J[g],"]"))) #if you change y structure, change here
 }
 N.nodes <- Rmodel$expandNodeNames(paste0("N"))
-N.survive.nodes <- Rmodel$expandNodeNames(paste0("N.survive[1:",n.year-1,"]"))
-N.recruit.nodes <- Rmodel$expandNodeNames(paste0("N.recruit[1:",n.year-1,"]"))
-ER.nodes <- Rmodel$expandNodeNames(paste0("ER[1:",n.year-1,"]"))
+N.survive.nodes <- Rmodel$expandNodeNames(paste0("N.survive[1:",n.primary-1,"]"))
+N.recruit.nodes <- Rmodel$expandNodeNames(paste0("N.recruit[1:",n.primary-1,"]"))
+ER.nodes <- Rmodel$expandNodeNames(paste0("ER[1:",n.primary-1,"]"))
 z.nodes <- Rmodel$expandNodeNames(paste0("z[1:",M,",1]"))
 s.nodes <- Rmodel$expandNodeNames(paste0("s"))
 calcNodes <- c(N.nodes,ER.nodes,N.recruit.nodes,N.survive.nodes,s.nodes,z.nodes,pd.nodes,y.nodes)
 conf$addSampler(target = c("z"),
-                type = 'zSampler',control = list(M=M,n.year=n.year,J=J,xlim=xlim,ylim=ylim,
+                type = 'zSampler',control = list(M=M,n.primary=n.primary,J=J,xlim=xlim,ylim=ylim,
                                                  z.obs=z.obs,z.super.ups=z.super.ups,
                                                  y.nodes=y.nodes,pd.nodes=pd.nodes,N.nodes=N.nodes,
                                                  z.nodes=z.nodes,ER.nodes=ER.nodes,s.nodes=s.nodes,
@@ -160,10 +160,10 @@ conf$addSampler(target = c("z"),
 #activity center sampler. There are 2 samplers here for these cases
 #1) z.super=1 and z=1, sSampler1 uses Metropolis-Hastings
 #2) z.super=1 and z=0, sSampler2 uses Metropolis-Hastings with proposal sd tuned separately from above
-#z.super=0, do nothing, s[i,1:n.year,1:2] are set to 0
+#z.super=0, do nothing, s[i,1:n.primary,1:2] are set to 0
 #N/z sampler proposes activity centers when turning z.super on
 for(i in 1:M){
-  for(g in 1:n.year){
+  for(g in 1:n.primary){
     conf$addSampler(target = paste0("s[",i,",",g,",1:2]"),
                     type = 'sSampler1',control=list(i=i,g=g,xlim=xlim,ylim=ylim,scale=1),silent = TRUE)
     conf$addSampler(target = paste0("s[",i,",",g,",1:2]"),
@@ -217,24 +217,24 @@ round(tmp,2)
 # #model states match between z and N objects
 # 
 # #check N count
-# N.count <- rep(NA,n.year)
-# for(g2 in 1:n.year){
+# N.count <- rep(NA,n.primary)
+# for(g2 in 1:n.primary){
 #   N.count[g2] <- sum(Cmodel$z[Cmodel$z.super==1,g2]==1) 
 # }
 # N.count
 # Cmodel$N
 # 
 # #check N.recruit count
-# N.count <- rep(NA,n.year-1)
-# for(g2 in 2:n.year){
+# N.count <- rep(NA,n.primary-1)
+# for(g2 in 2:n.primary){
 #   N.count[g2-1] <- sum(Cmodel$z[Cmodel$z.super==1,g2-1]==0&Cmodel$z[Cmodel$z.super==1,g2]==1) 
 # }
 # N.count
 # Cmodel$N.recruit
 # 
 # #check N.survive count
-# N.count <- rep(NA,n.year-1)
-# for(g2 in 2:n.year){
+# N.count <- rep(NA,n.primary-1)
+# for(g2 in 2:n.primary){
 #   N.count[g2-1] <- sum(Cmodel$z[Cmodel$z.super==1,g2-1]==1&Cmodel$z[Cmodel$z.super==1,g2]==1) 
 # }
 # N.count

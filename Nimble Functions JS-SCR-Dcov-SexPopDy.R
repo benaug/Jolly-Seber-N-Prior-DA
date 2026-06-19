@@ -21,13 +21,13 @@ dSurvival <- nimbleFunction(
     returnType(double(0))
     logProb <- 0
     if(z.super==1){
-      n.year <- length(phi)+1
+      n.primary <- length(phi)+1
       #extract first and last survival event years
       surv.start <- z.start+1
       surv.stop <- z.stop+1 #count death events, first z[i,]=0
-      if(surv.start <= n.year){ #if surv.start beyond last year, no survival events, logProb=0
-        if(surv.stop > n.year){ #but can't survive past n.year
-          surv.stop <- n.year 
+      if(surv.start <= n.primary){ #if surv.start beyond last year, no survival events, logProb=0
+        if(surv.stop > n.primary){ #but can't survive past n.primary
+          surv.stop <- n.primary 
         }
         for(g in surv.start:surv.stop){ #sum logprob over survival event years
           logProb <- logProb + dbinom(x[g], size = 1, p = phi[g-1], log = TRUE)
@@ -42,8 +42,8 @@ dSurvival <- nimbleFunction(
 rSurvival <- nimbleFunction(
   run = function(n = integer(0),phi = double(1), z.start = double(0), z.stop = double(0), z.super = double(0)) {
     returnType(double(1))
-    n.year <- length(phi)
-    return(rep(0,n.year))
+    n.primary <- length(phi)
+    return(rep(0,n.primary))
   }
 )
 
@@ -93,7 +93,7 @@ zSampler <- nimbleFunction(
     J <- control$J
     y2D <- control$y2D
     z.super.ups <- control$z.super.ups
-    n.year <- control$n.year
+    n.primary <- control$n.primary
     z.obs <- control$z.obs
     z.nodes <- control$z.nodes
     y.nodes <- control$y.nodes
@@ -111,12 +111,12 @@ zSampler <- nimbleFunction(
   run = function(){
     #precompute entry counts
     #male slots, then female, then z.super=0 slot
-    entry.counts.curr <- rep(0, 2*n.year+1)
-    for(g in 1:n.year){
+    entry.counts.curr <- rep(0, 2*n.primary+1)
+    for(g in 1:n.primary){
       entry.counts.curr[g] <- sum(model$z.start==g & model$z.super==1 & model$sex==0)
-      entry.counts.curr[g + n.year] <- sum(model$z.start==g & model$z.super==1 & model$sex==1)
+      entry.counts.curr[g + n.primary] <- sum(model$z.start==g & model$z.super==1 & model$sex==1)
     }
-    entry.counts.curr[2*n.year + 1] <- sum(model$z.super==0)
+    entry.counts.curr[2*n.primary + 1] <- sum(model$z.super==0)
     
     # 1) Detected guy updates: z.start, z.stop
     # 1a) z start update (z.stop update below): Gibbs, compute full conditional
@@ -136,15 +136,15 @@ zSampler <- nimbleFunction(
         y <- y2D[i,]
         dets <- which(y2D[i,]>0)
         first.det <- min(dets)
-        lp.start <- rep(-Inf,n.year)
-        i.idx <- seq(i,M*n.year,M) #used to reference correct y and pd nodes
+        lp.start <- rep(-Inf,n.primary)
+        i.idx <- seq(i,M*n.primary,M) #used to reference correct y and pd nodes
         for(g in 1:first.det){ #must be recruited in year with first detection or before
           z.start.prop <- g
           model$z.start[i] <<- z.start.prop
-          z.prop <- rep(0,n.year)
+          z.prop <- rep(0,n.primary)
           z.prop[g:first.det] <- 1 #must be alive until first detection
-          if(first.det < n.year){
-            z.prop[(first.det+1):n.year] <- z.curr[(first.det+1):n.year] #fill in remaining current z values, keeping death event the same
+          if(first.det < n.primary){
+            z.prop[(first.det+1):n.primary] <- z.curr[(first.det+1):n.primary] #fill in remaining current z values, keeping death event the same
           }
           model$z[i,] <<- z.prop
           
@@ -160,7 +160,7 @@ zSampler <- nimbleFunction(
             model$N.recruit[z.start.prop-1] <<- N.recruit.curr[z.start.prop-1] + 1
           }
           #3) Update N.survive
-          model$N.survive <<- model$N[2:n.year]-model$N.recruit #survivors are guys alive in year g-1 minus recruits in this year g
+          model$N.survive <<- model$N[2:n.primary]-model$N.recruit #survivors are guys alive in year g-1 minus recruits in this year g
           
           #now repeat for sex
           if(model$sex[i]==0){ #male
@@ -175,7 +175,7 @@ zSampler <- nimbleFunction(
               model$N.recruit.M[z.start.prop-1] <<- N.recruit.M.curr[z.start.prop-1] + 1
             }
             #3) Update N.survive
-            model$N.survive.M <<- model$N.M[2:n.year]-model$N.recruit.M #survivors are guys alive in year g-1 minus recruits in this year g
+            model$N.survive.M <<- model$N.M[2:n.primary]-model$N.recruit.M #survivors are guys alive in year g-1 minus recruits in this year g
           }else{ #female
             #1) Update N
             model$N.F <<- N.F.curr - z.curr + z.prop
@@ -188,7 +188,7 @@ zSampler <- nimbleFunction(
               model$N.recruit.F[z.start.prop-1] <<- N.recruit.F.curr[z.start.prop-1] + 1
             }
             #3) Update N.survive
-            model$N.survive.F <<- model$N.F[2:n.year]-model$N.recruit.F #survivors are guys alive in year g-1 minus recruits in this year g
+            model$N.survive.F <<- model$N.F[2:n.primary]-model$N.recruit.F #survivors are guys alive in year g-1 minus recruits in this year g
           }
           # recruit likelihood conditional on having recruited (or alive in year 1)
           #must account for sex-specificity, Updating N changes both ER.M and ER.F
@@ -209,8 +209,8 @@ zSampler <- nimbleFunction(
             entry.counts.prop[z.start.curr] <- entry.counts.prop[z.start.curr] - 1
             entry.counts.prop[z.start.prop] <- entry.counts.prop[z.start.prop] + 1
           }else{
-            entry.counts.prop[z.start.curr + n.year] <- entry.counts.prop[z.start.curr + n.year] - 1
-            entry.counts.prop[z.start.prop + n.year] <- entry.counts.prop[z.start.prop + n.year] + 1
+            entry.counts.prop[z.start.curr + n.primary] <- entry.counts.prop[z.start.curr + n.primary] - 1
+            entry.counts.prop[z.start.prop + n.primary] <- entry.counts.prop[z.start.prop + n.primary] + 1
           }
           lp.prior <- - (lgamma(M+1) - sum(lgamma(entry.counts.prop + 1)))
           lp.start[g] <- lp.N1.M + lp.N1.F +
@@ -226,10 +226,10 @@ zSampler <- nimbleFunction(
         
         if(model$z.start[i]!=z.start.prop){#if proposal is same as current, no need to replace anything
           model$z.start[i] <<- z.start.prop
-          z.prop <- rep(0,n.year)
+          z.prop <- rep(0,n.primary)
           z.prop[model$z.start[i]:first.det] <- 1 #must be alive until first detection
-          if(first.det < n.year){
-            z.prop[(first.det+1):n.year] <- z.curr[(first.det+1):n.year] #fill in remaining current z values, keeping death event the same
+          if(first.det < n.primary){
+            z.prop[(first.det+1):n.primary] <- z.curr[(first.det+1):n.primary] #fill in remaining current z values, keeping death event the same
           }
           model$z[i,] <<- z.prop
           model$N <<- N.curr - z.curr + z.prop
@@ -240,7 +240,7 @@ zSampler <- nimbleFunction(
           if(z.start.prop > 1){ #if wasn't in pop in year 1 in proposal, add recruit event
             model$N.recruit[z.start.prop-1] <<- N.recruit.curr[z.start.prop-1] + 1
           }
-          model$N.survive <<- model$N[2:n.year]-model$N.recruit #survivors are guys alive in year g-1 minus recruits in this year g
+          model$N.survive <<- model$N[2:n.primary]-model$N.recruit #survivors are guys alive in year g-1 minus recruits in this year g
           #now repeat for sex
           if(model$sex[i]==0){ #male
             model$N.M <<- N.M.curr - z.curr + z.prop
@@ -251,7 +251,7 @@ zSampler <- nimbleFunction(
             if(z.start.prop > 1){ #if wasn't in pop in year 1 in proposal, add recruit event
               model$N.recruit.M[z.start.prop-1] <<- N.recruit.M.curr[z.start.prop-1] + 1
             }
-            model$N.survive.M <<- model$N.M[2:n.year]-model$N.recruit.M #survivors are guys alive in year g-1 minus recruits in this year g
+            model$N.survive.M <<- model$N.M[2:n.primary]-model$N.recruit.M #survivors are guys alive in year g-1 minus recruits in this year g
           }else{ #female
             model$N.F <<- N.F.curr - z.curr + z.prop
             model$N.recruit.F <<- N.recruit.F.curr #set back to original first
@@ -261,7 +261,7 @@ zSampler <- nimbleFunction(
             if(z.start.prop > 1){ #if wasn't in pop in year 1 in proposal, add recruit event
               model$N.recruit.F[z.start.prop-1] <<- N.recruit.F.curr[z.start.prop-1] + 1
             }
-            model$N.survive.F <<- model$N.F[2:n.year]-model$N.recruit.F #survivors are guys alive in year g-1 minus recruits in this year g
+            model$N.survive.F <<- model$N.F[2:n.primary]-model$N.recruit.F #survivors are guys alive in year g-1 minus recruits in this year g
           }
           model$calculate(ER.M.nodes)
           model$calculate(ER.F.nodes)
@@ -289,7 +289,7 @@ zSampler <- nimbleFunction(
           }
           mvSaved["ER.M",1] <<- model[["ER.M"]]
           mvSaved["ER.F",1] <<- model[["ER.F"]]
-          for(g in 1:n.year){
+          for(g in 1:n.primary){
             for(j in 1:J[g]){
               mvSaved["pd",1][i,g,j] <<- model[["pd"]][i,g,j]
             }
@@ -300,8 +300,8 @@ zSampler <- nimbleFunction(
             entry.counts.prop[z.start.curr] <- entry.counts.prop[z.start.curr] - 1
             entry.counts.prop[z.start.prop] <- entry.counts.prop[z.start.prop] + 1
           }else{
-            entry.counts.prop[z.start.curr + n.year] <- entry.counts.prop[z.start.curr + n.year] - 1
-            entry.counts.prop[z.start.prop + n.year] <- entry.counts.prop[z.start.prop + n.year] + 1
+            entry.counts.prop[z.start.curr + n.primary] <- entry.counts.prop[z.start.curr + n.primary] - 1
+            entry.counts.prop[z.start.prop + n.primary] <- entry.counts.prop[z.start.prop + n.primary] + 1
           }
           entry.counts.curr <- entry.counts.prop
         }else{
@@ -321,7 +321,7 @@ zSampler <- nimbleFunction(
           }
           model[["ER.M"]] <<- mvSaved["ER.M",1]
           model[["ER.F"]] <<- mvSaved["ER.F",1]
-          for(g in 1:n.year){
+          for(g in 1:n.primary){
             for(j in 1:J[g]){
               model[["pd"]][i,g,j] <<- mvSaved["pd",1][i,g,j]
             }
@@ -339,7 +339,7 @@ zSampler <- nimbleFunction(
     
     #1b) z stop update (z.start update above): Gibbs, compute full conditional
     for(i in 1:M){
-      if(z.obs[i]==1&y2D[i,n.year]==0){ #for detected guys, skip if observed in final year
+      if(z.obs[i]==1&y2D[i,n.primary]==0){ #for detected guys, skip if observed in final year
         z.curr <- model$z[i,]
         z.stop.curr <- model$z.stop[i]
         N.curr <- model$N
@@ -351,11 +351,11 @@ zSampler <- nimbleFunction(
         y <- y2D[i,]
         dets <- which(y2D[i,]>0)
         last.det <- max(dets)
-        lp.stop <- rep(-Inf,n.year)
-        i.idx <- seq(i,M*n.year,M) #used to reference correct y and pd nodes
-        for(g in (last.det):n.year){ #can't die on or before year of last detection
+        lp.stop <- rep(-Inf,n.primary)
+        i.idx <- seq(i,M*n.primary,M) #used to reference correct y and pd nodes
+        for(g in (last.det):n.primary){ #can't die on or before year of last detection
           model$z.stop[i] <<- g
-          z.prop <- rep(0,n.year)
+          z.prop <- rep(0,n.primary)
           z.prop[last.det:g] <- 1 #must be alive between last detection and this z.stop
           z.prop[1:(last.det)] <- z.curr[1:(last.det)] #fill in remaining current z values, keeping death event the same
           model$z[i,] <<- z.prop
@@ -389,18 +389,18 @@ zSampler <- nimbleFunction(
         model$z.stop[i] <<- z.stop.curr #set back to original
         if(model$z.stop[i]!=z.stop.prop){#if proposal differs from current
           model$z.stop[i] <<- z.stop.prop
-          z.prop <- rep(0,n.year)
+          z.prop <- rep(0,n.primary)
           z.prop[last.det:model$z.stop[i]] <- 1 #must be alive between last detection and this z.stop
           z.prop[1:(last.det)] <- z.curr[1:(last.det)] #fill in remaining current z values, keeping death event the same
           model$z[i,] <<- z.prop
           model$N <<- N.curr - z.curr + z.prop
-          model$N.survive <<- model$N[2:n.year]-model$N.recruit #survivors are guys alive in year g-1 minus recruits in this year g
+          model$N.survive <<- model$N[2:n.primary]-model$N.recruit #survivors are guys alive in year g-1 minus recruits in this year g
           if(model$sex[i]==0){ #male
             model$N.M <<- N.M.curr - z.curr + z.prop
-            model$N.survive.M <<- model$N.M[2:n.year]-model$N.recruit.M
+            model$N.survive.M <<- model$N.M[2:n.primary]-model$N.recruit.M
           }else{ #female
             model$N.F <<- N.F.curr - z.curr + z.prop
-            model$N.survive.F <<- model$N.F[2:n.year]-model$N.recruit.F
+            model$N.survive.F <<- model$N.F[2:n.primary]-model$N.recruit.F
           }
           model$calculate(ER.M.nodes)
           model$calculate(ER.F.nodes)
@@ -425,7 +425,7 @@ zSampler <- nimbleFunction(
           }
           mvSaved["ER.M",1] <<- model[["ER.M"]]
           mvSaved["ER.F",1] <<- model[["ER.F"]]
-          for(g in 1:n.year){
+          for(g in 1:n.primary){
             for(j in 1:J[g]){
               mvSaved["pd",1][i,g,j] <<- model[["pd"]][i,g,j]
             }
@@ -444,7 +444,7 @@ zSampler <- nimbleFunction(
           }
           model[["ER.M"]] <<- mvSaved["ER.M",1]
           model[["ER.F"]] <<- mvSaved["ER.F",1]
-          for(g in 1:n.year){
+          for(g in 1:n.primary){
             for(j in 1:J[g]){
               model[["pd"]][i,g,j] <<- mvSaved["pd",1][i,g,j]
             }
@@ -468,9 +468,9 @@ zSampler <- nimbleFunction(
         z.curr <- model$z[i,]
         z.start.curr <- model$z.start[i]
         z.stop.curr <- model$z.stop[i]
-        cohort.curr <- model$z.start[i] + model$sex[i]*n.year
-        i.idx <- seq(i,M*n.year,M) #used to reference correct y and pd nodes
-        i.idx2 <- seq(i,M*(n.year-1),M) #used to reference correct phi nodes
+        cohort.curr <- model$z.start[i] + model$sex[i]*n.primary
+        i.idx <- seq(i,M*n.primary,M) #used to reference correct y and pd nodes
+        i.idx2 <- seq(i,M*(n.primary-1),M) #used to reference correct phi nodes
         
         #paste male and female recruit probs, Poisson RVs conditioned on total (N.super)
         recruit.probs.for <- c(model$lambda.y1.M,model$ER.M,model$lambda.y1.F,model$ER.F)
@@ -490,12 +490,12 @@ zSampler <- nimbleFunction(
         
         #simulate recruitment, update z.start and sex
         cohort.prop <- rcat(1,recruit.probs.for)
-        z.prop <- rep(0,n.year)
-        if(cohort.prop<=n.year){ #simulated male
+        z.prop <- rep(0,n.primary)
+        if(cohort.prop<=n.primary){ #simulated male
           z.start.prop <- cohort.prop
           model$sex[i] <<- 0
         }else{ #simulated female
-          z.start.prop <- cohort.prop - n.year
+          z.start.prop <- cohort.prop - n.primary
           model$sex[i] <<- 1
         }
         z.prop[z.start.prop] <- 1
@@ -504,8 +504,8 @@ zSampler <- nimbleFunction(
         #update phi bc sex can change
         model$calculate(phi.nodes[i.idx2])
         #simulate survival with updated phi
-        if(z.start.prop < n.year){ #if you don't recruit in final year
-          for(g in (z.start.prop+1):n.year){
+        if(z.start.prop < n.primary){ #if you don't recruit in final year
+          for(g in (z.start.prop+1):n.primary){
             z.prop[g] <- rbinom(1,1,model$phi[i,g-1]*z.prop[g-1])
             log.prop.for <- log.prop.for + dbinom(z.prop[g],1,model$phi[i,g-1]*z.prop[g-1],log=TRUE)
           }
@@ -527,7 +527,7 @@ zSampler <- nimbleFunction(
           model$N.recruit[z.start.prop-1] <<- model$N.recruit[z.start.prop-1] + 1
         }
         #3) Update N.survive
-        model$N.survive <<- model$N[2:n.year]-model$N.recruit #survivors are guys alive in year g-1 minus recruits in this year g
+        model$N.survive <<- model$N[2:n.primary]-model$N.recruit #survivors are guys alive in year g-1 minus recruits in this year g
         #repeat for sex
         if(sex.curr==0&model$sex[i]==0){ #male to male
           model$N.M <<- model$N.M - z.curr + z.prop
@@ -537,7 +537,7 @@ zSampler <- nimbleFunction(
           if(z.start.prop > 1){ #if wasn't in pop in year 1 in proposal, add recruit event
             model$N.recruit.M[z.start.prop-1] <<- model$N.recruit.M[z.start.prop-1] + 1
           }
-          model$N.survive.M <<- model$N.M[2:n.year]-model$N.recruit.M #survivors are guys alive in year g-1 minus recruits in this year g
+          model$N.survive.M <<- model$N.M[2:n.primary]-model$N.recruit.M #survivors are guys alive in year g-1 minus recruits in this year g
         }else if(sex.curr==1&model$sex[i]==1){ #female to female
           model$N.F <<- model$N.F - z.curr + z.prop
           if(z.start.curr > 1){ #if wasn't in pop in year 1 in current, remove recruit event
@@ -546,7 +546,7 @@ zSampler <- nimbleFunction(
           if(z.start.prop > 1){ #if wasn't in pop in year 1 in proposal, add recruit event
             model$N.recruit.F[z.start.prop-1] <<- model$N.recruit.F[z.start.prop-1] + 1
           }
-          model$N.survive.F <<- model$N.F[2:n.year]-model$N.recruit.F #survivors are guys alive in year g-1 minus recruits in this year g
+          model$N.survive.F <<- model$N.F[2:n.primary]-model$N.recruit.F #survivors are guys alive in year g-1 minus recruits in this year g
         }else if(sex.curr==0&model$sex[i]==1){ #male to female
           #subtract current z from males, add new z to females
           model$N.M <<- model$N.M - z.curr
@@ -557,8 +557,8 @@ zSampler <- nimbleFunction(
           if(z.start.prop > 1){ #if wasn't in pop in year 1 in proposal, add recruit event
             model$N.recruit.F[z.start.prop-1] <<- model$N.recruit.F[z.start.prop-1] + 1
           }
-          model$N.survive.M <<- model$N.M[2:n.year]-model$N.recruit.M #survivors are guys alive in year g-1 minus recruits in this year g
-          model$N.survive.F <<- model$N.F[2:n.year]-model$N.recruit.F #survivors are guys alive in year g-1 minus recruits in this year g
+          model$N.survive.M <<- model$N.M[2:n.primary]-model$N.recruit.M #survivors are guys alive in year g-1 minus recruits in this year g
+          model$N.survive.F <<- model$N.F[2:n.primary]-model$N.recruit.F #survivors are guys alive in year g-1 minus recruits in this year g
           
         }else if(sex.curr==1&model$sex[i]==0){ #female to male
           #subtract current z from females, add new z to males
@@ -570,8 +570,8 @@ zSampler <- nimbleFunction(
           if(z.start.prop > 1){ #if wasn't in pop in year 1 in proposal, add recruit event
             model$N.recruit.M[z.start.prop-1] <<- model$N.recruit.M[z.start.prop-1] + 1
           }
-          model$N.survive.M <<- model$N.M[2:n.year]-model$N.recruit.M #survivors are guys alive in year g-1 minus recruits in this year g
-          model$N.survive.F <<- model$N.F[2:n.year]-model$N.recruit.F #survivors are guys alive in year g-1 minus recruits in this year g
+          model$N.survive.M <<- model$N.M[2:n.primary]-model$N.recruit.M #survivors are guys alive in year g-1 minus recruits in this year g
+          model$N.survive.F <<- model$N.F[2:n.primary]-model$N.recruit.F #survivors are guys alive in year g-1 minus recruits in this year g
         }
         model$calculate(ER.M.nodes) #update ER when N updated
         model$calculate(ER.F.nodes) #update ER when N updated
@@ -595,8 +595,8 @@ zSampler <- nimbleFunction(
         recruit.probs.back <- recruit.probs.back/sum(recruit.probs.back)
         
         log.prop.back <- log.prop.back + log(recruit.probs.back[cohort.curr])
-        if(z.start.curr < n.year){#if you don't recruit in final year
-          for(g in (z.start.curr+1):n.year){
+        if(z.start.curr < n.primary){#if you don't recruit in final year
+          for(g in (z.start.curr+1):n.primary){
             #use original phi.curr stored above
             log.prop.back <- log.prop.back + dbinom(z.curr[g],1,phi.curr[g-1]*z.curr[g-1],log=TRUE)
           }
@@ -628,12 +628,12 @@ zSampler <- nimbleFunction(
           mvSaved["N.survive.F",1] <<- model[["N.survive.F"]]
           mvSaved["N.recruit.F",1] <<- model[["N.recruit.F"]]
           entry.counts.curr <- entry.counts.prop
-          for(g in 1:n.year){
+          for(g in 1:n.primary){
             for(j in 1:J[g]){
               mvSaved["pd",1][i,g,j] <<- model[["pd"]][i,g,j]
             }
           }
-          for(g in 1:(n.year-1)){
+          for(g in 1:(n.primary-1)){
             mvSaved["phi",1][pick,g] <<- model[["phi"]][pick,g]
           }
         }else{
@@ -652,7 +652,7 @@ zSampler <- nimbleFunction(
           model[["N.F"]] <<- mvSaved["N.F",1]
           model[["N.survive.F"]] <<- mvSaved["N.survive.F",1]
           model[["N.recruit.F"]] <<- mvSaved["N.recruit.F",1]
-          for(g in 1:n.year){
+          for(g in 1:n.primary){
             for(j in 1:J[g]){
               model[["pd"]][i,g,j] <<- mvSaved["pd",1][i,g,j]
             }
@@ -690,14 +690,14 @@ zSampler <- nimbleFunction(
           if(sex.curr==0){
             cohort.curr <- z.start.curr
           }else{
-            cohort.curr <- z.start.curr + n.year
+            cohort.curr <- z.start.curr + n.primary
           }
           
           #p select off guy
           log.p.select.for <- log(1/non.init)
           #log multinomial coefficient prior
           log.z.prior.for <- - (lgamma(M+1) - sum(lgamma(entry.counts.curr+1)))
-          pick.idx <- seq(pick,M*n.year,M) #used to reference correct y nodes
+          pick.idx <- seq(pick,M*n.primary,M) #used to reference correct y nodes
           
           #get initial logprobs
           lp.initial.N.M <- model$getLogProb(N.M.nodes[1])
@@ -712,7 +712,7 @@ zSampler <- nimbleFunction(
           model$z.super[pick] <<- 0
           model$z.start[pick] <<- 0
           model$z.stop[pick] <<- 0
-          model$z[pick,] <<- rep(0,n.year)
+          model$z[pick,] <<- rep(0,n.primary)
           
           #update N, N.recruit, N.survive
           #1) Update N
@@ -722,7 +722,7 @@ zSampler <- nimbleFunction(
             model$N.recruit[z.start.curr-1] <<- model$N.recruit[z.start.curr-1] - 1
           }
           #3) Update N.survive
-          model$N.survive <<- model$N[2:n.year]-model$N.recruit #survivors are guys alive in year g-1 minus recruits in this year g
+          model$N.survive <<- model$N[2:n.primary]-model$N.recruit #survivors are guys alive in year g-1 minus recruits in this year g
           #repeat for sex
           if(sex.curr==0){
             model$N.M <<- model$N.M - z.curr
@@ -730,14 +730,14 @@ zSampler <- nimbleFunction(
               model$N.recruit.M[z.start.curr-1] <<- model$N.recruit.M[z.start.curr-1] - 1
             }
             #3) Update N.survive
-            model$N.survive.M <<- model$N.M[2:n.year]-model$N.recruit.M #survivors are guys alive in year g-1 minus recruits in this year g
+            model$N.survive.M <<- model$N.M[2:n.primary]-model$N.recruit.M #survivors are guys alive in year g-1 minus recruits in this year g
           }else{
             model$N.F <<- model$N.F - z.curr
             if(z.start.curr > 1){ #if wasn't in pop in year 1
               model$N.recruit.F[z.start.curr-1] <<- model$N.recruit.F[z.start.curr-1] - 1
             }
             #3) Update N.survive
-            model$N.survive.F <<- model$N.F[2:n.year]-model$N.recruit.F #survivors are guys alive in year g-1 minus recruits in this year g
+            model$N.survive.F <<- model$N.F[2:n.primary]-model$N.recruit.F #survivors are guys alive in year g-1 minus recruits in this year g
           }
           model$calculate(ER.M.nodes) #update ER when N updated
           model$calculate(ER.F.nodes) #update ER when N updated
@@ -748,8 +748,8 @@ zSampler <- nimbleFunction(
                                   model$lambda.y1.F, model$ER.F)
           recruit.probs.back <- recruit.probs.back/sum(recruit.probs.back)
           log.prop.back <- log(recruit.probs.back[cohort.curr])
-          if(z.start.curr < n.year){
-            for(g in (z.start.curr + 1):n.year){
+          if(z.start.curr < n.primary){
+            for(g in (z.start.curr + 1):n.primary){
               log.prop.back <- log.prop.back +
                 dbinom(z.curr[g], 1, model$phi[pick, g-1] * z.curr[g-1], log = TRUE)
             }
@@ -772,7 +772,7 @@ zSampler <- nimbleFunction(
           #move from current z.super=1 cohort to z.super=0 cell
           entry.counts.prop <- entry.counts.curr
           entry.counts.prop[cohort.curr] <- entry.counts.prop[cohort.curr] - 1
-          entry.counts.prop[2*n.year + 1] <- entry.counts.prop[2*n.year + 1] + 1
+          entry.counts.prop[2*n.primary + 1] <- entry.counts.prop[2*n.primary + 1] + 1
           
           #p select on guy
           noff.back <- sum(model$z.super == 0)
@@ -806,7 +806,7 @@ zSampler <- nimbleFunction(
             }
             mvSaved["ER.M",1] <<- model[["ER.M"]]
             mvSaved["ER.F",1] <<- model[["ER.F"]]
-            for(g in 1:n.year){
+            for(g in 1:n.primary){
               for(j in 1:J[g]){
                 mvSaved["pd",1][pick,g,j] <<- model[["pd"]][pick,g,j]
               }
@@ -832,7 +832,7 @@ zSampler <- nimbleFunction(
             }
             model[["ER.M"]] <<- mvSaved["ER.M",1]
             model[["ER.F"]] <<- mvSaved["ER.F",1]
-            for(g in 1:n.year){
+            for(g in 1:n.primary){
               for(j in 1:J[g]){
                 model[["pd"]][pick,g,j] <<- mvSaved["pd",1][pick,g,j]
               }
@@ -852,8 +852,8 @@ zSampler <- nimbleFunction(
           noff.init <- length(z.off)
           pick <- rcat(1,rep(1/noff.init,noff.init)) #select one of these individuals
           pick <- z.off[pick]
-          pick.idx <- seq(pick,M*n.year,M)
-          pick.idx2 <- seq(pick,M*(n.year-1),M)
+          pick.idx <- seq(pick,M*n.primary,M)
+          pick.idx2 <- seq(pick,M*(n.primary-1),M)
           
           #p select off guy
           log.p.select.for <- log(1/noff.init)
@@ -875,12 +875,12 @@ zSampler <- nimbleFunction(
           recruit.probs.for <- recruit.probs.for/sum(recruit.probs.for)
           cohort.prop <- rcat(1, recruit.probs.for)
           log.prop.for <- log(recruit.probs.for[cohort.prop])
-          if(cohort.prop <= n.year){
+          if(cohort.prop <= n.primary){
             sex.prop <- 0
             z.start.prop <- cohort.prop
           } else {
             sex.prop <- 1
-            z.start.prop <- cohort.prop - n.year
+            z.start.prop <- cohort.prop - n.primary
           }
           
           #set proposed sex first, then update phi
@@ -888,10 +888,10 @@ zSampler <- nimbleFunction(
           model$calculate(phi.nodes[pick.idx2])
           
           #simulate proposed z vector
-          z.prop <- rep(0, n.year)
+          z.prop <- rep(0, n.primary)
           z.prop[z.start.prop] <- 1
-          if(z.start.prop < n.year){
-            for(g in (z.start.prop + 1):n.year){
+          if(z.start.prop < n.primary){
+            for(g in (z.start.prop + 1):n.primary){
               z.prop[g] <- rbinom(1, 1, model$phi[pick, g-1] * z.prop[g-1])
               log.prop.for <- log.prop.for +
                 dbinom(z.prop[g], 1, model$phi[pick, g-1] * z.prop[g-1], log = TRUE)
@@ -914,7 +914,7 @@ zSampler <- nimbleFunction(
             model$N.recruit[z.start.prop-1] <<- model$N.recruit[z.start.prop-1] + 1
           }
           #3) Update N.survive
-          model$N.survive <<- model$N[2:n.year] - model$N.recruit #survivors are guys alive in year g-1 minus recruits in this year g
+          model$N.survive <<- model$N[2:n.primary] - model$N.recruit #survivors are guys alive in year g-1 minus recruits in this year g
           #repeat for sex
           if(sex.prop==0){
             model$N.M <<- model$N.M + model$z[pick,]
@@ -922,14 +922,14 @@ zSampler <- nimbleFunction(
               model$N.recruit.M[z.start.prop-1] <<- model$N.recruit.M[z.start.prop-1] + 1
             }
             #3) Update N.survive
-            model$N.survive.M <<- model$N.M[2:n.year] - model$N.recruit.M #survivors are guys alive in year g-1 minus recruits in this year g
+            model$N.survive.M <<- model$N.M[2:n.primary] - model$N.recruit.M #survivors are guys alive in year g-1 minus recruits in this year g
           }else{
             model$N.F <<- model$N.F + model$z[pick,]
             if(z.start.prop > 1){ #if wasn't in pop in year 1
               model$N.recruit.F[z.start.prop-1] <<- model$N.recruit.F[z.start.prop-1] + 1
             }
             #3) Update N.survive
-            model$N.survive.F <<- model$N.F[2:n.year] - model$N.recruit.F #survivors are guys alive in year g-1 minus recruits in this year g
+            model$N.survive.F <<- model$N.F[2:n.primary] - model$N.recruit.F #survivors are guys alive in year g-1 minus recruits in this year g
           }
           #get proposed logprobs for N and y
           model$calculate(ER.M.nodes) #update ER when N updated
@@ -951,7 +951,7 @@ zSampler <- nimbleFunction(
           #backwards prior and select probs
           #move from z.super==0 cell to class g in z.super==1
           entry.counts.prop <- entry.counts.curr
-          entry.counts.prop[2*n.year + 1] <- entry.counts.prop[2*n.year + 1] - 1
+          entry.counts.prop[2*n.primary + 1] <- entry.counts.prop[2*n.primary + 1] - 1
           entry.counts.prop[cohort.prop] <- entry.counts.prop[cohort.prop] + 1
           
           #p select on guy
@@ -984,12 +984,12 @@ zSampler <- nimbleFunction(
               mvSaved["N.survive.F",1] <<- model[["N.survive.F"]]
               mvSaved["N.recruit.F",1] <<- model[["N.recruit.F"]]
             }
-            for(g in 1:(n.year-1)){
+            for(g in 1:(n.primary-1)){
               mvSaved["phi",1][pick,g] <<- model[["phi"]][pick,g]
             }
             mvSaved["ER.M",1] <<- model[["ER.M"]]
             mvSaved["ER.F",1] <<- model[["ER.F"]]
-            for(g in 1:n.year){
+            for(g in 1:n.primary){
               for(j in 1:J[g]){
                 mvSaved["pd",1][pick,g,j] <<- model[["pd"]][pick,g,j]
               }
@@ -1014,12 +1014,12 @@ zSampler <- nimbleFunction(
               model[["N.survive.F"]] <<- mvSaved["N.survive.F",1]
               model[["N.recruit.F"]] <<- mvSaved["N.recruit.F",1]
             }
-            for(g in 1:(n.year-1)){
+            for(g in 1:(n.primary-1)){
               model[["phi"]][pick,g] <<- mvSaved["phi",1][pick,g]
             }
             model[["ER.M"]] <<- mvSaved["ER.M",1]
             model[["ER.F"]] <<- mvSaved["ER.F",1]
-            for(g in 1:n.year){
+            for(g in 1:n.primary){
               for(j in 1:J[g]){
                 model[["pd"]][pick,g,j] <<- mvSaved["pd",1][pick,g,j]
               }
@@ -1039,9 +1039,9 @@ zSampler <- nimbleFunction(
     #4) Finally, detected guy unobserved sex update
     for(i in 1:length(sex.up)){
       if(z.obs[sex.up[i]]==1){ #only do detected guys here
-        i.idx <- seq(sex.up[i],M*n.year,M) #used to reference correct y nodes
-        i.idx2 <- seq(sex.up[i],M*(n.year-1),M) #used to reference correct phi nodes 
-        cohort.curr <- model$z.start[sex.up[i]] + model$sex[sex.up[i]]*n.year
+        i.idx <- seq(sex.up[i],M*n.primary,M) #used to reference correct y nodes
+        i.idx2 <- seq(sex.up[i],M*(n.primary-1),M) #used to reference correct phi nodes 
+        cohort.curr <- model$z.start[sex.up[i]] + model$sex[sex.up[i]]*n.primary
         
         #get initial logProbs
         lp.initial.N.M <- model$getLogProb(N.M.nodes[1])
@@ -1063,8 +1063,8 @@ zSampler <- nimbleFunction(
             model$N.recruit.F[model$z.start[sex.up[i]]-1] <<- model$N.recruit.F[model$z.start[sex.up[i]]-1] + 1
           }
           # #update male, female survivors
-          model$N.survive.M <<- model$N.M[2:n.year] - model$N.recruit.M
-          model$N.survive.F <<- model$N.F[2:n.year] - model$N.recruit.F
+          model$N.survive.M <<- model$N.M[2:n.primary] - model$N.recruit.M
+          model$N.survive.F <<- model$N.F[2:n.primary] - model$N.recruit.F
         }else{ #initial female
           #move this guy from N.F to N.M
           model$N.F <<- model$N.F - model$z[sex.up[i],]
@@ -1075,8 +1075,8 @@ zSampler <- nimbleFunction(
             model$N.recruit.M[model$z.start[sex.up[i]]-1] <<- model$N.recruit.M[model$z.start[sex.up[i]]-1] + 1
           }
           # #update male, female survivors
-          model$N.survive.F <<- model$N.F[2:n.year] - model$N.recruit.F
-          model$N.survive.M <<- model$N.M[2:n.year] - model$N.recruit.M
+          model$N.survive.F <<- model$N.F[2:n.primary] - model$N.recruit.F
+          model$N.survive.M <<- model$N.M[2:n.primary] - model$N.recruit.M
         }
         model$calculate(ER.M.nodes) #update ER when N.M updated
         model$calculate(ER.F.nodes) #update ER when N.F updated
@@ -1087,7 +1087,7 @@ zSampler <- nimbleFunction(
         #update phi nodes when sex changes
         model$calculate(phi.nodes[i.idx2])
         #update prior
-        cohort.prop <- model$z.start[sex.up[i]] + model$sex[sex.up[i]]*n.year
+        cohort.prop <- model$z.start[sex.up[i]] + model$sex[sex.up[i]]*n.primary
         entry.counts.prop <- entry.counts.curr
         entry.counts.prop[cohort.curr] <- entry.counts.prop[cohort.curr] - 1
         entry.counts.prop[cohort.prop] <- entry.counts.prop[cohort.prop] + 1
@@ -1120,10 +1120,10 @@ zSampler <- nimbleFunction(
           mvSaved["N.recruit.M",1] <<- model[["N.recruit.M"]]
           mvSaved["N.recruit.F",1] <<- model[["N.recruit.F"]]
           mvSaved["sex",1][sex.up[i]] <<- model[["sex"]][sex.up[i]]
-          for(g in 1:(n.year-1)){
+          for(g in 1:(n.primary-1)){
             mvSaved["phi",1][sex.up[i],g] <<- model[["phi"]][sex.up[i],g]
           }
-          for(g in 1:n.year){
+          for(g in 1:n.primary){
             for(j in 1:J[g]){
               mvSaved["pd",1][sex.up[i],g,j] <<- model[["pd"]][sex.up[i],g,j]
             }
@@ -1139,10 +1139,10 @@ zSampler <- nimbleFunction(
           model[["N.recruit.M"]] <<- mvSaved["N.recruit.M",1]
           model[["N.recruit.F"]] <<- mvSaved["N.recruit.F",1]
           model[["sex"]][sex.up[i]] <<- mvSaved["sex",1][sex.up[i]]
-          for(g in 1:(n.year-1)){
+          for(g in 1:(n.primary-1)){
             model[["phi"]][sex.up[i],g] <<- mvSaved["phi",1][sex.up[i],g]
           }
-          for(g in 1:n.year){
+          for(g in 1:n.primary){
             for(j in 1:J[g]){
               model[["pd"]][sex.up[i],g,j] <<- mvSaved["pd",1][sex.up[i],g,j]
             }

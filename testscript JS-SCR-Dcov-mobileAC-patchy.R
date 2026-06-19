@@ -14,26 +14,26 @@ source("mask.check.R")
 #you must run this line 
 nimbleOptions(determinePredictiveNodesInModel = FALSE)
 
-n.year <- 5 #number of years
-gamma <- rep(0.2,n.year-1) #yearly per-capita recruitment
+n.primary <- 5 #number of years
+gamma <- rep(0.2,n.primary-1) #yearly per-capita recruitment
 beta0.phi <- qlogis(0.85) #survival intercept
 beta1.phi <- 0.5 #phi response to individual covariate
-p0 <- rep(0.1,n.year) #yearly detection probabilities at activity center
-sigma <- rep(0.5,n.year) #yearly detection function scale
+p0 <- rep(0.1,n.primary) #yearly detection probabilities at activity center
+sigma <- rep(0.5,n.primary) #yearly detection function scale
 sigma.move <- 2 #movement sigma, fixed over primary periods
 rsf.beta <- 0.5 #selection coefficient for activity center relocation btwn primary periods
-K <- rep(10,n.year) #yearly sampling occasions
+K <- rep(10,n.primary) #yearly sampling occasions
 
 buff <- 3 #state space buffer. Buffers maximal x and y dimensions of X below across years
-X <- vector("list",n.year) #one trapping array per year
-for(g in 1:n.year){ #using same trapping array every year here
+X <- vector("list",n.primary) #one trapping array per year
+for(g in 1:n.primary){ #using same trapping array every year here
   X[[g]] <- as.matrix(expand.grid(3:14,3:14))
 }
 
 ### Habitat Covariate stuff###
 #buffer maximal trap extent
 X.all <- matrix(NA,nrow=0,ncol=2)
-for(g in 1:n.year){
+for(g in 1:n.primary){
   X.all <- rbind(X.all,X[[g]])
 }
 
@@ -47,7 +47,7 @@ x.shift <- xlim[1]
 y.shift <- ylim[1]
 xlim <- xlim-x.shift
 ylim <- ylim-y.shift
-for(g in 1:n.year){
+for(g in 1:n.primary){
   X[[g]][,1] <- X[[g]][,1]-x.shift
   X[[g]][,2] <- X[[g]][,2]-y.shift
 }
@@ -91,7 +91,7 @@ sum(lambda.cell) #expected N in state space
 
 #simulate some data
 data <- sim.JS.SCR.Dcov.mobileAC(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,InSS=InSS,
-            gamma=gamma,n.year=n.year,beta0.phi=beta0.phi,beta1.phi=beta1.phi,
+            gamma=gamma,n.primary=n.primary,beta0.phi=beta0.phi,beta1.phi=beta1.phi,
             p0=p0,sigma=sigma,sigma.move=sigma.move,rsf.beta=rsf.beta,
             X=X,K=K,xlim=xlim,ylim=ylim,res=res)
 
@@ -102,7 +102,7 @@ data <- sim.JS.SCR.Dcov.mobileAC(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,InS
 #years 2 on: cell colors depict expected relative density given the realized s[g-1] and z[g-1] from previous year
 #points are realized activity centers for this expectation
 # par(mfrow=c(1,1),ask=FALSE)
-# for(plot.year in 1:n.year){
+# for(plot.year in 1:n.primary){
 #   image(x.vals,y.vals,matrix(data$truth$pi.cell[plot.year,],n.cells.x,n.cells.y),
 #         main=paste("Expected Relative Density, Year", plot.year),
 #         col=cols1)
@@ -179,11 +179,11 @@ if(N.super.init > M) stop("Must augment more than number of individuals captured
 J <- unlist(lapply(X,nrow)) #traps per year
 J.max <- max(J)
 
-y.nim <- array(0,dim=c(M,n.year,J.max))
-y.nim[1:N.super.init,1:n.year,1:J.max] <- data$y #all these guys must be observed
+y.nim <- array(0,dim=c(M,n.primary,J.max))
+y.nim[1:N.super.init,1:n.primary,1:J.max] <- data$y #all these guys must be observed
 #initialize z, start with observed guys
 z.init <- 1*(y.nim>0)
-z.init <- matrix(0,M,n.year)
+z.init <- matrix(0,M,n.primary)
 z.start.init <- z.stop.init <- rep(0,M)
 y.nim2D <- apply(y.nim,c(1,2),sum)
 for(i in 1:N.super.init){
@@ -199,8 +199,8 @@ z.obs <- 1*(rowSums(y.nim)>0) #indicator for "ever observed"
 
 #initialize N structures from z.init
 N.init <- colSums(z.init[z.super.init==1,])
-N.survive.init <- N.recruit.init <- rep(NA,n.year-1)
-for(g in 2:n.year){
+N.survive.init <- N.recruit.init <- rep(NA,n.primary-1)
+for(g in 2:n.primary){
   N.survive.init[g-1] <- sum(z.init[,g-1]==1&z.init[,g]==1&z.super.init==1)
   N.recruit.init[g-1] <- N.init[g]-N.survive.init[g-1]
 }
@@ -212,9 +212,9 @@ cov.up <- which(is.na(phi.cov.data)) #which individuals have missing cov values,
 #remaining SCR stuff to initialize
 #put X in ragged array
 #also make K1D, year by trap operation history, as ragged array.
-X.nim <- array(0,dim=c(n.year,J.max,2))
-K1D <- matrix(0,n.year,J.max)
-for(g in 1:n.year){
+X.nim <- array(0,dim=c(n.primary,J.max,2))
+K1D <- matrix(0,n.primary,J.max)
+for(g in 1:n.primary){
   X.nim[g,1:J[g],1:2] <- X[[g]]
   K1D[g,1:J[g]] <- rep(K[g],J[g])
 }
@@ -253,7 +253,7 @@ points(s.init[,,1],s.init[,,2],pch=16)
 
 #constants for Nimble
 #might want to center D.cov here. Simulated D.cov in this testscript is already effectively centered.
-constants <- list(n.year=n.year,M=M,J=J,K1D=K1D,D.cov=D.cov,
+constants <- list(n.primary=n.primary,M=M,J=J,K1D=K1D,D.cov=D.cov,
                   n.cells=n.cells,n.cells.x=n.cells.x,
                   n.cells.y=n.cells.y,res=res,
                   x.vals=x.vals,y.vals=y.vals,
@@ -295,21 +295,21 @@ z.super.ups <- round(M*0.25) #how many z.super update proposals per iteration?
 #25% of M seems reasonable, but optimal will depend on data set
 #loop here bc potentially different numbers of traps to vectorize in each year
 y.nodes <- pd.nodes <- c()
-for(g in 1:n.year){
+for(g in 1:n.primary){
   y.nodes <- c(y.nodes,Rmodel$expandNodeNames(paste0("y[1:",M,",",g,",1:",J[g],"]"))) #if you change y structure, change here
   pd.nodes <- c(pd.nodes,Rmodel$expandNodeNames(paste0("pd[1:",M,",",g,",1:",J[g],"]"))) #if you change y structure, change here
 }
 N.nodes <- Rmodel$expandNodeNames(paste0("N"))
-N.survive.nodes <- Rmodel$expandNodeNames(paste0("N.survive[1:",n.year-1,"]"))
-N.recruit.nodes <- Rmodel$expandNodeNames(paste0("N.recruit[1:",n.year-1,"]"))
-ER.nodes <- Rmodel$expandNodeNames(paste0("ER[1:",n.year-1,"]"))
+N.survive.nodes <- Rmodel$expandNodeNames(paste0("N.survive[1:",n.primary-1,"]"))
+N.recruit.nodes <- Rmodel$expandNodeNames(paste0("N.recruit[1:",n.primary-1,"]"))
+ER.nodes <- Rmodel$expandNodeNames(paste0("ER[1:",n.primary-1,"]"))
 s.nodes <- Rmodel$expandNodeNames(paste0("s"))
 z.nodes <- Rmodel$expandNodeNames(paste0("z[1:",M,",1]"))
 calcNodes <- c(N.nodes,ER.nodes,N.recruit.nodes,N.survive.nodes,s.nodes,z.nodes,pd.nodes,y.nodes)
 #need to convert cells to double to use inside custom sampler
 cells.double <- matrix(as.double(cells),n.cells.x,n.cells.y)
 conf$addSampler(target = c("z"),
-                type = 'zSampler',control = list(M=M,n.year=n.year,J=J,cells=cells.double,
+                type = 'zSampler',control = list(M=M,n.primary=n.primary,J=J,cells=cells.double,
                                                  dSS=dSS,res=res,n.cells=n.cells,
                                                  xlim=xlim,ylim=ylim,x.vals=x.vals,y.vals=y.vals,
                                                  n.cells.x=n.cells.x,n.cells.y=n.cells.y,
@@ -327,7 +327,7 @@ conf$addSampler(target = c("z"),
 #sigma.move
 #z.super=0, do nothing, activity centers likelihood is gated and all values are set to 0
 for(i in 1:M){
-  for(g in 1:n.year){
+  for(g in 1:n.primary){
     calcNodes <- Rmodel$getDependencies(paste0("s[",i,",",g,",1:2]"))
     conf$addSampler(target = paste0("s[",i,",",g,",1:2]"),
                     type = 'sSampler1',control=list(i=i,g=g,xlim=xlim,ylim=ylim,
@@ -385,8 +385,8 @@ par(mfrow=c(1,1),ask=FALSE)
 
 i <- 1
 i <- i + 1
-idx.x <- seq(i,M*n.year,by=M)
-idx.y <- seq(M*n.year+i,2*M*n.year,by=M)
+idx.x <- seq(i,M*n.primary,by=M)
+idx.y <- seq(M*n.primary+i,2*M*n.primary,by=M)
 
 ind.cols <- c("#E63946","#FF9F1C","#FFDD00","#2EC4B6","#3A86FF",
               "#8338EC","#FB5607","#06D6A0","#FFB700","#118AB2",
@@ -395,10 +395,10 @@ ind.cols <- c("#E63946","#FF9F1C","#FFDD00","#2EC4B6","#3A86FF",
 ind.cols2 <- adjustcolor(ind.cols,alpha.f=0.5) 
 # plot(NA,xlim=xlim,ylim=ylim)
 image(x.vals,y.vals,matrix(InSS,n.cells.x,n.cells.y),main="Habitat",col=cols1)
-for(g in 1:n.year){
+for(g in 1:n.primary){
   points(mvSamples2[,idx.x[g]],mvSamples2[,idx.y[g]],col=ind.cols2[g],pch=16)
 }
-for(g in 1:n.year){
+for(g in 1:n.primary){
   points(data$s[i,g,1],data$s[i,g,2],col="black",pch=16,cex=1)
   if(g>1){
   lines(x=c(data$s[i,g-1,1],data$s[i,g,1]),

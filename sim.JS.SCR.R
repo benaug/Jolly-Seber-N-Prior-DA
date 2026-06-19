@@ -4,34 +4,34 @@ e2dist <- function (x, y){
   matrix(dvec, nrow = nrow(x), ncol = nrow(y), byrow = F)
 }
 
-sim.JS.SCR <- function(lambda.y1=NA,gamma=NA,n.year=NA,
+sim.JS.SCR <- function(lambda.y1=NA,gamma=NA,n.primary=NA,
                        beta0.phi=NA,beta1.phi=NA,
                    p0=NA,sigma=NA,X=NA,buff=buff,K=NA,sigma.move=NULL){
   #Population dynamics
-  N <- rep(NA,n.year)
-  N.recruit <- N.survive <- ER <- rep(NA,n.year-1)
+  N <- rep(NA,n.primary)
+  N.recruit <- N.survive <- ER <- rep(NA,n.primary-1)
   N[1] <- rpois(1,lambda.y1)
   if(N[1]==0)stop("Simulated starting male population size of 0")
   
   #Easiest to increase dimension of z as we simulate bc size not known in advance.
-  z <- matrix(0,N[1],n.year)
+  z <- matrix(0,N[1],n.primary)
   z[1:N[1],1] <- 1
   cov <- rnorm(N[1],0,1) #simulate ind survival covariate for 1st year guys
-  phi <- matrix(NA,N[1],n.year-1)
-  for(g in 2:n.year){
+  phi <- matrix(NA,N[1],n.primary-1)
+  for(g in 2:n.primary){
     #Simulate recruits
     ER[g-1] <- N[g-1]*gamma[g-1]
     N.recruit[g-1] <- rpois(1,ER[g-1])
     if(N.recruit[g-1]>0){
       #add recruits to z
       z.dim.old <- length(cov)
-      z <- rbind(z,matrix(0,nrow=N.recruit[g-1],ncol=n.year))
+      z <- rbind(z,matrix(0,nrow=N.recruit[g-1],ncol=n.primary))
       z[(z.dim.old+1):(z.dim.old+N.recruit[g-1]),g]=1
       cov <- c(cov,rep(NA,N.recruit[g-1]))
       cov[(z.dim.old+1):(z.dim.old+N.recruit[g-1])] <- rnorm(N.recruit[g-1],0,1) #simulate survival cov values for new recruits
       
       #Simulate survival
-      phi <- rbind(phi,matrix(NA,nrow=N.recruit[g-1],ncol=n.year-1))
+      phi <- rbind(phi,matrix(NA,nrow=N.recruit[g-1],ncol=n.primary-1))
     }
     phi[,g-1] <- plogis(beta0.phi+cov*beta1.phi)
     
@@ -41,7 +41,7 @@ sim.JS.SCR <- function(lambda.y1=NA,gamma=NA,n.year=NA,
     N[g] <- N.recruit[g-1]+N.survive[g-1]
   }
   
-  if(any(N.recruit+N.survive!=N[2:n.year]))stop("Simulation bug")
+  if(any(N.recruit+N.survive!=N[2:n.primary]))stop("Simulation bug")
   if(any(colSums(z)!=N))stop("Simulation bug")
   
   #plot to see if sim values realistic
@@ -61,9 +61,9 @@ sim.JS.SCR <- function(lambda.y1=NA,gamma=NA,n.year=NA,
   library(truncnorm)
   if(!is.null(sigma.move)){
     print("simulating mobile ACs")
-    s <- array(NA,dim=c(N.super,n.year,2))
+    s <- array(NA,dim=c(N.super,n.primary,2))
     s[,1,] <- cbind(runif(N.super, xlim[1],xlim[2]), runif(N.super,ylim[1],ylim[2]))
-    for(g in 2:n.year){
+    for(g in 2:n.primary){
       s[,g,1] <- rtruncnorm(N.super,s[,g-1,1],sd=sigma.move,a=xlim[1],b=xlim[2])
       s[,g,2] <- rtruncnorm(N.super,s[,g-1,2],sd=sigma.move,a=ylim[1],b=ylim[2])
     }
@@ -72,8 +72,8 @@ sim.JS.SCR <- function(lambda.y1=NA,gamma=NA,n.year=NA,
     s <- cbind(runif(N.super, xlim[1],xlim[2]), runif(N.super,ylim[1],ylim[2]))
   }
   
-  pd <- y <- array(0,dim=c(N.super,n.year,J.max))
-  for(g in 1:n.year){
+  pd <- y <- array(0,dim=c(N.super,n.primary,J.max))
+  for(g in 1:n.primary){
     if(!is.null(sigma.move)){
       D <- e2dist(s[,g,],X[[g]])
     }else{
@@ -99,6 +99,6 @@ sim.JS.SCR <- function(lambda.y1=NA,gamma=NA,n.year=NA,
   }else{
     s <- s[keep.idx,]
   }
-  return(list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,X=X,K=K,n.year=n.year,s=s,
+  return(list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,X=X,K=K,n.primary=n.primary,s=s,
               xlim=xlim,ylim=ylim,truth=truth))
 }

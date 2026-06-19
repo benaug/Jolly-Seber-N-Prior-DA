@@ -4,14 +4,14 @@ library(coda)
 source("sim.JS.typical.R")
 source("Nimble Model JS-Typical.R")
 
-n.year <- 4 #number of years
+n.primary <- 4 #number of years
 M <- 200 #data simulator simulates from Chandler-Clark model with M as a parameter
 psi <- 0.4 #expected N in year 1 is M*psi
-gamma <- rep(0.2,n.year-1) #yearly per-capita recruitment
+gamma <- rep(0.2,n.primary-1) #yearly per-capita recruitment
 beta0.phi <- qlogis(0.85) #survival intercept
 beta1.phi <- 0.5
-p <- rep(0.2,n.year) #yearly detection probability
-K <- rep(10,n.year) #yearly sampling occasions
+p <- rep(0.2,n.primary) #yearly detection probability
+K <- rep(10,n.primary) #yearly sampling occasions
 
 M*psi #expected N[1]
 
@@ -28,7 +28,7 @@ M*psi #expected N[1]
 
 data <- sim.JS.typical(psi=psi,gamma=gamma,
             beta0.phi=beta0.phi,beta1.phi=beta1.phi,
-            p=p,n.year=n.year,K=K,M=M)
+            p=p,n.primary=n.primary,K=K,M=M)
 data$N #yearly abundance
 data$N.super #superpopulation size
 
@@ -38,7 +38,7 @@ data$N.super #superpopulation size
 data$gamma.prime #can check for simulated data sets
 
 ##### Initialize z using observed data #####
-z.init <- matrix(0,M,n.year)
+z.init <- matrix(0,M,n.primary)
 n.super <- nrow(data$y)
 for(i in 1:n.super){
   det.idx <- which(data$y[i,]>0)
@@ -46,14 +46,14 @@ for(i in 1:n.super){
 }
 
 #augment data
-y <- rbind(data$y,matrix(0,M-n.super,n.year))
+y <- rbind(data$y,matrix(0,M-n.super,n.primary))
 
 #phi covariate data. nimble can init for undetected inds
 phi.cov.data <- rep(NA,M)
 phi.cov.data[1:n.super] <- data$phi.cov
 
 #constants for Nimble
-constants <- list(n.year=n.year,K=K,M=M)
+constants <- list(n.primary=n.primary,K=K,M=M)
 
 #inits for Nimble
 Niminits <- list(z=z.init,psi=sum(z.init[,1])/M,beta0.phi=0,beta1.phi=0,

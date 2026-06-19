@@ -3,7 +3,7 @@
 #Need to modify custom updates in this case
 #2) Object names that cannot be changed in the nimble model without changes in custom updates:
 #N, N.recruit, N.survive, ER, lambda.y1, z.start, z.stop, z.obs, 
-#phi[i,g] (must be of dimension M x n.year),
+#phi[i,g] (must be of dimension M x n.primary),
 #Poisson assumptions on N[1] and N.recruit (but can include overdispersion with random effects)
 #y can change dimension (e.g., for SCR), but need to account for that in defining "y.nodes"
 #below to add custom updates. I think that is all...
@@ -14,17 +14,17 @@ source("sim.JS.R")
 source("Nimble Model JS.R")
 source("Nimble Functions JS.R") #contains custom distributions and updates
 
-n.year <- 6 #number of years
+n.primary <- 6 #number of years
 lambda.y1 <- 100 #expected N in year 1
-gamma <- rep(0.2,n.year-1) #yearly per-capita recruitment
+gamma <- rep(0.2,n.primary-1) #yearly per-capita recruitment
 beta0.phi <- qlogis(0.85) #survival intercept
 beta1.phi <- 0.5 #phi response to individual covariate
-p <- rep(0.15,n.year) #yearly detection probabilities
-K <- rep(10,n.year) #yearly sampling occasions
+p <- rep(0.15,n.primary) #yearly detection probabilities
+K <- rep(10,n.primary) #yearly sampling occasions
 
 data <- sim.JS(lambda.y1=lambda.y1,gamma=gamma,
             beta0.phi=beta0.phi,beta1.phi=beta1.phi,
-            p=p,n.year=n.year,K=K)
+            p=p,n.primary=n.primary,K=K)
 
 data$truth$N.super #N.super
 
@@ -35,12 +35,12 @@ M <-  250 #data augmentation level. Check N.super posterior to make sure it neve
 N.super.init <- nrow(data$y)
 K <- data$K #pull K from data (won't be in environment if not simulated directly above)
 if(N.super.init > M) stop("Must augment more than number of individuals captured")
-y.nim <- matrix(0,M,n.year)
+y.nim <- matrix(0,M,n.primary)
 y.nim[1:N.super.init,] <- data$y #all these guys must be observed
 
 #initialize z objects, remain 0 if z.super.init=0
 z.init <- 1*(y.nim>0)
-z.init <- matrix(0,M,n.year)
+z.init <- matrix(0,M,n.primary)
 z.start.init <- z.stop.init <- rep(0,M)
 for(i in 1:N.super.init){
   det.idx <- which(y.nim[i,]>0)
@@ -55,8 +55,8 @@ z.obs <- 1*(rowSums(y.nim)>0) #indicator for "ever observed"
 
 #initialize N structures from z.init
 N.init <- colSums(z.init[z.super.init==1,])
-N.survive.init <- N.recruit.init <- rep(NA,n.year-1)
-for(g in 2:n.year){
+N.survive.init <- N.recruit.init <- rep(NA,n.primary-1)
+for(g in 2:n.primary){
   N.survive.init[g-1] <- sum(z.init[,g-1]==1&z.init[,g]==1&z.super.init==1)
   N.recruit.init[g-1] <- N.init[g]-N.survive.init[g-1]
 }
@@ -65,7 +65,7 @@ for(g in 2:n.year){
 phi.cov.data <- c(data$cov,rep(NA,M-length(data$cov)))
 cov.up <- which(is.na(phi.cov.data)) #which individuals have missing cov values, used below to help nimble assign samplers
 #constants for Nimble
-constants <- list(n.year=n.year, K=K, M=M)
+constants <- list(n.primary=n.primary, K=K, M=M)
 
 #inits for Nimble
 Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
@@ -94,15 +94,15 @@ conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,
 #Add N/z samplers
 z.super.ups <- round(M*0.25) #how many z.super update proposals per iteration? 
 #20% of M seems reasonable, but optimal will depend on data set
-y.nodes <- c(Rmodel$expandNodeNames(paste0("y[1:",M,",1:",n.year,"]")) ) #if you change y structure, change here
+y.nodes <- c(Rmodel$expandNodeNames(paste0("y[1:",M,",1:",n.primary,"]")) ) #if you change y structure, change here
 N.nodes <- Rmodel$expandNodeNames(paste0("N"))
-N.survive.nodes <- Rmodel$expandNodeNames(paste0("N.survive[1:",n.year-1,"]"))
-N.recruit.nodes <- Rmodel$expandNodeNames(paste0("N.recruit[1:",n.year-1,"]"))
-ER.nodes <- Rmodel$expandNodeNames(paste0("ER[1:",n.year-1,"]"))
+N.survive.nodes <- Rmodel$expandNodeNames(paste0("N.survive[1:",n.primary-1,"]"))
+N.recruit.nodes <- Rmodel$expandNodeNames(paste0("N.recruit[1:",n.primary-1,"]"))
+ER.nodes <- Rmodel$expandNodeNames(paste0("ER[1:",n.primary-1,"]"))
 z.nodes <- Rmodel$expandNodeNames(paste0("z[1:",M,",1]"))
 calcNodes <- c(N.nodes,ER.nodes,N.recruit.nodes,N.survive.nodes,y.nodes,z.nodes)
 conf$addSampler(target = c("z"),
-                type = 'zSampler',control = list(M=M,n.year=n.year,z.obs=z.obs,z.super.ups=z.super.ups,
+                type = 'zSampler',control = list(M=M,n.primary=n.primary,z.obs=z.obs,z.super.ups=z.super.ups,
                                                  y.nodes=y.nodes,N.nodes=N.nodes,z.nodes=z.nodes,
                                                  ER.nodes=ER.nodes,N.survive.nodes=N.survive.nodes,
                                                  N.recruit.nodes=N.recruit.nodes,
@@ -140,24 +140,24 @@ data$truth$N.super #N.super
 #model states match between z and N objects
 
 # #check N count
-# N.count <- rep(NA,n.year)
-# for(g2 in 1:n.year){
+# N.count <- rep(NA,n.primary)
+# for(g2 in 1:n.primary){
 #   N.count[g2] <- sum(Cmodel$z[Cmodel$z.super==1,g2]==1)
 # }
 # N.count
 # Cmodel$N
 # 
 # #check N.recruit count
-# N.count <- rep(NA,n.year-1)
-# for(g2 in 2:n.year){
+# N.count <- rep(NA,n.primary-1)
+# for(g2 in 2:n.primary){
 #   N.count[g2-1] <- sum(Cmodel$z[Cmodel$z.super==1,g2-1]==0&Cmodel$z[Cmodel$z.super==1,g2]==1)
 # }
 # N.count
 # Cmodel$N.recruit
 # 
 # #check N.survive count
-# N.count <- rep(NA,n.year-1)
-# for(g2 in 2:n.year){
+# N.count <- rep(NA,n.primary-1)
+# for(g2 in 2:n.primary){
 #   N.count[g2-1] <- sum(Cmodel$z[Cmodel$z.super==1,g2-1]==1&Cmodel$z[Cmodel$z.super==1,g2]==1)
 # }
 # N.count

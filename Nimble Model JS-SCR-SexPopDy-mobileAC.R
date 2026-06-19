@@ -5,19 +5,19 @@ NimModel <- nimbleCode({
   N.M[1] ~ dpois(lambda.y1.M) #Realized starting population size
   N.F[1] ~ dpois(lambda.y1.F) #Realized starting population size
   N[1] <- N.M[1] + N.F[1]
-  for(g in 2:n.year){
+  for(g in 2:n.primary){
     N[g] <- N.survive[g-1] + N.recruit[g-1] #yearly total abundance
     N.M[g] <- N.survive.M[g-1] + N.recruit.M[g-1] #yearly male abundance
     N.F[g] <- N.survive.F[g-1] + N.recruit.F[g-1] #yearly female abundance
     #sex-specific N.recruit and N.survive information also contained in z, z.start, z.stop, and sex
     #sex-specific N.recruit has distributions assigned below, but survival distributions defined on z
   }
-  N.super <- N[1] + sum(N.recruit[1:(n.year-1)]) #size of superpopulation
+  N.super <- N[1] + sum(N.recruit[1:(n.primary-1)]) #size of superpopulation
   
   #Sex-specific Recruitment
   gamma.male ~ dunif(0,2)
   gamma.female ~ dunif(0,2)
-  for(g in 1:(n.year-1)){
+  for(g in 1:(n.primary-1)){
     # gamma.sex[1,g] ~ dunif(0,2) # yearly male recruitment priors
     # gamma.sex[2,g] ~ dunif(0,2) # yearly female recruitment priors
     gamma.sex[1,g] <- gamma.male
@@ -38,7 +38,7 @@ NimModel <- nimbleCode({
     #same as above, but vectorized and gated by z.super
     #all s set to 0 if not in population, z.super[i]=0
     s[i,1,1:2] ~ dunif2D(xlim=xlim[1:2],ylim=ylim[1:2],z.super=z.super[i])
-    for(g in 2:n.year){
+    for(g in 2:n.primary){
       #If you change movement distribution, need to modify custom s updates (3rd one for z.super=0)
       # s[i,g,1] ~ T(dnorm(s[i,g-1,1],sd=sigma.move.sex[sex[i]+1]),xlim[1],xlim[2])
       # s[i,g,2] ~ T(dnorm(s[i,g-1,2],sd=sigma.move.sex[sex[i]+1]),ylim[1],ylim[2])
@@ -49,23 +49,23 @@ NimModel <- nimbleCode({
     }
   }
 
-  #Survival (phi must have M x n.year - 1 dimension for custom updates to work)
+  #Survival (phi must have M x n.primary - 1 dimension for custom updates to work)
   #without individual or year effects, use for loop to plug into phi[i,g]
   phi.sex[1] ~ dunif(0,1)
   phi.sex[2] ~ dunif(0,1)
   for(i in 1:M){
-    for(g in 1:(n.year-1)){#plugging same individual phi's into each year (phi: M x n.year-1 expected by custom update)
+    for(g in 1:(n.primary-1)){#plugging same individual phi's into each year (phi: M x n.primary-1 expected by custom update)
       phi[i,g] <- phi.sex[sex[i]+1]
     }
     #survival likelihood (bernoulli) that only sums from z.start to z.stop
-    z[i,1:n.year] ~ dSurvival(phi=phi[i,1:(n.year-1)],z.start=z.start[i],z.stop=z.stop[i],z.super=z.super[i])
+    z[i,1:n.primary] ~ dSurvival(phi=phi[i,1:(n.primary-1)],z.start=z.start[i],z.stop=z.stop[i],z.super=z.super[i])
   }
 
   ##Detection##
   #fixing sex-specific sigma across years
   sigma.sex[1] ~ dunif(0,10) #male sigma
   sigma.sex[2] ~ dunif(0,10) #female sigma
-  for(g in 1:n.year){
+  for(g in 1:n.primary){
     #sex-specific p0 varies by year
     p0.sex[1,g] ~ dunif(0,1) #male p0
     p0.sex[2,g] ~ dunif(0,1) #female p0

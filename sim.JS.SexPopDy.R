@@ -5,13 +5,13 @@ e2dist = function (x, y){
 }
 
 sim.JS.SexPopDy <- function(lambda.y1.M=NA,lambda.y1.F=NA,
-                            n.year=NA,gamma.sex=NA,phi.sex=NA,
+                            n.primary=NA,gamma.sex=NA,phi.sex=NA,
                    p.sex=NA,K=NA,p.obs.sex=NA){
   
   #Population dynamics
-  N <- N.M <- N.F <- rep(NA,n.year)
-  N.recruit.M <- N.survive.M <- ER.M <- rep(NA,n.year-1)
-  N.recruit.F <- N.survive.F <- ER.F <- rep(NA,n.year-1)
+  N <- N.M <- N.F <- rep(NA,n.primary)
+  N.recruit.M <- N.survive.M <- ER.M <- rep(NA,n.primary-1)
+  N.recruit.F <- N.survive.F <- ER.F <- rep(NA,n.primary-1)
   N.M[1] <- rpois(1,lambda.y1.M)
   N.F[1] <- rpois(1,lambda.y1.F)
   N[1] <- N.M[1]+N.F[1]
@@ -19,11 +19,11 @@ sim.JS.SexPopDy <- function(lambda.y1.M=NA,lambda.y1.F=NA,
   if(N.F[1]==0)stop("Simulated starting female population size of 0")
   
   #Easiest to increase dimension of z as we simulate bc size not known in advance.
-  z <- matrix(0,N[1],n.year)
+  z <- matrix(0,N[1],n.primary)
   z[1:N[1],1] <- 1
   sex <- c(rep(1,N.M[1]),rep(2,N.F[1])) #derived variable
-  phi <- matrix(NA,N[1],n.year-1)
-  for(g in 2:n.year){
+  phi <- matrix(NA,N[1],n.primary-1)
+  for(g in 2:n.primary){
     #Simulate recruits
     ER.M[g-1] <- N[g-1]*gamma.sex[1]
     ER.F[g-1] <- N[g-1]*gamma.sex[2]
@@ -32,13 +32,13 @@ sim.JS.SexPopDy <- function(lambda.y1.M=NA,lambda.y1.F=NA,
     if((N.recruit.M[g-1]+N.recruit.F[g-1])>0){
       #add recruits to z
       z.dim.old <- nrow(z)
-      z <- rbind(z,matrix(0,nrow=N.recruit.M[g-1]+N.recruit.F[g-1],ncol=n.year))
+      z <- rbind(z,matrix(0,nrow=N.recruit.M[g-1]+N.recruit.F[g-1],ncol=n.primary))
       z[(z.dim.old+1):(z.dim.old+N.recruit.M[g-1]+N.recruit.F[g-1]),g] <- 1
       #record sexes
       sex <- c(sex,rep(1,N.recruit.M[g-1]),rep(2,N.recruit.F[g-1]))
       
       #Simulate survival
-      phi <- rbind(phi,matrix(NA,nrow=N.recruit.M[g-1]+N.recruit.F[g-1],ncol=n.year-1))
+      phi <- rbind(phi,matrix(NA,nrow=N.recruit.M[g-1]+N.recruit.F[g-1],ncol=n.primary-1))
     }
     phi[,g-1] <- phi.sex[sex]
     
@@ -53,14 +53,14 @@ sim.JS.SexPopDy <- function(lambda.y1.M=NA,lambda.y1.F=NA,
   N.recruit <- N.recruit.M+N.recruit.F
   N.survive <- N.survive.M+N.survive.F
   
-  if(any(N.recruit.M+N.survive.M!=N.M[2:n.year]))stop("Simulation bug")
-  if(any(N.recruit.F+N.survive.F!=N.F[2:n.year]))stop("Simulation bug")
+  if(any(N.recruit.M+N.survive.M!=N.M[2:n.primary]))stop("Simulation bug")
+  if(any(N.recruit.F+N.survive.F!=N.F[2:n.primary]))stop("Simulation bug")
   if(any(colSums(z)!=N))stop("Simulation bug")
   N.super <- nrow(z)
   
   #detection
-  y <- matrix(0,N.super,n.year)
-  for(g in 1:n.year){
+  y <- matrix(0,N.super,n.primary)
+  for(g in 1:n.primary){
     for(i in 1:N.super){
       if(z[i,g]==1){
           y[i,g] <- rbinom(1,K[g],p.sex[sex[i]])
@@ -87,5 +87,5 @@ sim.JS.SexPopDy <- function(lambda.y1.M=NA,lambda.y1.F=NA,
               N=N,N.recruit=N.recruit,N.survive=N.survive,
               N.M=N.M,N.recruit.M=N.recruit.M,N.survive.M=N.survive.M,
               N.F=N.F,N.recruit.F=N.recruit.F,N.survive.F=N.survive.F,
-              n.year=n.year,K=K,truth=truth))
+              n.primary=n.primary,K=K,truth=truth))
 }

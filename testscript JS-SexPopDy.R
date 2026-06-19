@@ -4,7 +4,7 @@
 #2) Object names that cannot be changed in the nimble model without changes in custom updates:
 #N, N.recruit, N.survive, ER (male and female counterparts for all these, too),
 # lambda.y1.M, lambda.y1.F, z.start, z.stop, z.obs
-#phi[i,g] (must be of dimension M x n.year),
+#phi[i,g] (must be of dimension M x n.primary),
 #Poisson assumptions on N.M[1], N.F[1] and N.recruit.M/N.recruit.F (but can include overdispersion with random effects)
 #y can change dimension (e.g., for SCR), but need to account for that in defining "y.nodes"
 #below to add custom updates. I think that is all...
@@ -15,7 +15,7 @@ source("sim.JS.SexPopDy.R")
 source("Nimble Model JS-SexPopDy.R")
 source("Nimble Functions JS-SexPopDy.R") #contains custom distributions and updates
 
-n.year <- 4 #number of years
+n.primary <- 4 #number of years
 lambda.y1.M <- 50 #expected male N in year 1
 lambda.y1.F <- 50 #expected female N in year 1
 #yearly per-capita recruitment
@@ -24,7 +24,7 @@ gamma.sex <- c(0.15,0.10) #male, then female, fixed across years
 phi.sex <- c(0.75,0.95) #male, then female, fixed across years
 #sex-specific p
 p.sex <- c(0.15,0.15) #male, then female, fixed across years
-K <- rep(10,n.year) #yearly sampling occasions
+K <- rep(10,n.primary) #yearly sampling occasions
 
 #probability we observe sex for detected individuals (not a function of number of capture events)
 #ASSUMPTION: sex observations are missing at random (same prob of observing male and female)
@@ -32,7 +32,7 @@ K <- rep(10,n.year) #yearly sampling occasions
 p.obs.sex <- 1
 
 data <- sim.JS.SexPopDy(lambda.y1.M=lambda.y1.M,lambda.y1.F=lambda.y1.F,
-                        n.year=n.year,gamma.sex=gamma.sex,phi.sex=phi.sex,
+                        n.primary=n.primary,gamma.sex=gamma.sex,phi.sex=phi.sex,
                         p.sex=p.sex,K=K,p.obs.sex=p.obs.sex)
 
 data$truth$N.super #N.super
@@ -44,12 +44,12 @@ M <- 250 #data augmentation level. Check N.super posterior to make sure it never
 N.super.init <- nrow(data$y)
 K <- data$K #pull K from data (won't be in environment if not simulated directly above)
 if(N.super.init > M) stop("Must augment more than number of individuals captured")
-y.nim <- matrix(0,M,n.year)
+y.nim <- matrix(0,M,n.primary)
 y.nim[1:N.super.init,] <- data$y #all these guys must be observed
 
 #initialize z objects, remain 0 if z.super.init=0
 z.init <- 1*(y.nim>0)
-z.init <- matrix(0,M,n.year)
+z.init <- matrix(0,M,n.primary)
 z.start.init <- z.stop.init <- rep(0,M)
 for(i in 1:N.super.init){
   det.idx <- which(y.nim[i,]>0)
@@ -73,10 +73,10 @@ sex.init[sex.up] <- sample(c(0,1),length(sex.up),0.5)
 N.M.init <- colSums(z.init[z.super.init==1&sex.init==0,])
 N.F.init <- colSums(z.init[z.super.init==1&sex.init==1,])
 N.init <- N.M.init + N.F.init
-N.survive.M.init <- N.recruit.M.init <- rep(NA,n.year-1)
-N.survive.F.init <- N.recruit.F.init <- rep(NA,n.year-1)
-N.survive.init <- N.recruit.init <- rep(NA,n.year-1)
-for(g in 2:n.year){
+N.survive.M.init <- N.recruit.M.init <- rep(NA,n.primary-1)
+N.survive.F.init <- N.recruit.F.init <- rep(NA,n.primary-1)
+N.survive.init <- N.recruit.init <- rep(NA,n.primary-1)
+for(g in 2:n.primary){
   N.survive.M.init[g-1] <- sum(z.init[,g-1]==1&z.init[,g]==1&z.super.init==1&sex.init==0)
   N.recruit.M.init[g-1] <- N.M.init[g]-N.survive.M.init[g-1]
   N.survive.F.init[g-1] <- sum(z.init[,g-1]==1&z.init[,g]==1&z.super.init==1&sex.init==1)
@@ -86,7 +86,7 @@ N.survive.init <- N.survive.M.init + N.survive.F.init
 N.recruit.init <- N.recruit.M.init + N.recruit.F.init
 
 #constants for Nimble
-constants <- list(n.year=n.year, M=M, K=K)
+constants <- list(n.primary=n.primary, M=M, K=K)
 #inits for Nimble
 Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
                  N.M=N.M.init,N.survive.M=N.survive.M.init,N.recruit.M=N.recruit.M.init,
@@ -122,18 +122,18 @@ conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,monitors2=parameters2,
 #add N/z samplers
 z.super.ups <- round(M*0.25) #how many z.super update proposals per iteration?
 #25% of M seems reasonable, but optimal will depend on data set
-y.nodes <- c(Rmodel$expandNodeNames(paste0("y[1:",M,",1:",n.year,"]")) )
+y.nodes <- c(Rmodel$expandNodeNames(paste0("y[1:",M,",1:",n.primary,"]")) )
 N.nodes <- Rmodel$expandNodeNames(paste0("N"))
 N.M.nodes <- Rmodel$expandNodeNames(paste0("N.M"))
 N.F.nodes <- Rmodel$expandNodeNames(paste0("N.F"))
-N.survive.nodes <- Rmodel$expandNodeNames(paste0("N.survive[1:",n.year-1,"]"))
-N.survive.M.nodes <- Rmodel$expandNodeNames(paste0("N.survive.M[1:",n.year-1,"]"))
-N.survive.F.nodes <- Rmodel$expandNodeNames(paste0("N.survive.F[1:",n.year-1,"]"))
-N.recruit.nodes <- Rmodel$expandNodeNames(paste0("N.recruit[1:",n.year-1,"]"))
-N.recruit.M.nodes <- Rmodel$expandNodeNames(paste0("N.recruit.M[1:",n.year-1,"]"))
-N.recruit.F.nodes <- Rmodel$expandNodeNames(paste0("N.recruit.F[1:",n.year-1,"]"))
-ER.M.nodes <- Rmodel$expandNodeNames(paste0("ER.M[1:",n.year-1,"]"))
-ER.F.nodes <- Rmodel$expandNodeNames(paste0("ER.F[1:",n.year-1,"]"))
+N.survive.nodes <- Rmodel$expandNodeNames(paste0("N.survive[1:",n.primary-1,"]"))
+N.survive.M.nodes <- Rmodel$expandNodeNames(paste0("N.survive.M[1:",n.primary-1,"]"))
+N.survive.F.nodes <- Rmodel$expandNodeNames(paste0("N.survive.F[1:",n.primary-1,"]"))
+N.recruit.nodes <- Rmodel$expandNodeNames(paste0("N.recruit[1:",n.primary-1,"]"))
+N.recruit.M.nodes <- Rmodel$expandNodeNames(paste0("N.recruit.M[1:",n.primary-1,"]"))
+N.recruit.F.nodes <- Rmodel$expandNodeNames(paste0("N.recruit.F[1:",n.primary-1,"]"))
+ER.M.nodes <- Rmodel$expandNodeNames(paste0("ER.M[1:",n.primary-1,"]"))
+ER.F.nodes <- Rmodel$expandNodeNames(paste0("ER.F[1:",n.primary-1,"]"))
 z.nodes <- Rmodel$expandNodeNames(paste0("z[1:",M,",1]"))
 phi.nodes <-  Rmodel$expandNodeNames(paste0("phi"))
 
@@ -145,7 +145,7 @@ calcNodes <- c(N.nodes,
                N.survive.nodes,N.recruit.nodes,
                y.nodes,z.nodes,phi.nodes)
 conf$addSampler(target = c("z"),
-                type = 'zSampler',control = list(M=M,n.year=n.year,
+                type = 'zSampler',control = list(M=M,n.primary=n.primary,
                                                  z.obs=z.obs,z.super.ups=z.super.ups,
                                                  y.nodes=y.nodes,
                                                  z.nodes=z.nodes,phi.nodes=phi.nodes,
@@ -195,10 +195,10 @@ plot(mcmc(mvSamples2[-c(1:250),sex.up])) #sex.up defined above
 # #model states match between sex, z, and N structures
 # 
 # #check N
-# N.count <- rep(NA,n.year)
-# N.count.M <- rep(NA,n.year)
-# N.count.F <- rep(NA,n.year)
-# for(g2 in 1:n.year){
+# N.count <- rep(NA,n.primary)
+# N.count.M <- rep(NA,n.primary)
+# N.count.F <- rep(NA,n.primary)
+# for(g2 in 1:n.primary){
 #   N.count[g2] <- sum(Cmodel$z[Cmodel$z.super==1,g2]==1)
 #   N.count.M[g2] <- sum(Cmodel$z[Cmodel$z.super==1,g2]==1&Cmodel$sex[Cmodel$z.super==1]==0)
 #   N.count.F[g2] <- sum(Cmodel$z[Cmodel$z.super==1,g2]==1&Cmodel$sex[Cmodel$z.super==1]==1)
@@ -209,10 +209,10 @@ plot(mcmc(mvSamples2[-c(1:250),sex.up])) #sex.up defined above
 # 
 # 
 # #check N.recruit count
-# N.count <- rep(NA,n.year-1)
-# N.count.M <- rep(NA,n.year-1)
-# N.count.F <- rep(NA,n.year-1)
-# for(g2 in 2:n.year){
+# N.count <- rep(NA,n.primary-1)
+# N.count.M <- rep(NA,n.primary-1)
+# N.count.F <- rep(NA,n.primary-1)
+# for(g2 in 2:n.primary){
 #   N.count[g2-1] <- sum(Cmodel$z[Cmodel$z.super==1,g2-1]==0&Cmodel$z[Cmodel$z.super==1,g2]==1)
 #   N.count.M[g2-1] <- sum(Cmodel$z[Cmodel$z.super==1,g2-1]==0&Cmodel$z[Cmodel$z.super==1,g2]==1&Cmodel$sex[Cmodel$z.super==1]==0)
 #   N.count.F[g2-1] <- sum(Cmodel$z[Cmodel$z.super==1,g2-1]==0&Cmodel$z[Cmodel$z.super==1,g2]==1&Cmodel$sex[Cmodel$z.super==1]==1)
@@ -222,10 +222,10 @@ plot(mcmc(mvSamples2[-c(1:250),sex.up])) #sex.up defined above
 # all(N.count.F==Cmodel$N.recruit.F)
 # 
 # #check N.survive count
-# N.count <- rep(NA,n.year-1)
-# N.count.M <- rep(NA,n.year-1)
-# N.count.F <- rep(NA,n.year-1)
-# for(g2 in 2:n.year){
+# N.count <- rep(NA,n.primary-1)
+# N.count.M <- rep(NA,n.primary-1)
+# N.count.F <- rep(NA,n.primary-1)
+# for(g2 in 2:n.primary){
 #   N.count[g2-1] <- sum(Cmodel$z[Cmodel$z.super==1,g2-1]==1&Cmodel$z[Cmodel$z.super==1,g2]==1)
 #   N.count.M[g2-1] <- sum(Cmodel$z[Cmodel$z.super==1,g2-1]==1&Cmodel$z[Cmodel$z.super==1,g2]==1&Cmodel$sex[Cmodel$z.super==1]==0)
 #   N.count.F[g2-1] <- sum(Cmodel$z[Cmodel$z.super==1,g2-1]==1&Cmodel$z[Cmodel$z.super==1,g2]==1&Cmodel$sex[Cmodel$z.super==1]==1)

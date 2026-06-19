@@ -5,12 +5,12 @@ e2dist <- function (x, y){
 }
 
 sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
-                            gamma=NA,n.year=NA,beta0.phi=NA,beta1.phi=NA,
+                            gamma=NA,n.primary=NA,beta0.phi=NA,beta1.phi=NA,
                    p0=NA,sigma=NA,sigma.move=sigma.move,rsf.beta=rsf.beta,
                    X=NA,buff=buff,K=NA,xlim=NA,ylim=NA,res=NA){
   #Population dynamics
-  N <- rep(NA,n.year)
-  N.recruit <- N.survive <- ER <- rep(NA,n.year-1)
+  N <- rep(NA,n.primary)
+  N.recruit <- N.survive <- ER <- rep(NA,n.primary-1)
   #get expected N in year 1 from D.cov parameters
   cellArea <- res^2
   lambda.cell <- InSS*exp(D.beta0 + D.beta1*D.cov)*cellArea
@@ -27,23 +27,23 @@ sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   n.cells.y <- length(y.vals)
   
   #Easiest to increase dimension of z as we simulate bc size not known in advance.
-  z <- matrix(0,N[1],n.year)
+  z <- matrix(0,N[1],n.primary)
   z[1:N[1],1] <- 1
   cov <- rnorm(N[1],0,1) #simulate ind survival covariate for 1st year guys
-  phi <- matrix(NA,N[1],n.year-1)
-  for(g in 2:n.year){
+  phi <- matrix(NA,N[1],n.primary-1)
+  for(g in 2:n.primary){
     #Simulate recruits
     ER[g-1] <- N[g-1]*gamma[g-1]
     N.recruit[g-1] <- rpois(1,ER[g-1])
     #add recruits to z
     z.dim.old <- length(cov)
-    z <- rbind(z,matrix(0,nrow=N.recruit[g-1],ncol=n.year))
+    z <- rbind(z,matrix(0,nrow=N.recruit[g-1],ncol=n.primary))
     z[(z.dim.old+1):(z.dim.old+N.recruit[g-1]),g] <- 1
     cov <- c(cov,rep(NA,N.recruit[g-1]))
     cov[(z.dim.old+1):(z.dim.old+N.recruit[g-1])] <- rnorm(N.recruit[g-1],0,1) #simulate survival cov values for new recruits
 
     #Simulate survival
-    phi <- rbind(phi,matrix(NA,nrow=N.recruit[g-1],ncol=n.year-1))
+    phi <- rbind(phi,matrix(NA,nrow=N.recruit[g-1],ncol=n.primary-1))
     phi[,g-1] <- plogis(beta0.phi+cov*beta1.phi)
 
     idx <- which(z[,g-1]==1)
@@ -52,7 +52,7 @@ sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
     N[g] <- N.recruit[g-1]+N.survive[g-1]
   }
 
-  if(any(N.recruit+N.survive!=N[2:n.year]))stop("Simulation bug")
+  if(any(N.recruit+N.survive!=N[2:n.primary]))stop("Simulation bug")
   if(any(colSums(z)!=N))stop("Simulation bug")
 
   #plot to see if sim values realistic
@@ -66,10 +66,10 @@ sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   # simulate a population of activity centers for year 1 proportional to D.cov
   library(truncnorm)
   pi.cell <- lambda.cell/sum(lambda.cell)
-  s.cell <- matrix(NA,N.super,n.year)
+  s.cell <- matrix(NA,N.super,n.primary)
   s.cell[,1] <- sample(1:n.cells,N.super,prob=pi.cell,replace=TRUE)
   #distribute activity centers uniformly inside cells
-  s <- array(NA,dim=c(N.super,n.year,2))
+  s <- array(NA,dim=c(N.super,n.primary,2))
   for(i in 1:N.super){
     s.xlim <- dSS[s.cell[i],1] + c(-res,res)/2
     s.ylim <- dSS[s.cell[i],2] + c(-res,res)/2
@@ -77,10 +77,10 @@ sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
     s[i,1,2] <- runif(1,s.ylim[1],s.ylim[2])
   }
   #subsequent years
-  avail.dist <- use.dist <- array(NA,dim=c(N.super,n.year-1,n.cells))
+  avail.dist <- use.dist <- array(NA,dim=c(N.super,n.primary-1,n.cells))
   rsf <- exp(rsf.beta*D.cov)
   rsf[InSS==0] <- 0 #disallow individuals moving into nonhabitat
-  for(g in 2:n.year){
+  for(g in 2:n.primary){
     for(i in 1:N.super){
       avail.dist[i,g-1,] <- getAvail(s=s[i,g-1,1:2],sigma=sigma.move,res=res,x.vals=x.vals,
                                      y.vals=y.vals,n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
@@ -96,8 +96,8 @@ sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
       s[i,g,2] <- rtruncnorm(1,a=s.ylim[1],b=s.ylim[2],mean=s[i,g-1,2],sd=sigma.move)
     }
   }
-  pd <- y <- array(0,dim=c(N.super,n.year,J.max))
-  for(g in 1:n.year){
+  pd <- y <- array(0,dim=c(N.super,n.primary,J.max))
+  for(g in 1:n.primary){
     D <- e2dist(s[,g,],X[[g]])
     pd[,g,1:J[g]]<- p0[g]*exp(-D*D/(2*sigma[g]*sigma[g]))
     for(i in 1:N.super){
@@ -108,9 +108,9 @@ sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   }
   
   #expected proportion of realized N in cell 
-  pi.cell <- array(NA,dim=c(n.year,n.cells))
+  pi.cell <- array(NA,dim=c(n.primary,n.cells))
   pi.cell[1,] <- lambda.cell/sum(lambda.cell)
-  for(g in 2:n.year){
+  for(g in 2:n.primary){
     pi.cell[g,] <- colSums(use.dist[z[,g]==1,g-1,])*InSS
     pi.cell[g,] <- pi.cell[g,]/sum(pi.cell[g,])
   }
@@ -126,7 +126,7 @@ sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   cov <- cov[keep.idx]
   s <- s[keep.idx,,]
   s.cell <- s.cell[keep.idx,]
-  return(list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,X=X,K=K,n.year=n.year,
+  return(list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,X=X,K=K,n.primary=n.primary,
               xlim=xlim,ylim=ylim,x.vals=x.vals,y.vals=y.vals,dSS=dSS,cells=cells,
               n.cells=n.cells,n.cells.x=n.cells.x,n.cells.y=n.cells.y,s.cell=s.cell,s=s,
               D.cov=D.cov,InSS=InSS,res=res,cellArea=cellArea,N=N,lambda.y1=lambda.y1,
