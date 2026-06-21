@@ -6,7 +6,7 @@ e2dist <- function (x, y){
 
 sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
                             gamma=NA,n.primary=NA,beta0.phi=NA,beta1.phi=NA,
-                   p0=NA,sigma=NA,sigma.move=sigma.move,rsf.beta=rsf.beta,
+                   p0=NA,sigma=NA,sigma.move=NA,rsf.beta=NA,
                    X=NA,buff=buff,K=NA,xlim=NA,ylim=NA,res=NA){
   #Population dynamics
   N <- rep(NA,n.primary)
@@ -71,8 +71,8 @@ sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   #distribute activity centers uniformly inside cells
   s <- array(NA,dim=c(N.super,n.primary,2))
   for(i in 1:N.super){
-    s.xlim <- dSS[s.cell[i],1] + c(-res,res)/2
-    s.ylim <- dSS[s.cell[i],2] + c(-res,res)/2
+    s.xlim <- dSS[s.cell[i,1],1] + c(-res,res)/2
+    s.ylim <- dSS[s.cell[i,1],2] + c(-res,res)/2
     s[i,1,1] <- runif(1,s.xlim[1],s.xlim[2])
     s[i,1,2] <- runif(1,s.ylim[1],s.ylim[2])
   }
