@@ -120,8 +120,8 @@ dHabYear1 <- nimbleFunction(
                  log = integer(0)) {
     returnType(double(0))
     if(z.super==1){
-      # uniform over state space
-      logProb.unif <- -log(xlim[2]-xlim[1]) - log(ylim[2]-ylim[1])
+      # uniform over state space cell
+      logProb.unif <- - 2*log(res)
       # cell likelihood
       cell <- cells[trunc(x[1]/res)+1, trunc(x[2]/res)+1]
       logProb.cell <- log(pi.cell[cell])
