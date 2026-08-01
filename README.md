@@ -296,9 +296,7 @@ $$
 An initial activity center cell is drawn from this categorical distribution, after which the continuous activity center coordinates are drawn uniformly within the selected cell. During each subsequent primary occasion, activity centers follow a Markov movement model with resource selection. Conditional on the previous activity center $\mathbf{s}_{i,g-1}$, the availability probability for cell $c$ is
 
 $$
-a_{i,g,c}
-=
-\int_{\mathcal{A}_c}
+a_{i,g,c}=\int_{\mathcal{A}_c}
 \mathrm{BVN}\left(
 \mathbf{v}
 \mid
@@ -319,9 +317,7 @@ $$
 where $\beta^{\mathrm{RSF}}$ is the resource selection coefficient. The resulting use probability, or probability that individual $i$ selects cell $c$ during primary occasion $g$, is
 
 $$
-u_{i,g,c}
-=
-\frac{a_{i,g,c}r_c}
+u_{i,g,c}=\frac{a_{i,g,c}r_c}
 {\displaystyle\sum_{k=1}^{C}a_{i,g,k}r_k}.
 $$
 
