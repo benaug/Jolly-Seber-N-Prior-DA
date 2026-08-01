@@ -47,11 +47,7 @@ $$
 possible allocations, and the conditional prior for $\mathbf{z}$ is
 
 $$
-\Pr(\mathbf{z}\mid N,M)
-=
-\binom{M}{N}^{-1}
-=
-\frac{N!N_0!}{M!}.
+\Pr(\mathbf{z}\mid N,M) = \binom{M}{N}^{-1} = \frac{N!N_0!}{M!}.
 $$
 
 A custom Metropolis-Hastings update is required to jointly update $N$ and $\mathbf{z}$.
@@ -75,9 +71,7 @@ $$
 where $B_g$ corresponds to `N.recruit[g]` in the code and $\gamma_g$ is the per capita recruitment rate. The total number of individuals that ever enter the population is
 
 $$
-N_{\mathrm{super}}
-=
-N_1+\sum_{g=1}^{G-1}B_g.
+N_{\mathrm{super}} = N_1+\sum_{g=1}^{G-1}B_g.
 $$
 
 The number of augmented individuals that never enter is
@@ -117,9 +111,7 @@ $$
 and
 
 $$
-B_g
-=
-\sum_{i=1}^{M} I(e_i=g+1),
+B_g=\sum_{i=1}^{M} I(e_i=g+1),
 \qquad
 g=1,\ldots,G-1.
 $$
@@ -149,9 +141,7 @@ $$
 \mathbf{e}
 \mid
 N_1,B_1,\ldots,B_{G-1},M
-\right)
-=
-\frac{
+\right)=\frac{
 N_0!N_1!\displaystyle\prod_{g=1}^{G-1}B_g!
 }{
 M!
