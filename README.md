@@ -71,13 +71,13 @@ $$
 where $B_g$ corresponds to `N.recruit[g]` in the code and $\gamma_g$ is the per capita recruitment rate. The total number of individuals that ever enter the population is
 
 $$
-N_{\mathrm{super}} = N_1+\sum_{g=1}^{G-1}B_g.
+N^{\mathrm{super}} = N_1+\sum_{g=1}^{G-1}B_g.
 $$
 
 The number of augmented individuals that never enter is
 
 $$
-N_0=M-N_{\mathrm{super}}.
+N_0=M-N^{\mathrm{super}}.
 $$
 
 To describe the allocation of the $M$ augmented indices, define the entry-occasion variable
@@ -192,7 +192,7 @@ $$
 The total number of individuals that ever enter the population is
 
 $$
-N_{\mathrm{super}}=N_1^F+N_1^M+\sum_{g=1}^{G-1}(B_g^F+B_g^M),
+N^{\mathrm{super}}=N_1^F+N_1^M+\sum_{g=1}^{G-1}(B_g^F+B_g^M),
 $$
 
 and the size of the single shared never-entered class is
