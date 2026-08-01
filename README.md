@@ -304,7 +304,7 @@ a_{i,g,c}=\int_{\mathcal{A}_c}
 \,d\mathbf{v},
 $$
 
-where $\mathcal{A}_c$ is the area of cell $c$, $\mathbf{v}=(v_x,v_y)$ is a possible continuous activity center location within that cell, and $\mathrm{BVN}(\mathbf{v}\mid\boldsymbol{\mu},\sigma^2\mathbf{I}_2)$ denotes an isotropic bivariate normal density with mean $\boldsymbol{\mu}$, equal coordinate variances $\sigma^2$, and zero covariance. The matrix $\mathbf{I}_2$ is the $2\times2$ identity matrix, and $\sigma_{\mathrm{move}}$ is the scale of activity center movement between primary occasions.
+where $\mathcal{A}_c$ is the area of cell $c$, $\mathbf{v}=(v_x,v_y)$ is a possible continuous activity center location within that cell, and $\mathrm{BVN}(\mathbf{v}\mid\boldsymbol{\mu},\sigma^2\mathbf{I}_2)$ denotes an isotropic bivariate normal density with mean $\boldsymbol{\mu}$, equal coordinate variances $\sigma^2$, and zero covariance. The matrix $\mathbf{I}_2$ is the $2\times 2$ identity matrix, and $\sigma_{\mathrm{move}}$ is the scale of activity center movement between primary occasions.
 
 The resource selection weight for cell $c$ is
 
