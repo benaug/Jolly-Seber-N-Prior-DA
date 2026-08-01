@@ -213,7 +213,7 @@ $$
 \Pr\left(\mathbf{e},\mathbf{sex}\mid N_1^F,N_1^M,\mathbf{B}^F,\mathbf{B}^M,M\right)=\frac{N_0!\left(N_1^F\right)!\left(N_1^M\right)!\displaystyle\prod_{g=1}^{G-1}\left(B_g^F\right)!\left(B_g^M\right)!}{M!},
 $$
 
-where $\mathbf{sex}$ is the vector of individual sex states, with `sex[i] = 1` for male, `sex[i] = 2` for female, and `sex[i] = 0` for individuals that never enter the population ($e_i=0$ and $z_i^{\mathrm{super}}=0$). This is the inverse multinomial coefficient for the joint allocation of the $M$ augmented indices among entry cohorts, sex classes, and the single never-entered class.
+where $\mathbf{sex}$ is the vector of individual sex states, with $\mathbf{sex}=1$ for male, $\mathbf{sex}=2$ for female, and $\mathbf{sex}=0$ for individuals that never enter the population ($e_i=0$ and $z_i^{\mathrm{super}}=0$). This is the inverse multinomial coefficient for the joint allocation of the $M$ augmented indices among entry cohorts, sex classes, and the single never-entered class.
 
 The three custom samplers operate similarly in the sex-specific models, except that samplers 2 and 3 also jointly propose the individual’s sex.
 
