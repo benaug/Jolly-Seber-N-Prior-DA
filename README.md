@@ -151,9 +151,7 @@ $$
 This is the inverse multinomial coefficient. The entry occasion also determines the initial portion of the latent population-state history. For an individual with $e_i>0$,
 
 $$
-z_{i,g}=0
-\qquad
-\text{for } g<e_i,
+z_{i,g}=0\qquad\text{for } g<e_i,
 $$
 
 and
