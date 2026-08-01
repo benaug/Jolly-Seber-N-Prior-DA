@@ -80,7 +80,7 @@ $$
 N_0=M-N^{\mathrm{super}}.
 $$
 
-To describe the allocation of the $M$ augmented indices, define the entry-occasion variable
+To describe the allocation of the $M$ indices, define the entry-occasion variable
 
 $$
 e_i \in \{0,1,\ldots,G\},
