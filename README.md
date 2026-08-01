@@ -327,7 +327,7 @@ The movement models are otherwise equivalent when the spatial covariate is const
 
 This normalized product of a movement kernel and resource selection weight was used in the spatially explicit habitat-selection model of [Rhodes et al. (2005)](https://doi.org/10.1890/04-0912) and is also the standard structure of step selection functions, in which a resource-independent movement kernel is multiplied by a resource selection function and normalized over possible endpoints ([Forester et al. 2009](https://doi.org/10.1890/08-0874.1)).
 
-In this implementation, the bivariate normal probability mass within each rectangular cell is calculated analytically from differences of univariate normal cumulative distribution functions, and calculations are restricted to cells with non-negligible probability mass. Storing the availability distributions allows them to be reused when updating $\beta^{\mathrm{RSF}}$, while storing the use distributions avoids repeated normalization of the incoming movement transition during activity center updates. These computational savings come at the cost of increased RAM use.
+In this implementation, the bivariate normal probability mass within each rectangular cell is calculated analytically from differences of univariate normal cumulative distribution functions, and calculations are restricted to cells with non-negligible probability mass. Storing the availability distributions allows them to be reused when updating $\beta^{\mathrm{RSF}}$. These computational savings come at the cost of increased RAM use.
 
 
 #### 11. JS-SCR-Dcov-mobileAC-patchy
