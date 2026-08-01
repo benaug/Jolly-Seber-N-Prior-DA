@@ -174,9 +174,9 @@ To update the latent population states, I use three custom samplers:
 
 1. **Detected individuals:** Entry and exit occasions are updated separately using categorical proposals over all values compatible with the individual’s observed detections.
 
-2. **Undetected individuals currently in the superpopulation:** For individuals with $z^{super}_i = 1$ but no detections, an entry occasion and complete survival history are proposed from the process model and accepted or rejected jointly using a Metropolis-Hastings update.
+2. **Undetected individuals currently in the superpopulation:** For individuals with $z^{\mathrm{super}}_i = 1$ but no detections, an entry occasion and complete survival history are proposed from the process model and accepted or rejected jointly using a Metropolis-Hastings update.
 
-3. **Superpopulation size:** To update the number of individuals that ever enter the population, the sampler proposes adding or removing one undetected individual at a time. An addition changes $e_i=0$ to $e_i\gt 0$ and jointly proposes the individual's entry occasion and survival history; consequently, $z_i^{\mathrm{super}}$ changes from 0 to 1. A removal changes $e_i \gt 0$ to $e_i=0$ and removes the associated entry and survival history; consequently, $z^{super}_i$ changes from 1 to 0.
+3. **Superpopulation size:** To update the number of individuals that ever enter the population, the sampler proposes adding or removing one undetected individual at a time. An addition changes $e_i=0$ to $e_i\gt 0$ and jointly proposes the individual's entry occasion and survival history; consequently, $z_i^{\mathrm{super}}$ changes from 0 to 1. A removal changes $e_i \gt 0$ to $e_i=0$ and removes the associated entry and survival history; consequently, $z^{\mathrm{super}}_i$ changes from 1 to 0.
 
 
 ## Sex-specific population dynamics
@@ -253,7 +253,7 @@ The three custom samplers operate similarly in the sex-specific models, except t
 
 The SCR models below allow activity centers to move among primary occasions.
 
-For these models, the activity center model is gated by $z_i^{\mathrm{super}}$. For individuals with $z^{super}_i=0$, the activity centers (and associated availability and use distributions in RSF movement models) are set to zero and do not contribute to the model density. When an augmented individual is activated, a complete activity center trajectory is proposed jointly with its entry and survival history. This avoids evaluating the movement model for inactive augmented individuals and, in several simulated datasets, improved mixing of the between primary occasion movement parameter relative to retaining active activity center trajectories for all augmented individuals; however, I have not conducted a formal comparison.
+For these models, the activity center model is gated by $z_i^{\mathrm{super}}$. For individuals with $z^{\mathrm{super}}_i=0$, the activity centers (and associated availability and use distributions in RSF movement models) are set to zero and do not contribute to the model density. When an augmented individual is activated, a complete activity center trajectory is proposed jointly with its entry and survival history. This avoids evaluating the movement model for inactive augmented individuals and, in several simulated datasets, improved mixing of the between primary occasion movement parameter relative to retaining active activity center trajectories for all augmented individuals; however, I have not conducted a formal comparison.
 
 Mobile activity center models generally require informative SCR data to estimate movement parameters reliably, e.g.,
 
