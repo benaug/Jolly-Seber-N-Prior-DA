@@ -1,84 +1,363 @@
-# Jolly-Seber-N-Prior-DA
-Jolly-Seber MCMC samplers using N-prior data augmentation
+# Jolly–Seber N-Prior Data Augmentation
 
-This repository contains efficient MCMC samplers for Jolly-Seber models using N-prior data augmentation where we put Poisson priors directly on the
-entries--the starting population size and yearly recruits, rather than Bernoulli data augmentation where Poisson assumptions only hold as
-the data augmentation size M goes to infinity. For recruits specifically, this means the variance in the number of yearly recruits declines across primary occasions.
-Poisson priors on entries avoids this effect and allows for substantially more efficient MCMC, especially compared to existing approaches
-that allow for per capita recruitment rate to be estimated (Chandler and Clark 2014). 
+Efficient MCMC samplers for Jolly–Seber models using N-prior data augmentation.
 
-N-prior data augmentation for closed models is explained/demonstrated here: 
-https://github.com/benaug/SCR-N-Prior-Data-Augmentation
+## Overview
 
-and for multisession, see here:
-https://github.com/benaug/SCR_Dcov_Multisession
+This repository contains efficient MCMC samplers for Jolly–Seber models using **N-prior data augmentation**. Poisson priors are placed directly on population entry counts: the initial population size and the number of recruits entering during each subsequent primary occasion. 
+This differs from Bernoulli data augmentation, for which Poisson assumptions hold only as the data augmentation size $M$ approaches infinity. For per capita recruitment specifically (Chandler and Clark 2014), Bernoulli data augmentation can cause the variance in the number of recruits to decline across primary occasions if $M$ is not set high enough. Placing Poisson priors directly on entry counts avoids this effect and can substantially improve MCMC efficiency.
 
-In both of these, we assume N ~ Poisson(lambda) and then we allocate the N real individuals and N0=M-N augmented individuals to 
-the vector z[1:M] at random where order does not matter. There are (M choose N) ways to do this allocation, so the prior for 
-[z[1:M] | N,M] is 1/(M choose N).
+## Related repositories
 
-Moving to open populations, we assume 
+N-prior data augmentation for closed-population models is explained and demonstrated here:
 
-N[1] ~ Poisson(lambda) and 
+- [SCR N-Prior Data Augmentation](https://github.com/benaug/SCR-N-Prior-Data-Augmentation)
 
-N.recruit[g] ~ Poisson(N[g]*gamma[g]) for g = 1,..., n.primary - 1.
+A multisession implementation is available here:
 
-Now, the prior for z.super[1:M], which indicates if an individual is ever in the population, must consider the number of ways to allocate
-each Poisson RV to the indices of z.super[1:M], which is the multinomial coefficient of size M with partition sizes
+- [Multisession SCR with density covariates](https://github.com/benaug/SCR_Dcov_Multisession)
 
-N[1], N.recruit[1:(n.primary-1)], 
+## Closed-population N-prior data augmentation
 
-and N0=M-N[1]-N.recruit[1:(n.primary-1)]. 
+For a closed population, assume
 
-So the prior [z.super[1:M] | N[1],N.recruit[1:(n.primary-1)],M] is
+$$
+N \sim \operatorname{Poisson}(\lambda),
+$$
+
+where $N$ is the number of real individuals and $M$ is the data augmentation size. The number of augmented individuals is
+
+$$
+N_0 = M-N.
+$$
+
+The $N$ real individuals and $N_0$ augmented individuals are randomly allocated among the elements of
+
+$$
+\mathbf{z} = (z_1,\ldots,z_M).
+$$
+
+Because of this random allocation, the ordering of individuals within the real and augmented classes does not matter. Therefore, 
+there are
+
+$$
+\binom{M}{N}
+$$
+
+possible allocations, and the conditional prior for $\mathbf{z}$ is
+
+$$
+\Pr(\mathbf{z}\mid N,M)
+=
+\binom{M}{N}^{-1}
+=
+\frac{N!N_0!}{M!}.
+$$
+
+A custom Metropolis-Hastings update is required to jointly update $N$ and $\mathbf{z}$.
+
+## Open-population formulation
+
+Let $G$ denote the number of primary occasions. The initial population size is assigned the prior
+
+$$
+N_1 \sim \operatorname{Poisson}(\lambda).
+$$
+
+The number of recruits entering between primary occasions $g$ and $g+1$ is assigned the prior
+
+$$
+B_g \sim \operatorname{Poisson}(N_g\gamma_g),
+\qquad
+g=1,\ldots,G-1,
+$$
+
+where $B_g$ corresponds to `N.recruit[g]` in the code and $\gamma_g$ is the per capita recruitment rate. The total number of individuals that ever enter the population is
+
+$$
+N_{\mathrm{super}}
+=
+N_1+\sum_{g=1}^{G-1}B_g.
+$$
+
+The number of augmented individuals that never enter is
+
+$$
+N_0=M-N_{\mathrm{super}}.
+$$
+
+To describe the allocation of the $M$ augmented indices, define the entry-occasion variable
+
+$$
+e_i \in \{0,1,\ldots,G\},
+$$
+
+where
+
+$$
+e_i=
+\begin{cases}
+0, & \text{individual } i \text{ never enters},\\
+1, & \text{individual } i \text{ is present during the first primary occasion},\\
+g, & \text{individual } i \text{ enters at primary occasion } g,
+\quad g=2,\ldots,G.
+\end{cases}
+$$
+
+The corresponding cohort counts are
+
+$$
+N_0=\sum_{i=1}^{M} I(e_i=0),
+$$
+
+$$
+N_1=\sum_{i=1}^{M} I(e_i=1),
+$$
+
+and
+
+$$
+B_g
+=
+\sum_{i=1}^{M} I(e_i=g+1),
+\qquad
+g=1,\ldots,G-1.
+$$
+
+Thus, $e_i=1$ indicates membership in the initial population, and $e_i=g$ indicates recruitment before primary occasion $g$, for $g=2,\ldots,G$. The value $e_i=0$ indicates that the augmented individual never enters the population. In the code, `z.start[i]` is the entry-occasion variable $e_i$.
+
+The binary superpopulation indicator is then a derived variable:
+
+$$
+z_i^{\mathrm{super}}=I(e_i>0)
+$$
+
+Conditional on the cohort counts, the number of ways to allocate the $M$ augmented indices among the initial population, the $G-1$ recruitment cohorts, and the never-entered class is
+
+$$
+\frac{
+M!
+}{
+N_0!N_1!\displaystyle\prod_{g=1}^{G-1}B_g!
+}.
+$$
+
+Therefore, the prior probability of a particular entry-cohort allocation is
+
+$$
+\Pr\left(
+\mathbf{e}
+\mid
+N_1,B_1,\ldots,B_{G-1},M
+\right)
+=
+\frac{
+N_0!N_1!\displaystyle\prod_{g=1}^{G-1}B_g!
+}{
+M!
+}.
+$$
+
+This is the inverse multinomial coefficient. The entry occasion also determines the initial portion of the latent population-state history. For an individual with $e_i>0$,
+
+$$
+z_{i,g}=0
+\qquad
+\text{for } g<e_i,
+$$
+
+and
+
+$$
+z_{i,e_i}=1.
+$$
+
+Subsequent states are governed by the survival model. For example,
+
+$$
+\mathbf{z}_i=(0,0,1,1,0)
+$$
+
+implies that $e_i=3$, or equivalently `z.start[i] = 3`: individual $i$ entered at primary occasion 3, remained alive through occasion 4, and was no longer alive at occasion 5.
+
+The entry-occasion variable describes only when an individual enters. Survival after entry is governed separately by the survival model.
+
+To update the latent population states, I use three custom samplers:
+
+1. **Detected individuals:** Entry and exit occasions are updated separately using categorical proposals over all values compatible with the individual’s observed detections.
+
+2. **Undetected individuals currently in the superpopulation:** For individuals with `z.super[i] = 1` but no detections, an entry occasion and complete survival history are proposed from the process model and accepted or rejected jointly using a Metropolis-Hastings update.
+
+3. **Superpopulation size:** To update the number of individuals that ever enter the population, the sampler proposes adding or removing one undetected individual at a time. An addition changes $e_i=0$ to $e_i>0$ and jointly proposes the individual's entry occasion and survival history; consequently, `z.super[i]` changes from 0 to 1. A removal changes $e_i>0$ to $e_i=0$ and removes the associated entry and survival history; consequently, `z.super[i]` changes from 1 to 0.
 
 
-(N[1]!N.recruit[1]!...N.recruit[n.primary-1]!N0!)/ M!, the inverse multinomial coefficient. This reflects that individuals in each
-entry group are not exchangeable. 
+## Sex-specific population dynamics
 
-This repository also has sex-specific versions with sex-specific population dynamics. For these models, the prior is analogous to that
-described above except we now have sex-specific partitions for N[1] and N.recruit. There is a single N0 off class, not sex-specific.
+Some model versions include sex-specific population dynamics, with separate initial population sizes and recruitment processes for females and males. Let $N_1^F$ and $N_1^M$ denote the numbers of females and males in the initial population, respectively. Let $B_g^F$ and $B_g^M$ denote the numbers of female and male recruits entering before primary occasion $g+1$, for $g=1,\ldots,G-1$. Define the recruitment vectors as
 
-More notes: individuals with z.super[i]=0 do not have a z vector describing entry year and survival (set to all 0). These z states are simulated when proposing to update
-N.super/z.super. In SCR versions, the z.super[i] individuals maintain activity centers for convenience like all other DA approaches in the past,
-but these could be removed and simulated when proposing to add as well. Finally, for sex-specific versions, I keep sex in the model for z.super=1 individuals
-but they do not mean anything and this is done for convenience. The BUGS code needs sexes of z.super=0 individuals to compile and to compute
-the correct survival probabilities when turning on individuals. I simulate a new sex when turning individuals on because there is no model for
-individual sex when z.super=0.
+$$
+\mathbf{B}^F=(B_1^F,\ldots,B_{G-1}^F)
+\qquad\text{and}\qquad
+\mathbf{B}^M=(B_1^M,\ldots,B_{G-1}^M).
+$$
 
-Model versions:
+The total number of individuals that ever enter the population is
 
-1. JS: nonspatial, 1 continuous survival covariate
-2. JS-SCR: same as 1 but spatial, fixed activity centers
-3. JS-SexPopDy: sex-specific population dynamics, male and female survival and recruitment parameters
-4. JS-SCR-SexPopDy: same as 3 but spatial, fixed activity centers.
-5. JS-SCR-Dcov: same as 2 with habitat mask and/or density covariates
-6: JS-SCR-Dcov-SexPopDy: same as 4 with habitat mask and/or density covariates
-7. JS-Typical: This is a nonspatial version of the Jolly-Seber approach of Chandler and Clark (2014) that 
-considers per capita recruitment for comparison.
+$$
+N_{\mathrm{super}}=N_1^F+N_1^M+\sum_{g=1}^{G-1}(B_g^F+B_g^M),
+$$
 
-These SCR version below consider activity center movement. A notable difference between the ones below and those above
-is that I gate the activity center likelihood by z.super so that they are not in the model when z.super=0. They are set
-to "0" to indicate they are turned off. Then, a new s trajectory is proposed when turning on a z.super index. This
-improved mixing of the between year movement scale parameter for a few simulated data sets where I made the comparison.
-Another note is that for mobile activity centers, you generally need pretty good SCR data to estimate the movement
-parameter well--many individuals, many survival events that are documented (same inds captured in consecutive years),
-larger trapping arrays, etc. You will also have to run the model for more MCMC iterations to get a good effective sample
-size for the movement parameter. 
+and the size of the single shared never-entered class is
 
-8. JS-SCR-mobileAC: same as 2 with BVN Markov activity center movement (truncated by state space boundary)
-9. JS-SCR-SexPopDy-mobileAC: same as 8 but sex-specific population dynamics, detection, and movement parameters
-10a. JS-SCR-Dcov-mobileAC: same as 8 but with year 1 inhomogeneous density and RSF-based activity center movement.
-Availability distribution is BVN (again, truncated by state space boundary), use distribution is normalized
-product of availability distribution
-and RSF.
-10b. JS-SCR-Dcov-mobileAC-patchy: This is 10a except A) data simulator state space is set up to be patchy which
-can be challenging for the activity center sampler and B) we use a third activity center sampler motivated to better
-jump over gaps in the state space. A discrete proposal using use.dist for each individual would be better,
-but very slow. This continuous approach should work well in practice in many scenarios, but should test via simulation.
+$$
+N_0=M-N_{\mathrm{super}}.
+$$
 
-Will get to 10 + sex-specificity
-For 10, I need to add code to check the starting logProbs for the activity centers to make sure they are all finite at initialization.
-If not, the sampler may not be able to recover and will crash R. Didn't see this in simulated data sets when initializing sigma.move
-at the truth. More likely to happen in real data sets where model assumptions not perfectly met, e.g., small set of very large movements 
-relative to the others.
+Thus, the $M$ augmented indices are allocated among the female and male initial populations, the female and male recruitment cohorts, and the single never-entered class. The number of possible allocations is
+
+$$
+\frac{M!}{N_0!\left(N_1^F\right)!\left(N_1^M\right)!\displaystyle\prod_{g=1}^{G-1}\left(B_g^F\right)!\left(B_g^M\right)!}.
+$$
+
+Therefore, the prior probability of a particular joint allocation of entry cohort and sex is
+
+$$
+\Pr\left(\mathbf{e},\mathbf{sex}\mid N_1^F,N_1^M,\mathbf{B}^F,\mathbf{B}^M,M\right)
+=
+\frac{N_0!\left(N_1^F\right)!\left(N_1^M\right)!\displaystyle\prod_{g=1}^{G-1}\left(B_g^F\right)!\left(B_g^M\right)!}{M!},
+$$
+
+where $\mathbf{sex}$ is the vector of individual sex states, with `sex[i] = 1` for male, `sex[i] = 2` for female, and `sex[i] = 0` for individuals that never enter the population ($e_i=0$ and $z_i^{\mathrm{super}}=0$). This is the inverse multinomial coefficient for the joint allocation of the $M$ augmented indices among entry cohorts, sex classes, and the single never-entered class.
+
+The three custom samplers operate similarly in the sex-specific models, except that samplers 2 and 3 also jointly propose the individual’s sex.
+
+## Model versions
+
+### Fixed activity centers
+
+1. **JS**
+
+   Nonspatial model with one continuous survival covariate.
+
+2. **JS-SCR**
+
+   Spatial version of model 1 with fixed activity centers.
+
+3. **JS-SexPopDy**
+
+   Nonspatial model with sex-specific population dynamics, including male- and female-specific survival and recruitment parameters.
+
+4. **JS-SCR-SexPopDy**
+
+   Spatial version of model 3 with fixed activity centers.
+
+5. **JS-SCR-Dcov**
+
+   Spatial version of model 2 with a habitat mask, density covariates, or both.
+
+6. **JS-SCR-Dcov-SexPopDy**
+
+   Spatial version of model 4 with a habitat mask, density covariates, or both.
+
+7. **JS-Typical**
+
+   Nonspatial implementation of the Jolly–Seber approach of Chandler and Clark (2014), included for comparison. This version estimates per capita recruitment using conventional Bernoulli data augmentation.
+
+### Mobile activity centers
+
+The SCR models below allow activity centers to move among primary occasions.
+
+For these models, the activity center model is gated by `z.super[i]`. For individuals with `z.super[i] = 0`, the activity centers (and associated availability and use distributions in RSF movement models) are set to zero and do not contribute to the model density. When an augmented individual is activated, a complete activity center trajectory is proposed jointly with its entry and survival history. This avoids evaluating the movement model for inactive augmented individuals and, in several simulated datasets, improved mixing of the between primary occasion movement parameter relative to retaining active activity center trajectories for all augmented individuals; however, I have not conducted a formal comparison.
+
+Mobile activity center models generally require informative SCR data to estimate movement parameters reliably, e.g.,
+
+- many observed individuals
+- many documented survival transitions, with the same individuals detected in consecutive primary occasions
+- sufficiently large trapping arrays
+- adequate spatial recaptures within and among primary occasions
+- telemetry data
+
+These models may also require substantially more MCMC iterations to obtain adequate effective sample sizes for movement parameters and possibly survival and recruitment parameters if they are sensitive to the magnitude of movement.
+
+#### 8. JS-SCR-mobileAC
+
+Spatial version of model 2 with bivariate normal Markov activity center movement. The movement distribution is truncated by the state-space boundary.
+
+#### 9. JS-SCR-SexPopDy-mobileAC
+
+Version of model 8 with sex-specific population dynamics, detection parameters, and movement parameters.
+
+#### 10. JS-SCR-Dcov-mobileAC
+
+Version of model 8 with an inhomogeneous density model for activity centers during the first primary occasion and resource selection during subsequent activity center movement.
+
+Let $I_c$ denote the habitat-mask indicator, where $I_c=1$ if cell $c$ is included in the state space and $I_c=0$ otherwise. Let $x_c$ denote the spatial covariate for cell $c$, and let $C$ denote the total number of grid cells.
+
+With a single habitat covariate, during the first primary occasion, the relative intensity of activity centers in cell $c$ is
+
+$$
+\lambda_c=I_c\exp(\beta^Dx_c),
+$$
+
+where $\beta^D$ is the density covariate coefficient. The probability that an individual's initial activity center occurs in cell $c$ is
+
+$$
+\pi_c=\frac{\lambda_c}{\displaystyle\sum_{k=1}^{C}\lambda_k}.
+$$
+
+An initial activity center cell is drawn from this categorical distribution, after which the continuous activity center coordinates are drawn uniformly within the selected cell. During each subsequent primary occasion, activity centers follow a Markov movement model with resource selection. Conditional on the previous activity center $\mathbf{s}_{i,g-1}$, the availability probability for cell $c$ is
+
+$$
+a_{i,g,c}
+=
+\int_{\mathcal{A}_c}
+\operatorname{BVN}\left(
+\mathbf{v}
+\mid
+\mathbf{s}_{i,g-1},
+\sigma_{\mathrm{move}}^2\mathbf{I}_2
+\right)
+\,d\mathbf{v},
+$$
+
+where $\mathcal{A}_c$ is the area of cell $c$, $\mathbf{v}=(v_x,v_y)$ is a possible continuous activity center location within that cell, and $\operatorname{BVN}(\mathbf{v}\mid\boldsymbol{\mu},\sigma^2\mathbf{I}_2)$ denotes an isotropic bivariate normal density with mean $\boldsymbol{\mu}$, equal coordinate variances $\sigma^2$, and zero covariance. The matrix $\mathbf{I}_2$ is the $2\times2$ identity matrix, and $\sigma_{\mathrm{move}}$ is the scale of activity center movement between primary occasions.
+
+The resource selection weight for cell $c$ is
+
+$$
+r_c=I_c\exp(\beta^{\mathrm{RSF}}x_c),
+$$
+
+where $\beta^{\mathrm{RSF}}$ is the resource selection coefficient. The resulting use probability, or probability that individual $i$ selects cell $c$ during primary occasion $g$, is
+
+$$
+u_{i,g,c}
+=
+\frac{a_{i,g,c}r_c}
+{\displaystyle\sum_{k=1}^{C}a_{i,g,k}r_k}.
+$$
+
+Thus, cell selection depends jointly on proximity to the previous activity center and selection for the spatial covariate. Because $r_c=0$ when $I_c=0$, only cells within the habitat state space can be selected. After a cell is selected, each activity center coordinate is drawn from its normal movement distribution centered on the previous activity center and truncated to the boundaries of the selected cell. This produces a continuous activity center location rather than assigning the individual to the cell centroid.
+
+This movement formulation is a cell-integrated version of the movement model described by [Bischof et al. (2020)](https://doi.org/10.1073/pnas.2011383117). The initial point process formulations differ: Bischof et al. use an inhomogeneous binomial point process conditional on a fixed augmented population size, whereas this model assigns a Poisson distribution to initial abundance, so the activity centers of individuals present during the first primary occasion form an inhomogeneous Poisson point process.
+
+The movement models are otherwise equivalent when the spatial covariate is constant within each grid cell. Bischof et al. define the transition density as the normalized product of an isotropic Gaussian movement kernel centered on the previous activity center and a resource selection weight. Integrating that density over cell $c$ gives a cell-selection probability proportional to $a_{i,g,c}r_c$, matching the cell-level probability used in this implementation. Conditional on selecting cell $c$, drawing the new activity center from the Gaussian movement distribution truncated to that cell recovers the same continuous transition density as Bischof et al. Thus, the two approaches differ in computational representation rather than in the underlying movement model.
+
+This normalized product of a movement kernel and resource selection weight was used in the spatially explicit habitat-selection model of [Rhodes et al. (2005)](https://doi.org/10.1890/04-0912) and is also the standard structure of step selection functions, in which a resource-independent movement kernel is multiplied by a resource selection function and normalized over possible endpoints ([Forester et al. 2009](https://doi.org/10.1890/08-0874.1)).
+
+In this implementation, the bivariate normal probability mass within each rectangular cell is calculated analytically from differences of univariate normal cumulative distribution functions, and calculations are restricted to cells with non-negligible probability mass. Storing the availability distributions allows them to be reused when updating $\beta^{\mathrm{RSF}}$, while storing the use distributions avoids repeated normalization of the incoming movement transition during activity center updates. These computational savings come at the cost of increased RAM use.
+
+
+#### 11. JS-SCR-Dcov-mobileAC-patchy
+
+Modification of `JS-SCR-Dcov-mobileAC` that applies the same initial density and activity center movement model to a patchy habitat state space.
+
+This version differs from model 10 in two respects:
+
+1. The simulator uses a patchy habitat state space containing gaps that make local activity center proposals more difficult.
+2. A third activity center sampler is included to improve proposals across gaps in the habitat state space.
+
+A discrete proposal based directly on each individual's cell-level use distribution would provide a more direct way to move across habitat gaps but would be computationally expensive. The continuous proposal used here should work well in many applications, but its performance should be evaluated through simulation for each general model configuration.
+
+
+For models 10 and 11, I need to add code that checks whether all initial activity center log probabilities are finite. If any are nonfinite, the sampler may not be able to recover and may cause R to crash. I did not encounter this problem in simulated datasets when initializing `sigma.move` at its true value. It is more likely to occur with real datasets in which the model assumptions are not perfectly met, such as when a small number of observed movements are much larger than the others. If this occurs, increase the initial value of `sigma.move`.
