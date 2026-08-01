@@ -121,7 +121,7 @@ Thus, $e_i=1$ indicates membership in the initial population, and $e_i=g$ indica
 The binary superpopulation indicator is then a derived variable:
 
 $$
-z_i^{\mathrm{super}}=I(e_i>0)
+z_i^{\mathrm{super}}=I(e_i\gt 0)
 $$
 
 Conditional on the cohort counts, the number of ways to allocate the $M$ augmented indices among the initial population, the $G-1$ recruitment cohorts, and the never-entered class is
@@ -148,10 +148,10 @@ M!
 }.
 $$
 
-This is the inverse multinomial coefficient. The entry occasion also determines the initial portion of the latent population-state history. For an individual with $e_i>0$,
+This is the inverse multinomial coefficient. The entry occasion also determines the initial portion of the latent population-state history. For an individual with $e_i\gt 0$,
 
 $$
-z_{i,g}=0\qquad\text{for } g<e_i,
+z_{i,g}=0\qquad\text{for } g\lt e_i,
 $$
 
 and
@@ -176,7 +176,7 @@ To update the latent population states, I use three custom samplers:
 
 2. **Undetected individuals currently in the superpopulation:** For individuals with $z^{super}_i = 1$ but no detections, an entry occasion and complete survival history are proposed from the process model and accepted or rejected jointly using a Metropolis-Hastings update.
 
-3. **Superpopulation size:** To update the number of individuals that ever enter the population, the sampler proposes adding or removing one undetected individual at a time. An addition changes $e_i=0$ to $e_i>0$ and jointly proposes the individual's entry occasion and survival history; consequently, $z^{super}_i$ changes from 0 to 1. A removal changes $e_i>0$ to $e_i=0$ and removes the associated entry and survival history; consequently, $z^{super}_i $ changes from 1 to 0.
+3. **Superpopulation size:** To update the number of individuals that ever enter the population, the sampler proposes adding or removing one undetected individual at a time. An addition changes $e_i=0$ to $e_i\gt 0$ and jointly proposes the individual's entry occasion and survival history; consequently, $z_i^{\mathrm{super}}$ changes from 0 to 1. A removal changes $e_i \gt 0$ to $e_i=0$ and removes the associated entry and survival history; consequently, $z^{super}_i$ changes from 1 to 0.
 
 
 ## Sex-specific population dynamics
@@ -253,7 +253,7 @@ The three custom samplers operate similarly in the sex-specific models, except t
 
 The SCR models below allow activity centers to move among primary occasions.
 
-For these models, the activity center model is gated by $z^{super}_i$. For individuals with $z^{super}_i=0$, the activity centers (and associated availability and use distributions in RSF movement models) are set to zero and do not contribute to the model density. When an augmented individual is activated, a complete activity center trajectory is proposed jointly with its entry and survival history. This avoids evaluating the movement model for inactive augmented individuals and, in several simulated datasets, improved mixing of the between primary occasion movement parameter relative to retaining active activity center trajectories for all augmented individuals; however, I have not conducted a formal comparison.
+For these models, the activity center model is gated by $z_i^{\mathrm{super}}$. For individuals with $z^{super}_i=0$, the activity centers (and associated availability and use distributions in RSF movement models) are set to zero and do not contribute to the model density. When an augmented individual is activated, a complete activity center trajectory is proposed jointly with its entry and survival history. This avoids evaluating the movement model for inactive augmented individuals and, in several simulated datasets, improved mixing of the between primary occasion movement parameter relative to retaining active activity center trajectories for all augmented individuals; however, I have not conducted a formal comparison.
 
 Mobile activity center models generally require informative SCR data to estimate movement parameters reliably, e.g.,
 
