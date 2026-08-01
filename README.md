@@ -22,7 +22,7 @@ A multisession implementation is available here:
 For a closed population, assume
 
 $$
-N \sim \operatorname{Poisson}(\lambda),
+N \sim \mathrm{Poisson}(\lambda),
 $$
 
 where $N$ is the number of real individuals and $M$ is the data augmentation size. The number of augmented individuals is
@@ -61,13 +61,13 @@ A custom Metropolis-Hastings update is required to jointly update $N$ and $\math
 Let $G$ denote the number of primary occasions. The initial population size is assigned the prior
 
 $$
-N_1 \sim \operatorname{Poisson}(\lambda).
+N_1 \sim \mathrm{Poisson}(\lambda).
 $$
 
 The number of recruits entering between primary occasions $g$ and $g+1$ is assigned the prior
 
 $$
-B_g \sim \operatorname{Poisson}(N_g\gamma_g),
+B_g \sim \mathrm{Poisson}(N_g\gamma_g),
 \qquad
 g=1,\ldots,G-1,
 $$
@@ -311,7 +311,7 @@ $$
 a_{i,g,c}
 =
 \int_{\mathcal{A}_c}
-\operatorname{BVN}\left(
+\mathrm{BVN}\left(
 \mathbf{v}
 \mid
 \mathbf{s}_{i,g-1},
@@ -320,7 +320,7 @@ a_{i,g,c}
 \,d\mathbf{v},
 $$
 
-where $\mathcal{A}_c$ is the area of cell $c$, $\mathbf{v}=(v_x,v_y)$ is a possible continuous activity center location within that cell, and $\operatorname{BVN}(\mathbf{v}\mid\boldsymbol{\mu},\sigma^2\mathbf{I}_2)$ denotes an isotropic bivariate normal density with mean $\boldsymbol{\mu}$, equal coordinate variances $\sigma^2$, and zero covariance. The matrix $\mathbf{I}_2$ is the $2\times2$ identity matrix, and $\sigma_{\mathrm{move}}$ is the scale of activity center movement between primary occasions.
+where $\mathcal{A}_c$ is the area of cell $c$, $\mathbf{v}=(v_x,v_y)$ is a possible continuous activity center location within that cell, and $\mathrm{BVN}(\mathbf{v}\mid\boldsymbol{\mu},\sigma^2\mathbf{I}_2)$ denotes an isotropic bivariate normal density with mean $\boldsymbol{\mu}$, equal coordinate variances $\sigma^2$, and zero covariance. The matrix $\mathbf{I}_2$ is the $2\times2$ identity matrix, and $\sigma_{\mathrm{move}}$ is the scale of activity center movement between primary occasions.
 
 The resource selection weight for cell $c$ is
 
