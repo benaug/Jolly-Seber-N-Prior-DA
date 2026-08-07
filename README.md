@@ -244,9 +244,13 @@ The three custom samplers operate similarly in the sex-specific models, except t
 
    Spatial version of model 4 with a habitat mask, density covariates, or both.
 
-7. **JS-Typical**
+7. **JS-RO**
 
-   Nonspatial implementation of the Jolly–Seber approach of Chandler and Clark (2014), included for comparison. This version estimates per capita recruitment using conventional Bernoulli data augmentation.
+   Nonspatial implementation of the Restricted Occupancy Jolly–Seber approach of Royle and Dorazio 2008, included for comparison. Can choose original priors or priors from Dorazio 2020.
+
+8. **JS-CC**
+
+   Nonspatial implementation of the Jolly–Seber approach of Chandler and Clark (2014), an extension of Restricted Occupancy that estimates per capita recruitment.
 
 ### Mobile activity centers
 
