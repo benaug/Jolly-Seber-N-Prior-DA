@@ -15,17 +15,6 @@ K <- rep(10,n.primary) #yearly sampling occasions
 
 M*psi #expected N[1]
 
-#data simulator will give error messages if M not set large enough
-#there are two criteria to consider
-#1) you max out M and run out of individuals to recruit. 
-#This is very bad and will stop the data simulator and ask you to raise M
-#2) you don't have enough possible recruits left for the binomial approximation of
-#Poisson recruitment to be accurate. This is more of a grey area. The variance in recruits
-#will artificially decrease through time. Generally, M needs to be set much higher than
-#we would like for efficient MCMC to achieve this. This is a drawback of this parameterization.
-#current parameter settings above do not allow for good Poisson approximation for recruits
-#if gamma.prime is 0.05, poisson recruit variance underestimated 5%. if 0.1, 10%, if 0.2, 20%, etc.
-
 data <- sim.JS.RO(psi=psi,gamma=gamma,
             beta0.phi=beta0.phi,beta1.phi=beta1.phi,
             p=p,n.primary=n.primary,K=K,M=M)
