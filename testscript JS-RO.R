@@ -22,11 +22,6 @@ data$N #realized abundances
 data$B #realized entries
 data$N.super #realized superpopulation size
 
-#you may need to raise M from what was used to simulate for model fitting.
-#monitoring A.raw lets you see if you run out of possible recruits.
-#also, gamma.prime needs to be <0.05-0.1 for Poisson recruitment variance approximation to hold within 5-10%
-data$gamma.prime #can check for simulated data sets
-
 ##### Initialize z using observed data #####
 z.init <- matrix(0,M,n.primary)
 n.super <- nrow(data$y)
