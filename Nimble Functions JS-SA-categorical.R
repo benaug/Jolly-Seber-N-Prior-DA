@@ -110,6 +110,7 @@ eSampler <- nimbleFunction(
         }
       }else{
         #2) undetected: MH, propose full trajectory from the prior
+        #could just do Gibbs for z.super[i]=0, but not that much slower to just do MH for those
         lp.y.curr <- model$getLogProb(y.nodes[y.idx])
         e.prop <- rcat(1,model$pi[1:n.primary])
         d.prop <- e.prop
