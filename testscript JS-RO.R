@@ -24,18 +24,18 @@ data$N.super #realized superpopulation size
 
 ##### Initialize z using observed data #####
 z.init <- matrix(0,M,n.primary)
-n.super <- nrow(data$y)
-for(i in 1:n.super){
+n.det <- nrow(data$y)
+for(i in 1:n.det){
   det.idx <- which(data$y[i,]>0)
   z.init[i,min(det.idx):max(det.idx)] <- 1
 }
 
 #augment data
-y <- rbind(data$y,matrix(0,M-n.super,n.primary))
+y <- rbind(data$y,matrix(0,M-n.det,n.primary))
 
 #phi covariate data. nimble can init for undetected inds
 phi.cov.data <- rep(NA,M)
-phi.cov.data[1:n.super] <- data$phi.cov
+phi.cov.data[1:n.det] <- data$phi.cov
 
 #constants for Nimble
 #Can choose between two sets of priors if appropriately commented in the model file
