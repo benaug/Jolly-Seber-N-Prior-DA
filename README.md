@@ -251,6 +251,14 @@ The three custom samplers operate similarly in the sex-specific models, except t
 8. **JS-CC**
 
    Nonspatial implementation of the Jolly–Seber approach of Chandler and Clark (2014), an extension of Restricted Occupancy that estimates per capita recruitment.
+   
+9. **JS-SA-sequential**
+
+   Nonspatial implementation of the Schwarz-Arnason Jolly–Seber approach of Royle and Dorazio 2008, included for comparison. This version uses the conditional entry probabilities to update z sequentially as done by Royle and Dorazio.
+   
+10. **JS-SA-categorical**
+  Nonspatial implementation of the Schwarz-Arnason Jolly–Seber approach of Royle and Dorazio 2008, included for comparison. This version uses the unconditional entry probabilities with a custom update to sample the latent states. Here, I take the same general approach as I do for N-prior DA--for detected individuals, update their birth and death occasions and for undetected individuals, propose full z vectors in an MH update. Another approach for this model is to marginalize out the latent states and this will be faster. The sampler here is just demonstrating the general approach I use for per capita recruitment in N-prior data augmentation in a simplified model. When recruitment is per capita as a function of realized abundance, individuals are no longer independent, which prevents efficient marginalization. The marginalization approach for JS-SA-categorical has been used in Stan, e.g., [js_super.stan](https://github.com/stan-dev/example-models/blob/master/BPA/Ch.10/js_super.stan).
+
 
 ### Mobile activity centers
 
@@ -268,15 +276,15 @@ Mobile activity center models generally require informative SCR data to estimate
 
 These models may also require substantially more MCMC iterations to obtain adequate effective sample sizes for movement parameters and possibly survival and recruitment parameters if they are sensitive to the magnitude of movement.
 
-#### 8. JS-SCR-mobileAC
+#### 11. JS-SCR-mobileAC
 
 Spatial version of model 2 with bivariate normal Markov activity center movement. The movement distribution is truncated by the state-space boundary.
 
-#### 9. JS-SCR-SexPopDy-mobileAC
+#### 12. JS-SCR-SexPopDy-mobileAC
 
 Version of model 8 with sex-specific population dynamics, detection parameters, and movement parameters.
 
-#### 10. JS-SCR-Dcov-mobileAC
+#### 13. JS-SCR-Dcov-mobileAC
 
 Version of model 8 with an inhomogeneous density model for activity centers during the first primary occasion and resource selection during subsequent activity center movement.
 
