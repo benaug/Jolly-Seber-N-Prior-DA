@@ -1,10 +1,11 @@
-#This is the Schwarz-Arnason model from Royle and Dorazio 2008 but using direct entry probabilities
+#This is the Schwarz-Arnason model from Royle and Dorazio 2008 but using direct entry probabilities pi
+#and allows a conjugate sampler
 #requires custom samplers to update latent variables e and surv
 library(nimble)
 library(coda)
 source("sim.JS.SA.R")
-source("Nimble Model JS-SA-categorical.R")
-source("Nimble Functions JS-SA-categorical.R") #contains required custom update for e/surv nodes
+source("Nimble Model JS-SA-entryOccasion")
+source("Nimble Functions JS-SA-entryOccasion.R") #contains required custom update for e/surv nodes
 
 n.primary <- 4 #number of years
 M <- 200 #data simulator simulates from Chandler-Clark model with M as a parameter
@@ -15,6 +16,7 @@ beta1.phi <- 0.5
 p <- rep(0.2,n.primary) #yearly detection probability
 K <- rep(10,n.primary) #yearly sampling occasions
 
+set.seed(33955)
 data <- sim.JS.SA(psi=psi,pi=pi,
             beta0.phi=beta0.phi,beta1.phi=beta1.phi,
             p=p,n.primary=n.primary,K=K,M=M)
@@ -133,6 +135,7 @@ Cmcmc$run(5000,reset=FALSE) #can extend run by rerunning this line
 end.time <- Sys.time()
 time1 <- end.time-start.time  # total time for compilation, replacing samplers, and fitting
 time2 <- end.time-start.time2 # post-compilation run time
+time2
 
 mvSamples <- as.matrix(Cmcmc$mvSamples)
 plot(mcmc(mvSamples[-c(1:200),]))
