@@ -99,3 +99,5 @@ data$N #realized abundance
 data$B #realized recruits
 data$N.super #realized N.super
 
+#ESS per time (check time units)
+effectiveSize(mcmc(mvSamples[-c(1:200),]))/as.numeric(time2)

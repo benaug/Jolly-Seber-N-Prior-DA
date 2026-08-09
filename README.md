@@ -254,12 +254,14 @@ The three custom samplers operate similarly in the sex-specific models, except t
    
 9. **JS-SA-sequential**
 
-   Nonspatial implementation of the Schwarz-Arnason Jolly–Seber approach of Royle and Dorazio 2008, included for comparison. This version uses the conditional entry probabilities to update z sequentially as done by Royle and Dorazio.
+   Nonspatial implementation of the Schwarz-Arnason Jolly–Seber approach of Royle and Dorazio 2008, included for comparison. This version uses the conditional entry probabilities to update z sequentially as done by Royle and Dorazio. This testscript and the next two are set up with the same parameter values and seed for comparison.
    
-10. **JS-SA-categorical**
-  Nonspatial implementation of the Schwarz-Arnason Jolly–Seber approach of Royle and Dorazio 2008, included for comparison. This version uses the unconditional entry probabilities with a custom update to sample the latent states. Here, I take the same general approach as I do for N-prior DA--for detected individuals, update their birth and death occasions and for undetected individuals, propose full z vectors in an MH update. Another approach for this model is to marginalize out the latent states, which will generally be faster. Much of the reported speedup comes from collapsing individuals to unique capture histories, which is not possible with individual random effects, so the advantage there is less clear. The sampler here is provided to demonstrate the general approach I use for per capita recruitment in N-prior data augmentation in a simplified model. When recruitment is per capita as a function of realized abundance, individuals are no longer independent, which prevents efficient marginalization.
+10. **JS-SA-entryOccasion**
+   Nonspatial implementation of the Schwarz-Arnason Jolly–Seber approach of Royle and Dorazio 2008, included for comparison. This version uses the unconditional entry probabilities pi with a custom update to sample the latent states. This approach allows for a conjugate sampler for pi and psi and yields more effective posterior samples per unit time than the marginal version below, or at least it did for a few test runs. To update the latent states, I take the same general approach as I do for N-prior DA--for detected individuals, update their birth and death occasions and for undetected individuals, propose full z vectors in an MH update.
 
-
+11. **JS-SA-marginal**
+  Nonspatial implementation of the Schwarz-Arnason Jolly–Seber approach of Royle and Dorazio 2008, included for comparison. This version marginalizes the latent states out of the likelihood with a 3-state forward algorithm (not yet entered, alive, dead), but retains the M augmented individuals to accommodate an individual survival covariate without using numerical integration. N, B, and N.super are recovered each iteration by forward-filtering backward-sampling the trajectories from their full conditionals. Marginalizing psi and pi into the likelihood prevents the use of their conjugate samplers, which can be used in the entry occasion version. Marginalization can be considerably faster than it is here if capture histories can be aggregated, for example if there are no individual random effects. Marginalization is not computationally feasible when recruitment is per capita as a function of realized abundance, as in N-prior data augmentation, because individuals are no longer independent. This model and marginalization approach have been implemented in Stan, e.g., [js_super.stan](https://github.com/stan-dev/example-models/blob/master/BPA/Ch.10/js_super.stan), where marginalization is required because Stan cannot sample discrete parameters.
+  
 ### Mobile activity centers
 
 The SCR models below allow activity centers to move among primary occasions.
@@ -276,15 +278,15 @@ Mobile activity center models generally require informative SCR data to estimate
 
 These models may also require substantially more MCMC iterations to obtain adequate effective sample sizes for movement parameters and possibly survival and recruitment parameters if they are sensitive to the magnitude of movement.
 
-#### 11. JS-SCR-mobileAC
+#### 12. JS-SCR-mobileAC
 
 Spatial version of model 2 with bivariate normal Markov activity center movement. The movement distribution is truncated by the state-space boundary.
 
-#### 12. JS-SCR-SexPopDy-mobileAC
+#### 13. JS-SCR-SexPopDy-mobileAC
 
 Version of model 8 with sex-specific population dynamics, detection parameters, and movement parameters.
 
-#### 13. JS-SCR-Dcov-mobileAC
+#### 14. JS-SCR-Dcov-mobileAC
 
 Version of model 8 with an inhomogeneous density model for activity centers during the first primary occasion and resource selection during subsequent activity center movement.
 

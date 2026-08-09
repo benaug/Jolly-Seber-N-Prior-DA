@@ -4,7 +4,7 @@
 library(nimble)
 library(coda)
 source("sim.JS.SA.R")
-source("Nimble Model JS-SA-entryOccasion")
+source("Nimble Model JS-SA-entryOccasion.R")
 source("Nimble Functions JS-SA-entryOccasion.R") #contains required custom update for e/surv nodes
 
 n.primary <- 4 #number of years
@@ -144,3 +144,5 @@ data$N #realized abundance
 data$B #realized recruits
 data$N.super #realized N.super
 
+#ESS per time (check time units)
+effectiveSize(mcmc(mvSamples[-c(1:200),]))/as.numeric(time2)
