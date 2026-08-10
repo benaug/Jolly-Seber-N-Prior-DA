@@ -280,15 +280,15 @@ Mobile activity center models generally require informative SCR data to estimate
 
 These models may also require substantially more MCMC iterations to obtain adequate effective sample sizes for movement parameters and possibly survival and recruitment parameters if they are sensitive to the magnitude of movement.
 
-12. JS-SCR-mobileAC
+12. **JS-SCR-mobileAC**
 
     Spatial version of model 2 with bivariate normal Markov activity center movement. The movement distribution is truncated by the state-space boundary.
 
-13. JS-SCR-SexPopDy-mobileAC
+13. **JS-SCR-SexPopDy-mobileAC**
 
     Version of model 8 with sex-specific population dynamics, detection parameters, and movement parameters.
 
-14. JS-SCR-Dcov-mobileAC
+14. **JS-SCR-Dcov-mobileAC**
 
     Version of model 8 with an inhomogeneous density model for activity centers during the first primary occasion and resource selection during subsequent activity center movement.
 
@@ -345,7 +345,7 @@ This normalized product of a movement kernel and resource selection weight was u
 In this implementation, the bivariate normal probability mass within each rectangular cell is calculated analytically from differences of univariate normal cumulative distribution functions, and calculations are restricted to cells with non-negligible probability mass. Storing the availability distributions allows them to be reused when updating $\beta^{\mathrm{RSF}}$. These computational savings come at the cost of increased RAM use.
 
 
-15. JS-SCR-Dcov-mobileAC-patchy
+15. **JS-SCR-Dcov-mobileAC-patchy**
 
     Modification of `JS-SCR-Dcov-mobileAC` that applies the same initial density and activity center movement model to a patchy habitat state space.
 
