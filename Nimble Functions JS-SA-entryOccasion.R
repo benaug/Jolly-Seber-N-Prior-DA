@@ -109,37 +109,68 @@ eSampler <- nimbleFunction(
           model$calculate(y.nodes[y.idx])
         }
       }else{
-        #2) undetected: MH, propose full trajectory from the prior
-        #could just do Gibbs for z.super[i]=0, but not that much slower to just do MH for those
-        lp.y.curr <- model$getLogProb(y.nodes[y.idx])
-        e.prop <- rcat(1,model$pi[1:n.primary])
-        d.prop <- e.prop
-        if(e.prop < n.primary){
-          for(g in (e.prop+1):n.primary){
-            if(d.prop == g-1){
-              if(rbinom(1,1,model$phi[i])==1){
-                d.prop <- g
+        # #2) undetected: MH, propose full trajectory from the prior
+        # #could just do Gibbs for z.super[i]=0, but not that much slower to just do MH for those
+        # lp.y.curr <- model$getLogProb(y.nodes[y.idx])
+        # e.prop <- rcat(1,model$pi[1:n.primary])
+        # d.prop <- e.prop
+        # if(e.prop < n.primary){
+        #   for(g in (e.prop+1):n.primary){
+        #     if(d.prop == g-1){
+        #       if(rbinom(1,1,model$phi[i])==1){
+        #         d.prop <- g
+        #       }
+        #     }
+        #   }
+        # }
+        # model$e[i] <<- e.prop
+        # for(g in 2:n.primary){
+        #   if(g > e.prop & g <= d.prop){
+        #     model$surv[i,g] <<- 1
+        #   }else{
+        #     model$surv[i,g] <<- 0
+        #   }
+        # }
+        # model$calculate(z.nodes[z.idx])
+        # model$calculate(surv.p.nodes[surv.idx])
+        # model$calculate(y.p.nodes[y.idx])
+        # model$calculate(e.nodes[i])
+        # model$calculate(surv.nodes[surv.idx])
+        # lp.y.prop <- model$calculate(y.nodes[y.idx])
+        # #proposed from the prior, so prior and proposal cancel
+        # log_MH_ratio <- lp.y.prop - lp.y.curr
+        # if(!decide(log_MH_ratio)){
+        #   model$e[i] <<- e.curr
+        #   for(g in 2:n.primary){
+        #     if(g > e.curr & g <= d.curr){
+        #       model$surv[i,g] <<- 1
+        #     }else{
+        #       model$surv[i,g] <<- 0
+        #     }
+        #   }
+        #   model$calculate(z.nodes[z.idx])
+        #   model$calculate(surv.p.nodes[surv.idx])
+        #   model$calculate(y.p.nodes[y.idx])
+        #   model$calculate(e.nodes[i])
+        #   model$calculate(surv.nodes[surv.idx])
+        #   model$calculate(y.nodes[y.idx])
+        # }
+        #2) undetected individuals
+        
+        if(model$z.super[i] == 0){
+          #2a) not in superpopulation: trajectory is independent of data,
+          #so draw directly from its full conditional (prior)
+          e.curr <- rcat(1,model$pi[1:n.primary])
+          d.curr <- e.curr
+          if(e.curr < n.primary){
+            for(g in (e.curr+1):n.primary){
+              if(d.curr == g-1){
+                if(rbinom(1,1,model$phi[i]) == 1){
+                  d.curr <- g
+                }
               }
             }
           }
-        }
-        model$e[i] <<- e.prop
-        for(g in 2:n.primary){
-          if(g > e.prop & g <= d.prop){
-            model$surv[i,g] <<- 1
-          }else{
-            model$surv[i,g] <<- 0
-          }
-        }
-        model$calculate(z.nodes[z.idx])
-        model$calculate(surv.p.nodes[surv.idx])
-        model$calculate(y.p.nodes[y.idx])
-        model$calculate(e.nodes[i])
-        model$calculate(surv.nodes[surv.idx])
-        lp.y.prop <- model$calculate(y.nodes[y.idx])
-        #proposed from the prior, so prior and proposal cancel
-        log_MH_ratio <- lp.y.prop - lp.y.curr
-        if(!decide(log_MH_ratio)){
           model$e[i] <<- e.curr
           for(g in 2:n.primary){
             if(g > e.curr & g <= d.curr){
@@ -150,10 +181,59 @@ eSampler <- nimbleFunction(
           }
           model$calculate(z.nodes[z.idx])
           model$calculate(surv.p.nodes[surv.idx])
+          model$calculate(e.nodes[i])
+          model$calculate(surv.nodes[surv.idx])
+          
+        }else{
+          #2b) in superpopulation but undetected:
+          #MH proposal of full trajectory from prior
+          #could do Gibbs instead. Probably better if capture probs are high
+          
+          lp.y.curr <- model$getLogProb(y.nodes[y.idx])
+          e.prop <- rcat(1,model$pi[1:n.primary])
+          d.prop <- e.prop
+          if(e.prop < n.primary){
+            for(g in (e.prop+1):n.primary){
+              if(d.prop == g-1){
+                if(rbinom(1,1,model$phi[i]) == 1){
+                  d.prop <- g
+                }
+              }
+            }
+          }
+          model$e[i] <<- e.prop
+          for(g in 2:n.primary){
+            if(g > e.prop & g <= d.prop){
+              model$surv[i,g] <<- 1
+            }else{
+              model$surv[i,g] <<- 0
+            }
+          }
+          model$calculate(z.nodes[z.idx])
+          model$calculate(surv.p.nodes[surv.idx])
           model$calculate(y.p.nodes[y.idx])
           model$calculate(e.nodes[i])
           model$calculate(surv.nodes[surv.idx])
-          model$calculate(y.nodes[y.idx])
+          
+          lp.y.prop <- model$calculate(y.nodes[y.idx])
+          #proposed from prior, so prior and proposal cancel
+          log_MH_ratio <- lp.y.prop - lp.y.curr
+          if(!decide(log_MH_ratio)){
+            model$e[i] <<- e.curr
+            for(g in 2:n.primary){
+              if(g > e.curr & g <= d.curr){
+                model$surv[i,g] <<- 1
+              }else{
+                model$surv[i,g] <<- 0
+              }
+            }
+            model$calculate(z.nodes[z.idx])
+            model$calculate(surv.p.nodes[surv.idx])
+            model$calculate(y.p.nodes[y.idx])
+            model$calculate(e.nodes[i])
+            model$calculate(surv.nodes[surv.idx])
+            model$calculate(y.nodes[y.idx])
+          }
         }
       }
     }
