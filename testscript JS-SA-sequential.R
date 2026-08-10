@@ -59,7 +59,7 @@ Niminits <- list(z.super=z.super.init,z=z.init,psi=sum(z.super.init)/M,
 Nimdata <- list(y=y,phi.cov=phi.cov.data)
 
 # set parameters to monitor
-parameters <- c('psi','N','beta0.phi','beta1.phi','pi','p','phi.cov.mu','phi.cov.sd',"B","N.super")
+parameters <- c('psi','N','beta0.phi','beta1.phi','pi','eta','p','phi.cov.mu','phi.cov.sd',"B","N.super")
 nt <- 1 #thinning rate
 
 # Build the model, configure the mcmc, and compile

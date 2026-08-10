@@ -3,18 +3,31 @@ NimModel <- nimbleCode({
   for(g in 1:n.primary){
     alpha[g] <- 1
   }
-  pi[1:n.primary] ~ ddirch(alpha[1:n.primary]) #entry probabilities
+  # #1) can put prior directly on pi, but breaks conjugacy
+  # pi[1:n.primary] ~ ddirch(alpha[1:n.primary]) #entry probabilities
+  # #conditional entry probabilities
+  # eta[1] <- pi[1]
+  # for(g in 2:n.primary){
+  #   eta[g] <- pi[g]/(1 - sum(pi[1:(g-1)]))
+  # }
+  #2) put priors on eta to retain conjugacy
+  for(g in 1:(n.primary-1)){
+    eta[g] ~ dbeta(alpha[g], sum(alpha[(g+1):n.primary]))
+  }
+  eta[n.primary] <- 1
+  #derive pi
+  pi[1] <- eta[1]
+  for(g in 2:(n.primary-1)){
+    pi[g] <- eta[g] * prod(1 - eta[1:(g-1)])
+  }
+  pi[n.primary] <- prod(1 - eta[1:(n.primary-1)])
   
   beta0.phi ~ dlogis(0,1)
   beta1.phi ~ dnorm(0,sd=10) #individual covariate effect
   phi.cov.mu ~ dunif(-10, 10) #phi individual covariate mean prior
   phi.cov.sd ~ T(dt(mu=0, sigma=1, df=7), 0, Inf) #phi individual covariate sd prior
   
-  #conditional entry probabilities
-  eta[1] <- pi[1]
-  for(g in 2:n.primary){
-    eta[g] <- pi[g]/(1 - sum(pi[1:(g-1)]))
-  }
+  
   
   #population dynamics
   for(i in 1:M){
