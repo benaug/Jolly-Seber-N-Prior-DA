@@ -115,7 +115,7 @@ calcNodes <- Rmodel$getDependencies(c("e","surv"))
 
 # conf$removeSampler(c("e","surv")) #remove these if you let nimble configure them above
 conf$addSampler(target=paste0("e[1:",M,"]"), type=eSampler,
-                control=list(M=M,n.primary=n.primary,z.obs=z.obs,
+                control=list(M=M,K=K,n.primary=n.primary,z.obs=z.obs,
                              first.det=first.det,last.det=last.det,
                              e.nodes=e.nodes,z.nodes=z.nodes,
                              surv.p.nodes=surv.p.nodes,surv.nodes=surv.nodes,
