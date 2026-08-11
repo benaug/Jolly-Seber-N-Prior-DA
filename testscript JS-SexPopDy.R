@@ -1,5 +1,5 @@
 #Some notes:
-#1) Dimensions probably prevent this from working with only 2 years of data (N.recruit, N.survive are not vectors)
+#1) Dimensions probably prevent this from working with only 2 primary occasions of data (N.recruit, N.survive are not vectors)
 #Need to modify custom updates in this case
 #2) Object names that cannot be changed in the nimble model without changes in custom updates:
 #N, N.recruit, N.survive, ER (male and female counterparts for all these, too),
@@ -15,16 +15,16 @@ source("sim.JS.SexPopDy.R")
 source("Nimble Model JS-SexPopDy.R")
 source("Nimble Functions JS-SexPopDy.R") #contains custom distributions and updates
 
-n.primary <- 4 #number of years
-lambda.y1.M <- 50 #expected male N in year 1
-lambda.y1.F <- 50 #expected female N in year 1
-#yearly per-capita recruitment
-gamma.sex <- c(0.15,0.10) #male, then female, fixed across years
+n.primary <- 4 #number of primary occasions
+lambda.y1.M <- 50 #expected male N in primary occasion 1
+lambda.y1.F <- 50 #expected female N in primary occasion 1
+#per-capita recruitment  by primary occasion
+gamma.sex <- c(0.15,0.10) #male, then female, fixed across primary occasions
 #sex-specific survival
-phi.sex <- c(0.75,0.95) #male, then female, fixed across years
+phi.sex <- c(0.75,0.95) #male, then female, fixed across primary occasions
 #sex-specific p
-p.sex <- c(0.15,0.15) #male, then female, fixed across years
-K <- rep(10,n.primary) #yearly sampling occasions
+p.sex <- c(0.15,0.15) #male, then female, fixed across primary occasions
+K <- rep(10,n.primary) #sampling occasions by primary occasion
 
 #probability we observe sex for detected individuals (not a function of number of capture events)
 #ASSUMPTION: sex observations are missing at random (same prob of observing male and female)
@@ -38,7 +38,7 @@ data <- sim.JS.SexPopDy(lambda.y1.M=lambda.y1.M,lambda.y1.F=lambda.y1.F,
 data$truth$N.super #N.super
 
 ##Initialize##
-#Hard to predict appropriate M, depends on many factors like detection prob, number of years
+#Hard to predict appropriate M, depends on many factors like detection prob, number of primary occasions
 #level of population turnover. Maybe make sure it is at least 1.6*N.super to start
 M <- 250 #data augmentation level. Check N.super posterior to make sure it never hits M
 N.super.init <- nrow(data$y)
@@ -104,7 +104,7 @@ Nimdata <- list(y=y.nim,sex=sex.data)
 parameters <- c('N','N.M',"N.F",'N.super',
                 'N.recruit','N.recruit.M','N.recruit.F',
                 'N.survive','N.survive.M','N.survive.F',
-                'lambda.y1.M','lambda.y1.F','gamma.male','gamma.female','phi.sex',
+                'lambda.y1.M','lambda.y1.F','gamma.sex','phi.sex',
                 'p.sex')
 parameters2 <- c('sex') #might want to monitor sex if interested in unobserved sex guy posteriors
 
@@ -114,10 +114,9 @@ nt <- 1 #thinning rate
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
 #if you add/remove parameters in model file, do so in config.nodes
-config.nodes <- c('phi.sex','gamma.male','gamma.female','lambda.y1.M',
+config.nodes <- c('phi.sex','gamma.sex','lambda.y1.M',
                'lambda.y1.F','p.sex')
-conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,monitors2=parameters2,
-                      nodes=config.nodes,useConjugacy = TRUE)
+conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,monitors2=parameters2,nodes=config.nodes)
 
 #add N/z samplers
 z.super.ups <- round(M*0.25) #how many z.super update proposals per iteration?
@@ -156,6 +155,20 @@ conf$addSampler(target = c("z"),
                                                  N.recruit.F.nodes=N.recruit.F.nodes,
                                                  sex.up=sex.up,
                                                  calcNodes=calcNodes), silent = TRUE)
+
+##optional truncated gamma poisson conjugate samplers. 
+#I would always use these as long as you keep uniform priors on lambda.y1 and gamma[g]
+#Typically gives you much greater ESS that propagates to N/N.recruit
+#if gamma.sex is fixed
+targets <- c("lambda.y1.M","lambda.y1.F","gamma.sex[1]","gamma.sex[2]")
+#if gamma.sex varies by primary occasion
+# targets <- c("lambda.y1.M","lambda.y1.F",
+#              paste0("gamma.sex[1,",1:(n.primary-1),"]"),
+#              paste0("gamma.sex[2,",1:(n.primary-1),"]"))
+for(target in targets){
+  conf$removeSamplers(target)
+  conf$addSampler(target=target,type=truncGammaPoisSampler)
+}
 
 # Build and compile
 Rmcmc <- buildMCMC(conf)

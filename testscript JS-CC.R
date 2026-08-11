@@ -4,14 +4,14 @@ library(coda)
 source("sim.JS.CC.R")
 source("Nimble Model JS-CC.R")
 
-n.primary <- 4 #number of years
+n.primary <- 4 #number of primary occasions
 M <- 200 #data simulator simulates from Chandler-Clark model with M as a parameter
-psi <- 0.4 #expected N in year 1 is M*psi
-gamma <- rep(0.2,n.primary-1) #yearly per-capita recruitment
+psi <- 0.4 #expected N in primary occasion 1 is M*psi
+gamma <- rep(0.2,n.primary-1) #per-capita recruitment by primary occasion
 beta0.phi <- qlogis(0.85) #survival intercept
 beta1.phi <- 0.5
-p <- rep(0.2,n.primary) #yearly detection probability
-K <- rep(10,n.primary) #yearly sampling occasions
+p <- rep(0.2,n.primary) #detection probability by primary occasion
+K <- rep(10,n.primary) #sampling occasions by primary occasion
 
 M*psi #expected N[1]
 

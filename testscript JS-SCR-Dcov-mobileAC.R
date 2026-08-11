@@ -14,19 +14,19 @@ source("mask.check.R")
 #you must run this line 
 nimbleOptions(determinePredictiveNodesInModel = FALSE)
 
-n.primary <- 5 #number of years
-gamma <- rep(0.2,n.primary-1) #yearly per-capita recruitment
+n.primary <- 5 #number of primary occasions
+gamma <- rep(0.2,n.primary-1) #per-capita recruitment by primary occasion
 beta0.phi <- qlogis(0.85) #survival intercept
 beta1.phi <- 0.5 #phi response to individual covariate
-p0 <- rep(0.1,n.primary) #yearly detection probabilities at activity center
-sigma <- rep(0.5,n.primary) #yearly detection function scale
+p0 <- rep(0.1,n.primary) #detection probabilities at activity center by primary occasion
+sigma <- rep(0.5,n.primary) #detection function scale by primary occasion
 sigma.move <- 2 #movement sigma, fixed over primary periods
 rsf.beta <- 0.5 #selection coefficient for activity center relocation btwn primary periods
-K <- rep(10,n.primary) #yearly sampling occasions
+K <- rep(10,n.primary) #sampling occasions by primary occasion
 
-buff <- 3 #state space buffer. Buffers maximal x and y dimensions of X below across years
-X <- vector("list",n.primary) #one trapping array per year
-for(g in 1:n.primary){ #using same trapping array every year here
+buff <- 3 #state space buffer. Buffers maximal x and y dimensions of X below across primary occasions
+X <- vector("list",n.primary) #one trapping array per primary occasion
+for(g in 1:n.primary){ #using same trapping array every primary occasion here
   X[[g]] <- as.matrix(expand.grid(3:14,3:14))
 }
 
@@ -79,7 +79,7 @@ image(x.vals,y.vals,matrix(D.cov,n.cells.x,n.cells.y),main="D.cov",xlab="X",ylab
 points(X.all,pch=4,cex=0.75,col="darkred",lwd=2)
 
 #Additionally, maybe we want to exclude "non-habitat"
-#in first year D model
+#in first primary occasion D model
 #just removing the corners here for simplicity
 dSS.tmp <- dSS - res/2 #convert back to grid locs
 InSS <- rep(1,length(D.cov))
@@ -105,9 +105,9 @@ data <- sim.JS.SCR.Dcov.mobileAC(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,InS
 
 #these plots are cool, you should look at these.
 
-#visualize expected relative density and realized activity centers in each year
-#year 1: cell colors depict expected relative density in year 1
-#years 2 on: cell colors depict expected relative density given the realized s[g-1] and z[g-1] from previous year
+#visualize expected relative density and realized activity centers in each primary occasion
+#primary occasion 1: cell colors depict expected relative density in primary occasion 1
+#primary occasions 2 on: cell colors depict expected relative density given the realized s[g-1] and z[g-1] from previous primary occasion
 #points are realized activity centers for this expectation
 # par(mfrow=c(1,1),ask=FALSE)
 # for(plot.year in 1:n.primary){
@@ -118,7 +118,7 @@ data <- sim.JS.SCR.Dcov.mobileAC(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,InS
 #   points(data$truth$s[data$truth$z[,plot.year]==1,plot.year,],pch=16)
 # }
 
-#visualize individual movement trajectories. Start year is larger circle
+#visualize individual movement trajectories. Start primary occasion is larger circle
 #will be a mess with a lot of individuals.
 # ind.cols <- c("#E63946","#FF9F1C","#FFDD00","#2EC4B6","#3A86FF",
 #               "#8338EC","#FB5607","#06D6A0","#FFB700","#118AB2",
@@ -130,16 +130,16 @@ data <- sim.JS.SCR.Dcov.mobileAC(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,InS
 # image(x.vals, y.vals, matrix(D.cov*InSS, n.cells.x, n.cells.y), col=cols1,
 #       main="Movement Trajectories over D.cov")
 # for(i in 1:data$truth$N.super){
-#   #skip individuals alive for less than 2 years
+#   #skip individuals alive for less than 2 primary occasions
 #   if(sum(data$truth$z[i,])<2) next
 #   ind.col <- ind.cols[(i-1) %% n.colors + 1]
-#   alive.years <- which(data$truth$z[i,]==1) #get years alive
-#   # plot points for all alive years
+#   alive.years <- which(data$truth$z[i,]==1) #get primary occasions alive
+#   # plot points for all alive primary occasions
 #   points(data$truth$s[i,alive.years,1],
 #          data$truth$s[i,alive.years,2],
 #          pch=16, col=ind.col, cex=0.8)
 # 
-#   #plot lines between consecutive alive years
+#   #plot lines between consecutive alive primary occasions
 #   if(length(alive.years)>1){
 #     for(t in 1:(length(alive.years)-1)){
 #       if(alive.years[t+1] == alive.years[t]+1){
@@ -155,7 +155,7 @@ data <- sim.JS.SCR.Dcov.mobileAC(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,InS
 # }
 # points(X.all,pch=4,cex=0.75,lwd=2)
 
-# can look at individual by year availability and use distributions
+# can look at individual by primary occasion availability and use distributions
 # i <- 1
 # g <- 1
 # par(mfrow=c(3,1))
@@ -177,14 +177,14 @@ mask.check(dSS=data$dSS,cells=data$cells,n.cells=data$n.cells,n.cells.x=data$n.c
 data$truth$N.super #N.super
 
 ##Initialize##
-#Hard to predict appropriate M, depends on many factors like detection prob, number of years
+#Hard to predict appropriate M, depends on many factors like detection prob, number of primary occasions
 #level of population turnover. Maybe make sure it is at least 1.6*N.super to start
 M <- 250 #data augmentation level. Check N.super posterior to make sure it never hits M
 N.super.init <- nrow(data$y)
 X <- data$X #pull X from data (won't be in environment if not simulated directly above)
 K <- data$K #same for K
 if(N.super.init > M) stop("Must augment more than number of individuals captured")
-J <- unlist(lapply(X,nrow)) #traps per year
+J <- unlist(lapply(X,nrow)) #traps per primary occasion
 J.max <- max(J)
 
 y.nim <- array(0,dim=c(M,n.primary,J.max))
@@ -219,7 +219,7 @@ cov.up <- which(is.na(phi.cov.data)) #which individuals have missing cov values,
 
 #remaining SCR stuff to initialize
 #put X in ragged array
-#also make K1D, year by trap operation history, as ragged array.
+#also make K1D, primary occasion by trap operation history, as ragged array.
 X.nim <- array(0,dim=c(n.primary,J.max,2))
 K1D <- matrix(0,n.primary,J.max)
 for(g in 1:n.primary){
@@ -280,7 +280,7 @@ Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
 Nimdata <- list(y=y.nim,phi.cov=phi.cov.data,X=X.nim,dSS=dSS,cells=cells,InSS=InSS)
 
 # set parameters to monitor
-parameters <- c('N','gamma.fixed','N.recruit','N.survive','N.super','lambda.y1',
+parameters <- c('N','gamma','N.recruit','N.survive','N.super','lambda.y1',
                 'beta0.phi','beta1.phi','phi.cov.mu','phi.cov.sd','p0','sigma',
                 'D0','D.beta1','rsf.beta','sigma.move')
 nt <- 1 #thinning rate
@@ -289,7 +289,7 @@ nt <- 1 #thinning rate
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
 
-config.nodes <- c('beta0.phi','beta1.phi','gamma.fixed',paste('phi.cov[',cov.up,']'),
+config.nodes <- c('beta0.phi','beta1.phi','gamma',paste('phi.cov[',cov.up,']'),
                'phi.cov.mu','phi.cov.sd','p0','sigma','rsf.beta','sigma.move')
 # config.nodes <- c()
 conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,
@@ -298,7 +298,7 @@ conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,
 ###*required* sampler replacements###
 z.super.ups <- round(M*0.25) #how many z.super update proposals per iteration? 
 #25% of M seems reasonable, but optimal will depend on data set
-#loop here bc potentially different numbers of traps to vectorize in each year
+#loop here bc potentially different numbers of traps to vectorize in each primary occasion
 y.nodes <- pd.nodes <- c()
 for(g in 1:n.primary){
   y.nodes <- c(y.nodes,Rmodel$expandNodeNames(paste0("y[1:",M,",",g,",1:",J[g],"]"))) #if you change y structure, change here
@@ -341,6 +341,19 @@ for(i in 1:M){
     #scale parameter here is just the starting scale. It will be tuned.
   }
 }
+
+#optional truncated gamma poisson conjugate samplers. 
+#I would always use these as long as you keep uniform priors on gamma or gamma[g]
+#Typically gives you much greater ESS that propagates to N/N.recruit
+#if one gamma per primary occasion
+# for(g in 1:(n.primary-1)){
+#   target <- paste0("gamma[",g,"]")
+#   conf$removeSamplers(target)
+#   conf$addSampler(target=target,type=truncGammaPoisSampler)
+# }
+# #if gamma is fixed
+conf$removeSamplers("gamma")
+conf$addSampler(target="gamma",type=truncGammaPoisSampler)
 
 #optional (but recommended!) blocking 
 conf$addSampler(target = c("beta0.phi","beta1.phi"),type = 'RW_block',

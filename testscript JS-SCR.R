@@ -1,7 +1,7 @@
 #This is an SCR version with fixed activity centers, and an individual survival covariate.
 
 #Some notes:
-#1) Dimensions probably prevent this from working with only 2 years of data (N.recruit, N.survive are not vectors)
+#1) Dimensions probably prevent this from working with only 2 primary occasions of data (N.recruit, N.survive are not vectors)
 #Need to modify custom updates in this case
 #2) Object names that cannot be changed in the nimble model without changes in custom updates:
 #N, N.recruit, N.survive, ER, lambda.y1, z.start, z.stop, z.obs, pd
@@ -16,20 +16,20 @@ source("sim.JS.SCR.R")
 source("Nimble Model JS-SCR.R")
 source("Nimble Functions JS-SCR.R") #contains custom distributions and updates
 source("sSampler Fixed.R") # activity center sampler that proposes from prior when z.super=0.
-#this one works for fixed activity centers over years only
+#this one works for fixed activity centers over primary occasions only
 
-n.primary <- 4 #number of years
-lambda.y1 <- 100 #expected N in year 1
-gamma <- rep(0.2,n.primary-1) #yearly per-capita recruitment
+n.primary <- 4 #number of primary occasions
+lambda.y1 <- 100 #expected N in primary occasion 1
+gamma <- rep(0.2,n.primary-1) #per-capita recruitment by primary occasion
 beta0.phi <- qlogis(0.85) #survival intercept
 beta1.phi <- 0.5 #phi response to individual covariate
-p0 <- rep(0.1,n.primary) #yearly detection probabilities at activity center
-sigma <- rep(0.5,n.primary) #yearly detection function scale
-K <- rep(10,n.primary) #yearly sampling occasions
+p0 <- rep(0.1,n.primary) #detection probabilities at activity center by primary occasion
+sigma <- rep(0.5,n.primary) #detection function scale by primary occasion
+K <- rep(10,n.primary) #sampling occasions by primary occasion
 
-buff <- 2 #state space buffer. Buffers maximal x and y dimensions of X below across years
-X <- vector("list",n.primary) #one trapping array per year
-for(g in 1:n.primary){ #using same trapping array every year here
+buff <- 2 #state space buffer. Buffers maximal x and y dimensions of X below across primary occasions
+X <- vector("list",n.primary) #one trapping array per primary occasion
+for(g in 1:n.primary){ #using same trapping array every primary occasion here
   X[[g]] <- as.matrix(expand.grid(3:11,3:11))
 }
 
@@ -40,7 +40,7 @@ data <- sim.JS.SCR(lambda.y1=lambda.y1,gamma=gamma,n.primary=n.primary,
 data$truth$N.super #N.super
 
 ##Initialize##
-#Hard to predict appropriate M, depends on many factors like detection prob, number of years
+#Hard to predict appropriate M, depends on many factors like detection prob, number of primary occasions
 #level of population turnover. Maybe make sure it is at least 1.6*N.super to start
 M <- 250 #data augmentation level. Check N.super posterior to make sure it never hits M
 N.super.init <- nrow(data$y)
@@ -48,7 +48,7 @@ X <- data$X #pull X from data (won't be in environment if not simulated directly
 K <- data$K #same for K
 
 if(N.super.init > M) stop("Must augment more than number of individuals captured")
-J <- unlist(lapply(X,nrow)) #traps per year
+J <- unlist(lapply(X,nrow)) #traps per primary occasion
 J.max <- max(J)
 
 y.nim <- array(0,dim=c(M,n.primary,J.max))
@@ -84,7 +84,7 @@ cov.up <- which(is.na(phi.cov.data)) #which individuals have missing cov values,
 
 #remaining SCR stuff to initialize
 #put X in ragged array
-#also make K1D, year by trap operation history, as ragged array.
+#also make K1D, primary occasion by trap operation history, as ragged array.
 X.nim <- array(0,dim=c(n.primary,J.max,2))
 K1D <- matrix(0,n.primary,J.max)
 for(g in 1:n.primary){
@@ -98,7 +98,7 @@ ylim <- data$ylim
 s.init <- cbind(runif(M,xlim[1],xlim[2]), runif(M,ylim[1],ylim[2])) #assign random locations
 idx <- which(rowSums(y.nim)>0) #switch for those actually caught
 for(i in idx){
-  trps <- matrix(0,nrow=0,ncol=2) #get locations of traps of capture across years for ind i
+  trps <- matrix(0,nrow=0,ncol=2) #get locations of traps of capture across primary occasions for ind i
   for(g in 1:n.primary){
     if(sum(y.nim[i,g,])>0){
       trps.g <- matrix(X.nim[g,which(y.nim[i,g,]>0),],ncol=2,byrow=FALSE)
@@ -144,7 +144,7 @@ conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,
 #add N/z samplers
 z.super.ups <- round(M*0.25) #how many z.super update proposals per iteration? 
 #25% of M seems reasonable, but optimal will depend on data set
-#loop here bc potentially different numbers of traps to vectorize in each year
+#loop here bc potentially different numbers of traps to vectorize in each primary occasion
 y.nodes <- pd.nodes <- c()
 for(g in 1:n.primary){
   y.nodes <- c(y.nodes,Rmodel$expandNodeNames(paste0("y[1:",M,",",g,",1:",J[g],"]"))) #if you change y structure, change here
@@ -172,6 +172,21 @@ for(i in 1:M){
                   type = 'sSampler',control=list(i=i,xlim=xlim,ylim=ylim,scale=1),silent = TRUE)
   #scale parameter here is just the starting scale. It will be tuned.
 }
+
+#optional truncated gamma poisson conjugate samplers. 
+#I would always use these as long as you keep uniform priors on lambda.y1 and gamma[g]
+#Typically gives you much greater ESS that propagates to N/N.recruit
+conf$removeSamplers("lambda.y1")
+conf$addSampler(target="lambda.y1",type=truncGammaPoisSampler)
+#if one gamma per primary occasion
+for(g in 1:(n.primary-1)){
+  target <- paste0("gamma[",g,"]")
+  conf$removeSamplers(target)
+  conf$addSampler(target=target,type=truncGammaPoisSampler)
+}
+# #if gamma is fixed
+# conf$removeSamplers("gamma")
+# conf$addSampler(target="gamma",type=truncGammaPoisSampler)
 
 
 #optional (but recommended!) blocking 

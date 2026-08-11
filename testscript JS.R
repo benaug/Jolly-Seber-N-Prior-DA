@@ -1,5 +1,5 @@
 #Some notes:
-#1) Dimensions probably prevent this from working with only 2 years of data (N.recruit, N.survive are not vectors)
+#1) Dimensions probably prevent this from working with only 2 primary occasions of data (N.recruit, N.survive are not vectors)
 #Need to modify custom updates in this case
 #2) Object names that cannot be changed in the nimble model without changes in custom updates:
 #N, N.recruit, N.survive, ER, lambda.y1, z.start, z.stop, z.obs, 
@@ -14,13 +14,13 @@ source("sim.JS.R")
 source("Nimble Model JS.R")
 source("Nimble Functions JS.R") #contains custom distributions and updates
 
-n.primary <- 6 #number of years
-lambda.y1 <- 100 #expected N in year 1
-gamma <- rep(0.2,n.primary-1) #yearly per-capita recruitment
+n.primary <- 6 #number of primary occasions
+lambda.y1 <- 100 #expected N in primary occasion 1
+gamma <- rep(0.2,n.primary-1) #per-capita recruitment by primary occasion
 beta0.phi <- qlogis(0.85) #survival intercept
 beta1.phi <- 0.5 #phi response to individual covariate
-p <- rep(0.15,n.primary) #yearly detection probabilities
-K <- rep(10,n.primary) #yearly sampling occasions
+p <- rep(0.15,n.primary) #detection probabilities by primary occasion
+K <- rep(10,n.primary) #sampling occasions by primary occasion
 
 data <- sim.JS(lambda.y1=lambda.y1,gamma=gamma,
             beta0.phi=beta0.phi,beta1.phi=beta1.phi,
@@ -29,7 +29,7 @@ data <- sim.JS(lambda.y1=lambda.y1,gamma=gamma,
 data$truth$N.super #N.super
 
 ##Initialize##
-#Hard to predict appropriate M, depends on many factors like detection prob, number of years
+#Hard to predict appropriate M, depends on many factors like detection prob, number of primary occasions
 #level of population turnover. Maybe make sure it is at least 1.6*N.super to start
 M <-  250 #data augmentation level. Check N.super posterior to make sure it never hits M
 N.super.init <- nrow(data$y)
@@ -108,6 +108,22 @@ conf$addSampler(target = c("z"),
                                                  N.recruit.nodes=N.recruit.nodes,
                                                  calcNodes=calcNodes), silent = TRUE)
 
+#optional truncated gamma poisson conjugate samplers. 
+#I would always use these as long as you keep uniform priors on lambda.y1 and gamma[g]
+#Typically gives you much greater ESS that propagates to N/N.recruit
+conf$removeSamplers("lambda.y1")
+conf$addSampler(target="lambda.y1",type=truncGammaPoisSampler)
+#if one gamma per primary occasion
+for(g in 1:(n.primary-1)){
+  target <- paste0("gamma[",g,"]")
+  conf$removeSamplers(target)
+  conf$addSampler(target=target,type=truncGammaPoisSampler)
+}
+# #if gamma is fixed
+# conf$removeSamplers("gamma")
+# conf$addSampler(target="gamma",type=truncGammaPoisSampler)
+
+
 #optional (but recommended!) blocking 
 # conf$removeSampler(c("beta0.phi"))
 # conf$removeSampler(c("beta1.phi"))
@@ -122,7 +138,7 @@ Cmcmc <- compileNimble(Rmcmc, project = Rmodel)
 
 # Run the model.
 start.time2 <- Sys.time()
-Cmcmc$run(5000,reset=FALSE) #can extend run by rerunning this line
+Cmcmc$run(2500,reset=FALSE) #can extend run by rerunning this line
 end.time <- Sys.time()
 time1 <- end.time-start.time  # total time for compilation, replacing samplers, and fitting
 time2 <- end.time-start.time2 # post-compilation run time

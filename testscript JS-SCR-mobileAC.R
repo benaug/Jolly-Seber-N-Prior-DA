@@ -1,8 +1,8 @@
 #This is an SCR version with mobile activity centers and an individual survival covariate.
 #the movement scale parameter sigma.move generally mixes poorly.
-#better with higher cumulative detection prob, higher survival, more years of data, more individuals
+#better with higher cumulative detection prob, higher survival, more primary occasions of data, more individuals
 #I am estimating a fixed per capita recruitment parameter gamma to better estimate sigma.move
-#so, don't simulate different gammas in each year below
+#so, don't simulate different gammas in each primary occasion below
 
 library(nimble)
 library(coda)
@@ -12,19 +12,19 @@ source("Nimble Model JS-SCR-mobileAC.R")
 source("Nimble Functions JS-SCR-mobileAC.R") #contains custom distributions and updates
 source("sSampler Mobile.R")
 
-n.primary <- 5 #number of years
-lambda.y1 <- 100 #expected N in year 1
-gamma <- rep(0.2,n.primary-1) #yearly per-capita recruitment
+n.primary <- 5 #number of primary occasions
+lambda.y1 <- 100 #expected N in primary occasion 1
+gamma <- rep(0.2,n.primary-1) #per-capita recruitment by primary occasion
 beta0.phi <- qlogis(0.85) #survival intercept
 beta1.phi <- 0.5 #phi response to individual covariate
-p0 <- rep(0.1,n.primary) #yearly detection probabilities at activity center
-sigma <- rep(0.5,n.primary) #yearly detection function scale
+p0 <- rep(0.1,n.primary) #detection probabilities at activity center by primary occasion
+sigma <- rep(0.5,n.primary) #detection function scale by primary occasion
 sigma.move <- 0.75 #movement sigma, fixed over primary periods
-K <- rep(10,n.primary) #yearly sampling occasions
+K <- rep(10,n.primary) #sampling occasions by primary occasion
 
-buff <- 2 #state space buffer. Buffers maximal x and y dimensions of X below across years
-X <- vector("list",n.primary) #one trapping array per year
-for(g in 1:n.primary){ #using same trapping array every year here
+buff <- 2 #state space buffer. Buffers maximal x and y dimensions of X below across primary occasions
+X <- vector("list",n.primary) #one trapping array per primary occasion
+for(g in 1:n.primary){ #using same trapping array every primary occasion here
   X[[g]] <- as.matrix(expand.grid(3:11,3:11))
 }
 
@@ -35,14 +35,14 @@ data <- sim.JS.SCR(lambda.y1=lambda.y1,gamma=gamma,n.primary=n.primary,
 data$truth$N.super #N.super
 
 ##Initialize##
-#Hard to predict appropriate M, depends on many factors like detection prob, number of years
+#Hard to predict appropriate M, depends on many factors like detection prob, number of primary occasions
 #level of population turnover. Maybe make sure it is at least 1.6*N.super to start
 M <- 300 #data augmentation level. Check N.super posterior to make sure it never hits M
 N.super.init <- nrow(data$y)
 X <- data$X #pull X from data (won't be in environment if not simulated directly above)
 K <- data$K #same for K
 if(N.super.init > M) stop("Must augment more than number of individuals captured")
-J <- unlist(lapply(X,nrow)) #traps per year
+J <- unlist(lapply(X,nrow)) #traps per primary occasion
 J.max <- max(J)
 
 #pull these out of data object (won't be in environment if it wasn't simulated above, i.e. real data)
@@ -92,7 +92,7 @@ cov.up <- which(is.na(phi.cov.data)) #which individuals have missing cov values,
 
 #remaining SCR stuff to initialize
 #put X in ragged array
-#also make K1D, year by trap operation history, as ragged array.
+#also make K1D, primary occasion by trap operation history, as ragged array.
 X.nim <- array(0,dim=c(n.primary,J.max,2))
 K1D <- matrix(0,n.primary,J.max)
 for(g in 1:n.primary){
@@ -118,7 +118,7 @@ Niminits <- list(N=N.init,lambda.y1=N.init[1], #initialize consistent with N[1] 
 Nimdata <- list(y=y.nim,phi.cov=phi.cov.data,X=X.nim)
 
 # set parameters to monitor
-parameters <- c('N','gamma.fixed','N.recruit','N.survive','N.super',
+parameters <- c('N','gamma','N.recruit','N.survive','N.super',
                 'lambda.y1','beta0.phi','beta1.phi',
                 'phi.cov.mu','phi.cov.sd','p0','sigma','sigma.move')
 nt <- 1 #thinning rate
@@ -127,7 +127,7 @@ nt <- 1 #thinning rate
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
 #if you add/remove parameters in model file, do so in config.nodes
-config.nodes <- c('beta0.phi','beta1.phi','gamma.fixed','lambda.y1',paste('phi.cov[',cov.up,']'),
+config.nodes <- c('beta0.phi','beta1.phi','gamma','lambda.y1',paste('phi.cov[',cov.up,']'),
                'phi.cov.mu','phi.cov.sd','p0','sigma','sigma.move')
 conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,
                       nodes=config.nodes,useConjugacy = TRUE)
@@ -135,7 +135,7 @@ conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,
 #add N/z samplers
 z.super.ups <- round(M*0.25) #how many z.super update proposals per iteration? 
 #205 of M seems reasonable, but optimal will depend on data set
-#loop here bc potentially different numbers of traps to vectorize in each year
+#loop here bc potentially different numbers of traps to vectorize in each primary occasion
 y.nodes <- pd.nodes <- c()
 for(g in 1:n.primary){
   y.nodes <- c(y.nodes,Rmodel$expandNodeNames(paste0("y[1:",M,",",g,",1:",J[g],"]"))) #if you change y structure, change here
@@ -177,6 +177,21 @@ for(i in 1:M){
 #may handle funnel behavior better for smaller values
 conf$removeSampler('sigma.move')
 conf$addSampler(target='sigma.move',type='slice')
+
+#optional truncated gamma poisson conjugate samplers. 
+#I would always use these as long as you keep uniform priors on lambda.y1 and gamma[g]
+#Typically gives you much greater ESS that propagates to N/N.recruit
+conf$removeSamplers("lambda.y1")
+conf$addSampler(target="lambda.y1",type=truncGammaPoisSampler)
+# #if one gamma per primary occasion
+# for(g in 1:(n.primary-1)){
+#   target <- paste0("gamma[",g,"]")
+#   conf$removeSamplers(target)
+#   conf$addSampler(target=target,type=truncGammaPoisSampler)
+# }
+#if gamma is fixed
+conf$removeSamplers("gamma")
+conf$addSampler(target="gamma",type=truncGammaPoisSampler)
 
 #optional (but recommended!) blocking 
 conf$addSampler(target = c("beta0.phi","beta1.phi"),type = 'RW_block',

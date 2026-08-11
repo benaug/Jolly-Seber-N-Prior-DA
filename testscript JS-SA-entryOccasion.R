@@ -7,14 +7,14 @@ source("sim.JS.SA.R")
 source("Nimble Model JS-SA-entryOccasion.R")
 source("Nimble Functions JS-SA-entryOccasion.R") #contains required custom update for e/surv nodes
 
-n.primary <- 4 #number of years
+n.primary <- 4 #number of primary occasions
 M <- 200 #data simulator simulates from Chandler-Clark model with M as a parameter
 psi <- 0.75 #expected N.super is M*psi
 pi <- c(0.5,0.2,0.2,0.1) #Probability of entry in occasion g
 beta0.phi <- qlogis(0.85) #survival intercept
 beta1.phi <- 0.5
-p <- rep(0.2,n.primary) #yearly detection probability
-K <- rep(10,n.primary) #yearly sampling occasions
+p <- rep(0.2,n.primary) #detection probability by primary occasion
+K <- rep(10,n.primary) #sampling occasions by primary occasion
 
 set.seed(33955)
 data <- sim.JS.SA(psi=psi,pi=pi,

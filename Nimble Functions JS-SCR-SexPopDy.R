@@ -1,4 +1,4 @@
-#this is used to restrict likelihood evaluation to only the years relevant for survival for each individual
+#this is used to restrict likelihood evaluation to only the primary occasions relevant for survival for each individual
 dSurvival <- nimbleFunction(
   run = function(x = double(1), phi = double(1), z.start = double(0), z.stop = double(0),
                  z.super = double(0), log = integer(0)) {
@@ -6,14 +6,14 @@ dSurvival <- nimbleFunction(
     logProb <- 0
     if(z.super==1){
       n.primary <- length(phi)+1
-      #extract first and last survival event years
+      #extract first and last survival event primary occasions
       surv.start <- z.start+1
       surv.stop <- z.stop+1 #count death events, first z[i,]=0
-      if(surv.start <= n.primary){ #if surv.start beyond last year, no survival events, logProb=0
+      if(surv.start <= n.primary){ #if surv.start beyond last primary occasion, no survival events, logProb=0
         if(surv.stop > n.primary){ #but can't survive past n.primary
           surv.stop <- n.primary 
         }
-        for(g in surv.start:surv.stop){ #sum logprob over survival event years
+        for(g in surv.start:surv.stop){ #sum logprob over survival event primary occasions
           logProb <- logProb + dbinom(x[g], size = 1, p = phi[g-1], log = TRUE)
         }
       }
@@ -36,7 +36,7 @@ GetDetectionProb <- nimbleFunction(
                  X=double(2), J=double(0), z=double(0), z.super=double(0)){ 
     returnType(double(1))
     if(z.super==0 | z.super==1&z==0){
-      return(rep(0,J)) #skip calculation if not is superpop, or in superpop, but not alive in this year
+      return(rep(0,J)) #skip calculation if not is superpop, or in superpop, but not alive in this primary occasion
     }
     if(z==1){ #otherwise calculate
       d2 <- ((s[1]-X[1:J,1])^2 + (s[2]-X[1:J,2])^2)
@@ -50,7 +50,7 @@ dBinomialVector <- nimbleFunction(
   run = function(x = double(1), pd = double(1), K = double(1), z = double(0), z.super = double(0),
                  log = integer(0)) {
     returnType(double(0))
-    if(z.super==0 | z.super==1&z==0){#skip calculation if not is superpop, or in superpop, but not alive in this year
+    if(z.super==0 | z.super==1&z==0){#skip calculation if not is superpop, or in superpop, but not alive in this primary occasion
       return(0)
     }else{
       logProb <- sum(dbinom(x, size = K, p = pd, log = TRUE))
@@ -105,7 +105,7 @@ zSampler <- nimbleFunction(
     # 1) Detected guy updates: z.start, z.stop
     # 1a) z start update (z.stop update below): Gibbs, compute full conditional
     for(i in 1:M){
-      if(z.obs[i]==1&y2D[i,1]==0){ #for detected guys, skip if observed 1st year, must be alive
+      if(z.obs[i]==1&y2D[i,1]==0){ #for detected guys, skip if observed 1st primary occasion, must be alive
         z.curr <- model$z[i,]
         z.start.curr <- model$z.start[i]
         N.curr <- model$N
@@ -121,7 +121,7 @@ zSampler <- nimbleFunction(
         first.det <- min(dets)
         lp.start <- rep(-Inf,n.primary)
         i.idx <- seq(i,M*n.primary,M) #used to reference correct y and pd nodes
-        for(g in 1:first.det){ #must be recruited in year with first detection or before
+        for(g in 1:first.det){ #must be recruited in primary occasion with first detection or before
           z.start.prop <- g
           model$z.start[i] <<- z.start.prop
           z.prop <- rep(0,n.primary)
@@ -136,14 +136,14 @@ zSampler <- nimbleFunction(
           model$N <<- N.curr - z.curr + z.prop
           #2) Update N.recruit
           model$N.recruit <<- N.recruit.curr #set back to original first
-          if(z.start.curr > 1){ #if wasn't in pop in year 1 in current, remove recruit event
+          if(z.start.curr > 1){ #if wasn't in pop in primary occasion 1 in current, remove recruit event
             model$N.recruit[z.start.curr-1] <<- N.recruit.curr[z.start.curr-1] - 1
           }
-          if(z.start.prop > 1){ #if wasn't in pop in year 1 in proposal, add recruit event
+          if(z.start.prop > 1){ #if wasn't in pop in primary occasion 1 in proposal, add recruit event
             model$N.recruit[z.start.prop-1] <<- N.recruit.curr[z.start.prop-1] + 1
           }
           #3) Update N.survive
-          model$N.survive <<- model$N[2:n.primary]-model$N.recruit #survivors are guys alive in year g-1 minus recruits in this year g
+          model$N.survive <<- model$N[2:n.primary]-model$N.recruit #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
 
           #now repeat for sex
           if(model$sex[i]==0){ #male
@@ -151,29 +151,29 @@ zSampler <- nimbleFunction(
             model$N.M <<- N.M.curr - z.curr + z.prop
             #2) Update N.recruit
             model$N.recruit.M <<- N.recruit.M.curr #set back to original first
-            if(z.start.curr > 1){ #if wasn't in pop in year 1 in current, remove recruit event
+            if(z.start.curr > 1){ #if wasn't in pop in primary occasion 1 in current, remove recruit event
               model$N.recruit.M[z.start.curr-1] <<- N.recruit.M.curr[z.start.curr-1] - 1
             }
-            if(z.start.prop > 1){ #if wasn't in pop in year 1 in proposal, add recruit event
+            if(z.start.prop > 1){ #if wasn't in pop in primary occasion 1 in proposal, add recruit event
               model$N.recruit.M[z.start.prop-1] <<- N.recruit.M.curr[z.start.prop-1] + 1
             }
             #3) Update N.survive
-            model$N.survive.M <<- model$N.M[2:n.primary]-model$N.recruit.M #survivors are guys alive in year g-1 minus recruits in this year g
+            model$N.survive.M <<- model$N.M[2:n.primary]-model$N.recruit.M #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
           }else{ #female
             #1) Update N
             model$N.F <<- N.F.curr - z.curr + z.prop
             #2) Update N.recruit
             model$N.recruit.F <<- N.recruit.F.curr #set back to original first
-            if(z.start.curr > 1){ #if wasn't in pop in year 1 in current, remove recruit event
+            if(z.start.curr > 1){ #if wasn't in pop in primary occasion 1 in current, remove recruit event
               model$N.recruit.F[z.start.curr-1] <<- N.recruit.F.curr[z.start.curr-1] - 1
             }
-            if(z.start.prop > 1){ #if wasn't in pop in year 1 in proposal, add recruit event
+            if(z.start.prop > 1){ #if wasn't in pop in primary occasion 1 in proposal, add recruit event
               model$N.recruit.F[z.start.prop-1] <<- N.recruit.F.curr[z.start.prop-1] + 1
             }
             #3) Update N.survive
-            model$N.survive.F <<- model$N.F[2:n.primary]-model$N.recruit.F #survivors are guys alive in year g-1 minus recruits in this year g
+            model$N.survive.F <<- model$N.F[2:n.primary]-model$N.recruit.F #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
           }
-          # recruit likelihood conditional on having recruited (or alive in year 1)
+          # recruit likelihood conditional on having recruited (or alive in primary occasion 1)
           #must account for sex-specificity, Updating N changes both ER.M and ER.F
           model$calculate(ER.M.nodes)
           model$calculate(ER.F.nodes)
@@ -217,34 +217,34 @@ zSampler <- nimbleFunction(
           model$z[i,] <<- z.prop
           model$N <<- N.curr - z.curr + z.prop
           model$N.recruit <<- N.recruit.curr #set back to original first
-          if(z.start.curr > 1){ #if wasn't in pop in year 1 in current, remove recruit event
+          if(z.start.curr > 1){ #if wasn't in pop in primary occasion 1 in current, remove recruit event
             model$N.recruit[z.start.curr-1] <<- N.recruit.curr[z.start.curr-1] - 1
           }
-          if(z.start.prop > 1){ #if wasn't in pop in year 1 in proposal, add recruit event
+          if(z.start.prop > 1){ #if wasn't in pop in primary occasion 1 in proposal, add recruit event
             model$N.recruit[z.start.prop-1] <<- N.recruit.curr[z.start.prop-1] + 1
           }
-          model$N.survive <<- model$N[2:n.primary]-model$N.recruit #survivors are guys alive in year g-1 minus recruits in this year g
+          model$N.survive <<- model$N[2:n.primary]-model$N.recruit #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
           #now repeat for sex
           if(model$sex[i]==0){ #male
             model$N.M <<- N.M.curr - z.curr + z.prop
             model$N.recruit.M <<- N.recruit.M.curr #set back to original first
-            if(z.start.curr > 1){ #if wasn't in pop in year 1 in current, remove recruit event
+            if(z.start.curr > 1){ #if wasn't in pop in primary occasion 1 in current, remove recruit event
               model$N.recruit.M[z.start.curr-1] <<- N.recruit.M.curr[z.start.curr-1] - 1
             }
-            if(z.start.prop > 1){ #if wasn't in pop in year 1 in proposal, add recruit event
+            if(z.start.prop > 1){ #if wasn't in pop in primary occasion 1 in proposal, add recruit event
               model$N.recruit.M[z.start.prop-1] <<- N.recruit.M.curr[z.start.prop-1] + 1
             }
-            model$N.survive.M <<- model$N.M[2:n.primary]-model$N.recruit.M #survivors are guys alive in year g-1 minus recruits in this year g
+            model$N.survive.M <<- model$N.M[2:n.primary]-model$N.recruit.M #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
           }else{ #female
             model$N.F <<- N.F.curr - z.curr + z.prop
             model$N.recruit.F <<- N.recruit.F.curr #set back to original first
-            if(z.start.curr > 1){ #if wasn't in pop in year 1 in current, remove recruit event
+            if(z.start.curr > 1){ #if wasn't in pop in primary occasion 1 in current, remove recruit event
               model$N.recruit.F[z.start.curr-1] <<- N.recruit.F.curr[z.start.curr-1] - 1
             }
-            if(z.start.prop > 1){ #if wasn't in pop in year 1 in proposal, add recruit event
+            if(z.start.prop > 1){ #if wasn't in pop in primary occasion 1 in proposal, add recruit event
               model$N.recruit.F[z.start.prop-1] <<- N.recruit.F.curr[z.start.prop-1] + 1
             }
-            model$N.survive.F <<- model$N.F[2:n.primary]-model$N.recruit.F #survivors are guys alive in year g-1 minus recruits in this year g
+            model$N.survive.F <<- model$N.F[2:n.primary]-model$N.recruit.F #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
           }
           model$calculate(ER.M.nodes)
           model$calculate(ER.F.nodes)
@@ -322,7 +322,7 @@ zSampler <- nimbleFunction(
 
     #1b) z stop update (z.start update above): Gibbs, compute full conditional
     for(i in 1:M){
-      if(z.obs[i]==1&y2D[i,n.primary]==0){ #for detected guys, skip if observed in final year
+      if(z.obs[i]==1&y2D[i,n.primary]==0){ #for detected guys, skip if observed in final primary occasion
         z.curr <- model$z[i,]
         z.stop.curr <- model$z.stop[i]
         N.curr <- model$N
@@ -335,7 +335,7 @@ zSampler <- nimbleFunction(
         last.det <- max(dets)
         lp.stop <- rep(-Inf,n.primary)
         i.idx <- seq(i,M*n.primary,M) #used to reference correct y and pd nodes
-        for(g in (last.det):n.primary){ #can't die on or before year of last detection
+        for(g in (last.det):n.primary){ #can't die on or before primary occasion of last detection
           model$z.stop[i] <<- g
           z.prop <- rep(0,n.primary)
           z.prop[last.det:g] <- 1 #must be alive between last detection and this z.stop
@@ -348,7 +348,7 @@ zSampler <- nimbleFunction(
           }else{ #female
             model$N.F <<- N.F.curr - z.curr + z.prop
           }
-          # recruit likelihood conditional on having recruited (or alive in year 1)
+          # recruit likelihood conditional on having recruited (or alive in primary occasion 1)
           #must account for sex-specificity, Updating N changes both ER.M and ER.F
           model$calculate(ER.M.nodes)
           model$calculate(ER.F.nodes)
@@ -376,7 +376,7 @@ zSampler <- nimbleFunction(
           z.prop[1:(last.det)] <- z.curr[1:(last.det)] #fill in remaining current z values, keeping death event the same
           model$z[i,] <<- z.prop
           model$N <<- N.curr - z.curr + z.prop
-          model$N.survive <<- model$N[2:n.primary]-model$N.recruit #survivors are guys alive in year g-1 minus recruits in this year g
+          model$N.survive <<- model$N[2:n.primary]-model$N.recruit #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
           if(model$sex[i]==0){ #male
             model$N.M <<- N.M.curr - z.curr + z.prop
             model$N.survive.M <<- model$N.M[2:n.primary]-model$N.recruit.M
@@ -486,7 +486,7 @@ zSampler <- nimbleFunction(
         #update phi bc sex can change
         model$calculate(phi.nodes[i.idx2])
         #simulate survival with updated phi
-        if(z.start.prop < n.primary){ #if you don't recruit in final year
+        if(z.start.prop < n.primary){ #if you don't recruit in final primary occasion
           for(g in (z.start.prop+1):n.primary){
             z.prop[g] <- rbinom(1,1,model$phi[i,g-1]*z.prop[g-1])
             log.prop.for <- log.prop.for + dbinom(z.prop[g],1,model$phi[i,g-1]*z.prop[g-1],log=TRUE)
@@ -502,58 +502,58 @@ zSampler <- nimbleFunction(
         #1) Update N
         model$N <<- model$N - z.curr + z.prop
         #2) Update N.recruit
-        if(z.start.curr > 1){ #if wasn't in pop in year 1 in current, remove recruit event
+        if(z.start.curr > 1){ #if wasn't in pop in primary occasion 1 in current, remove recruit event
           model$N.recruit[z.start.curr-1] <<- model$N.recruit[z.start.curr-1] - 1
         }
-        if(z.start.prop > 1){ #if wasn't in pop in year 1 in proposal, add recruit event
+        if(z.start.prop > 1){ #if wasn't in pop in primary occasion 1 in proposal, add recruit event
           model$N.recruit[z.start.prop-1] <<- model$N.recruit[z.start.prop-1] + 1
         }
         #3) Update N.survive
-        model$N.survive <<- model$N[2:n.primary]-model$N.recruit #survivors are guys alive in year g-1 minus recruits in this year g
+        model$N.survive <<- model$N[2:n.primary]-model$N.recruit #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
         #repeat for sex
         if(sex.curr==0&model$sex[i]==0){ #male to male
           model$N.M <<- model$N.M - z.curr + z.prop
-          if(z.start.curr > 1){ #if wasn't in pop in year 1 in current, remove recruit event
+          if(z.start.curr > 1){ #if wasn't in pop in primary occasion 1 in current, remove recruit event
             model$N.recruit.M[z.start.curr-1] <<- model$N.recruit.M[z.start.curr-1] - 1
           }
-          if(z.start.prop > 1){ #if wasn't in pop in year 1 in proposal, add recruit event
+          if(z.start.prop > 1){ #if wasn't in pop in primary occasion 1 in proposal, add recruit event
             model$N.recruit.M[z.start.prop-1] <<- model$N.recruit.M[z.start.prop-1] + 1
           }
-          model$N.survive.M <<- model$N.M[2:n.primary]-model$N.recruit.M #survivors are guys alive in year g-1 minus recruits in this year g
+          model$N.survive.M <<- model$N.M[2:n.primary]-model$N.recruit.M #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
         }else if(sex.curr==1&model$sex[i]==1){ #female to female
           model$N.F <<- model$N.F - z.curr + z.prop
-          if(z.start.curr > 1){ #if wasn't in pop in year 1 in current, remove recruit event
+          if(z.start.curr > 1){ #if wasn't in pop in primary occasion 1 in current, remove recruit event
             model$N.recruit.F[z.start.curr-1] <<- model$N.recruit.F[z.start.curr-1] - 1
           }
-          if(z.start.prop > 1){ #if wasn't in pop in year 1 in proposal, add recruit event
+          if(z.start.prop > 1){ #if wasn't in pop in primary occasion 1 in proposal, add recruit event
             model$N.recruit.F[z.start.prop-1] <<- model$N.recruit.F[z.start.prop-1] + 1
           }
-          model$N.survive.F <<- model$N.F[2:n.primary]-model$N.recruit.F #survivors are guys alive in year g-1 minus recruits in this year g
+          model$N.survive.F <<- model$N.F[2:n.primary]-model$N.recruit.F #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
         }else if(sex.curr==0&model$sex[i]==1){ #male to female
           #subtract current z from males, add new z to females
           model$N.M <<- model$N.M - z.curr
           model$N.F <<- model$N.F + z.prop
-          if(z.start.curr > 1){ #if wasn't in pop in year 1 in current, remove recruit event
+          if(z.start.curr > 1){ #if wasn't in pop in primary occasion 1 in current, remove recruit event
             model$N.recruit.M[z.start.curr-1] <<- model$N.recruit.M[z.start.curr-1] - 1
           }
-          if(z.start.prop > 1){ #if wasn't in pop in year 1 in proposal, add recruit event
+          if(z.start.prop > 1){ #if wasn't in pop in primary occasion 1 in proposal, add recruit event
             model$N.recruit.F[z.start.prop-1] <<- model$N.recruit.F[z.start.prop-1] + 1
           }
-          model$N.survive.M <<- model$N.M[2:n.primary]-model$N.recruit.M #survivors are guys alive in year g-1 minus recruits in this year g
-          model$N.survive.F <<- model$N.F[2:n.primary]-model$N.recruit.F #survivors are guys alive in year g-1 minus recruits in this year g
+          model$N.survive.M <<- model$N.M[2:n.primary]-model$N.recruit.M #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
+          model$N.survive.F <<- model$N.F[2:n.primary]-model$N.recruit.F #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
           
         }else if(sex.curr==1&model$sex[i]==0){ #female to male
           #subtract current z from females, add new z to males
           model$N.F <<- model$N.F - z.curr
           model$N.M <<- model$N.M + z.prop
-          if(z.start.curr > 1){ #if wasn't in pop in year 1 in current, remove recruit event
+          if(z.start.curr > 1){ #if wasn't in pop in primary occasion 1 in current, remove recruit event
             model$N.recruit.F[z.start.curr-1] <<- model$N.recruit.F[z.start.curr-1] - 1
           }
-          if(z.start.prop > 1){ #if wasn't in pop in year 1 in proposal, add recruit event
+          if(z.start.prop > 1){ #if wasn't in pop in primary occasion 1 in proposal, add recruit event
             model$N.recruit.M[z.start.prop-1] <<- model$N.recruit.M[z.start.prop-1] + 1
           }
-          model$N.survive.M <<- model$N.M[2:n.primary]-model$N.recruit.M #survivors are guys alive in year g-1 minus recruits in this year g
-          model$N.survive.F <<- model$N.F[2:n.primary]-model$N.recruit.F #survivors are guys alive in year g-1 minus recruits in this year g
+          model$N.survive.M <<- model$N.M[2:n.primary]-model$N.recruit.M #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
+          model$N.survive.F <<- model$N.F[2:n.primary]-model$N.recruit.F #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
         }
         model$calculate(ER.M.nodes) #update ER when N updated
         model$calculate(ER.F.nodes) #update ER when N updated
@@ -577,7 +577,7 @@ zSampler <- nimbleFunction(
         recruit.probs.back <- recruit.probs.back/sum(recruit.probs.back)
         
         log.prop.back <- log.prop.back + log(recruit.probs.back[cohort.curr])
-        if(z.start.curr < n.primary){#if you don't recruit in final year
+        if(z.start.curr < n.primary){#if you don't recruit in final primary occasion
           for(g in (z.start.curr+1):n.primary){
             #use original phi.curr stored above
             log.prop.back <- log.prop.back + dbinom(z.curr[g],1,phi.curr[g-1]*z.curr[g-1],log=TRUE)
@@ -700,26 +700,26 @@ zSampler <- nimbleFunction(
           #1) Update N
           model$N <<- model$N - z.curr
           #2) Update N.recruit
-          if(z.start.curr > 1){ #if wasn't in pop in year 1
+          if(z.start.curr > 1){ #if wasn't in pop in primary occasion 1
             model$N.recruit[z.start.curr-1] <<- model$N.recruit[z.start.curr-1] - 1
           }
           #3) Update N.survive
-          model$N.survive <<- model$N[2:n.primary]-model$N.recruit #survivors are guys alive in year g-1 minus recruits in this year g
+          model$N.survive <<- model$N[2:n.primary]-model$N.recruit #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
           #repeat for sex
           if(sex.curr==0){
             model$N.M <<- model$N.M - z.curr
-            if(z.start.curr > 1){ #if wasn't in pop in year 1
+            if(z.start.curr > 1){ #if wasn't in pop in primary occasion 1
               model$N.recruit.M[z.start.curr-1] <<- model$N.recruit.M[z.start.curr-1] - 1
             }
             #3) Update N.survive
-            model$N.survive.M <<- model$N.M[2:n.primary]-model$N.recruit.M #survivors are guys alive in year g-1 minus recruits in this year g
+            model$N.survive.M <<- model$N.M[2:n.primary]-model$N.recruit.M #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
           }else{
             model$N.F <<- model$N.F - z.curr
-            if(z.start.curr > 1){ #if wasn't in pop in year 1
+            if(z.start.curr > 1){ #if wasn't in pop in primary occasion 1
               model$N.recruit.F[z.start.curr-1] <<- model$N.recruit.F[z.start.curr-1] - 1
             }
             #3) Update N.survive
-            model$N.survive.F <<- model$N.F[2:n.primary]-model$N.recruit.F #survivors are guys alive in year g-1 minus recruits in this year g
+            model$N.survive.F <<- model$N.F[2:n.primary]-model$N.recruit.F #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
           }
           model$calculate(ER.M.nodes) #update ER when N updated
           model$calculate(ER.F.nodes) #update ER when N updated
@@ -892,26 +892,26 @@ zSampler <- nimbleFunction(
           #1) Update N
           model$N <<- model$N + model$z[pick,]
           #2) Update N.recruit
-          if(model$z.start[pick] > 1){ #if wasn't in pop in year 1
+          if(model$z.start[pick] > 1){ #if wasn't in pop in primary occasion 1
             model$N.recruit[z.start.prop-1] <<- model$N.recruit[z.start.prop-1] + 1
           }
           #3) Update N.survive
-          model$N.survive <<- model$N[2:n.primary] - model$N.recruit #survivors are guys alive in year g-1 minus recruits in this year g
+          model$N.survive <<- model$N[2:n.primary] - model$N.recruit #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
           #repeat for sex
           if(sex.prop==0){
             model$N.M <<- model$N.M + model$z[pick,]
-            if(z.start.prop > 1){ #if wasn't in pop in year 1
+            if(z.start.prop > 1){ #if wasn't in pop in primary occasion 1
               model$N.recruit.M[z.start.prop-1] <<- model$N.recruit.M[z.start.prop-1] + 1
             }
             #3) Update N.survive
-            model$N.survive.M <<- model$N.M[2:n.primary] - model$N.recruit.M #survivors are guys alive in year g-1 minus recruits in this year g
+            model$N.survive.M <<- model$N.M[2:n.primary] - model$N.recruit.M #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
           }else{
             model$N.F <<- model$N.F + model$z[pick,]
-            if(z.start.prop > 1){ #if wasn't in pop in year 1
+            if(z.start.prop > 1){ #if wasn't in pop in primary occasion 1
               model$N.recruit.F[z.start.prop-1] <<- model$N.recruit.F[z.start.prop-1] + 1
             }
             #3) Update N.survive
-            model$N.survive.F <<- model$N.F[2:n.primary] - model$N.recruit.F #survivors are guys alive in year g-1 minus recruits in this year g
+            model$N.survive.F <<- model$N.F[2:n.primary] - model$N.recruit.F #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
           }
           #get proposed logprobs for N and y
           model$calculate(ER.M.nodes) #update ER when N updated
@@ -1040,7 +1040,7 @@ zSampler <- nimbleFunction(
           model$N.M <<- model$N.M - model$z[sex.up[i],]
           model$N.F <<- model$N.F + model$z[sex.up[i],]
           #move male recruit to female recruit
-          if(model$z.start[sex.up[i]]>1){ #otherwise, this is year 1, nothing to change
+          if(model$z.start[sex.up[i]]>1){ #otherwise, this is primary occasion 1, nothing to change
             model$N.recruit.M[model$z.start[sex.up[i]]-1] <<- model$N.recruit.M[model$z.start[sex.up[i]]-1] - 1
             model$N.recruit.F[model$z.start[sex.up[i]]-1] <<- model$N.recruit.F[model$z.start[sex.up[i]]-1] + 1
           }
@@ -1052,7 +1052,7 @@ zSampler <- nimbleFunction(
           model$N.F <<- model$N.F - model$z[sex.up[i],]
           model$N.M <<- model$N.M + model$z[sex.up[i],]
           #move female recruit to male recruit
-          if(model$z.start[sex.up[i]]>1){ #otherwise, this is year 1, nothing to change
+          if(model$z.start[sex.up[i]]>1){ #otherwise, this is primary occasion 1, nothing to change
             model$N.recruit.F[model$z.start[sex.up[i]]-1] <<- model$N.recruit.F[model$z.start[sex.up[i]]-1] - 1
             model$N.recruit.M[model$z.start[sex.up[i]]-1] <<- model$N.recruit.M[model$z.start[sex.up[i]]-1] + 1
           }
@@ -1144,4 +1144,65 @@ zSampler <- nimbleFunction(
     copy(from = model, to = mvSaved, row = 1, nodes = calcNodes, logProb = TRUE)
   },
   methods = list( reset = function () {} )
+)
+
+truncGammaPoisSampler <- nimbleFunction(
+  contains = sampler_BASE,
+  setup = function(model,mvSaved,target,control){
+    calcNodes <- model$getDependencies(target)
+    upper <- model$getBound(target,"upper")
+    n.recruit <- length(model$N.recruit.M)
+    sex.ind <- 1
+    g <- 1
+    if(target=="lambda.y1.M"){
+      sampler.type <- 1
+    }else if(target=="lambda.y1.F"){
+      sampler.type <- 2
+    }else if(grepl("^gamma\\.sex\\[[12]\\]$",target)){
+      sampler.type <- 3
+      sex.ind <- as.integer(gsub("[^0-9]","",target))
+    }else{
+      sampler.type <- 4
+      ind <- as.integer(strsplit(gsub("gamma\\.sex\\[|\\]","",target),",")[[1]])
+      sex.ind <- ind[1]
+      g <- ind[2]
+    }
+  },
+  run = function(){
+    if(sampler.type==1){
+      count <- model$N.M[1]
+      rate <- 1
+    }else if(sampler.type==2){
+      count <- model$N.F[1]
+      rate <- 1
+    }else if(sampler.type==3){
+      count <- 0
+      rate <- 0
+      for(j in 1:n.recruit){
+        if(sex.ind==1){
+          count <- count+model$N.recruit.M[j]
+        }else{
+          count <- count+model$N.recruit.F[j]
+        }
+        rate <- rate+model$N[j]
+      }
+    }else{
+      if(sex.ind==1){
+        count <- model$N.recruit.M[g]
+      }else{
+        count <- model$N.recruit.F[g]
+      }
+      rate <- model$N[g]
+    }
+    if(rate>0){
+      shape <- count+1
+      p.upper <- pgamma(upper,shape=shape,rate=rate)
+      model[[target]] <<- qgamma(runif(1,0,p.upper),shape=shape,rate=rate)
+    }else{
+      model[[target]] <<- runif(1,0,upper)
+    }
+    model$calculate(calcNodes)
+    copy(from=model,to=mvSaved,row=1,nodes=calcNodes,logProb=TRUE)
+  },
+  methods=list(reset=function(){})
 )

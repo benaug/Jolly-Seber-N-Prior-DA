@@ -2,7 +2,7 @@
 #and density covariates
 
 #Some notes:
-#1) Dimensions probably prevent this from working with only 2 years of data (N.recruit, N.survive are not vectors)
+#1) Dimensions probably prevent this from working with only 2 primary occasions of data (N.recruit, N.survive are not vectors)
 #Need to modify custom updates in this case
 #2) Object names that cannot be changed in the nimble model without changes in custom updates:
 #N, N.recruit, N.survive, ER (male and female counterparts for all these, too),
@@ -27,25 +27,25 @@ nimbleOptions(determinePredictiveNodesInModel = FALSE)
 library(RColorBrewer)
 cols1 <- brewer.pal(9,"Greens")
 
-n.primary <- 4 #number of years
-#yearly per-capita recruitment
-gamma.sex <- c(0.1,0.1) #male, then female, fixed across years
+n.primary <- 4 #number of primary occasions
+#per-capita recruitment
+gamma.sex <- c(0.1,0.1) #male, then female, fixed across primary occasions
 #sex-specific survival
-phi.sex <- c(0.75,0.95) #male, then female, fixed across years
+phi.sex <- c(0.75,0.95) #male, then female, fixed across primary occasions
 #sex-specific p0
-p0.sex <- c(0.05,0.1) #male, then female, fixed across years
+p0.sex <- c(0.05,0.1) #male, then female, fixed across primary occasions
 #sex-specific sigma
-sigma.sex <- c(0.75,0.5) #male, then female, fixed across years
-K <- rep(10,n.primary) #yearly sampling occasions
+sigma.sex <- c(0.75,0.5) #male, then female, fixed across primary occasions
+K <- rep(10,n.primary) #sampling occasions by primary occasion
 
 #probability we observe sex for detected individuals (not a function of number of capture events)
 #ASSUMPTION: sex observations are missing at random (same prob of observing male and female|detection)
 #model likely won't work well without most sexes observed
 p.obs.sex <- 1
 
-buff <- 2.5 #state space buffer. Buffers maximal x and y dimensions of X below across years
-X <- vector("list",n.primary) #one trapping array per year
-for(g in 1:n.primary){ #using same trapping array every year here
+buff <- 2.5 #state space buffer. Buffers maximal x and y dimensions of X below across primary occasions
+X <- vector("list",n.primary) #one trapping array per primary occasion
+for(g in 1:n.primary){ #using same trapping array every primary occasion here
   X[[g]] <- as.matrix(expand.grid(3:11,3:11))
 }
 
@@ -109,7 +109,7 @@ image(x.vals,y.vals,matrix(InSS,n.cells.x,n.cells.y),main="Habitat")
 #Density covariates
 D.beta0 <- -1.0
 D.beta1 <- 1
-p.sex <- 0.5 #proportion of expected N in year 1 that is female
+p.sex <- 0.5 #proportion of expected N in primary occasion 1 that is female
 
 #what is implied expected N in state space?
 lambda.cell <- InSS*exp(D.beta0 + D.beta1*D.cov)*cellArea
@@ -135,7 +135,7 @@ mask.check(dSS=data$dSS,cells=data$cells,n.cells=data$n.cells,n.cells.x=data$n.c
            x.vals=data$x.vals,y.vals=data$y.vals)
 
 ##Initialize##
-#Hard to predict appropriate M, depends on many factors like detection prob, number of years
+#Hard to predict appropriate M, depends on many factors like detection prob, number of primary occasions
 #level of population turnover. Maybe make sure it is at least 1.6*N.super to start
 M <- 250 #data augmentation level.
 # IMPORTANT: Check N.super posterior to make sure it never hits M. Otherwise, estimates will be biased.
@@ -143,7 +143,7 @@ N.super.init <- nrow(data$y)
 X <- data$X #pull X from data (won't be in environment if not simulated directly above)
 K <- data$K #same for K
 if(N.super.init > M) stop("Must augment more than number of individuals captured")
-J <- unlist(lapply(X,nrow)) #traps per year
+J <- unlist(lapply(X,nrow)) #traps per primary occasion
 J.max <- max(J)
 
 #pull these out of data object (won't be in environment if it wasn't simulated above, i.e. real data)
@@ -205,7 +205,7 @@ N.recruit.init <- N.recruit.M.init + N.recruit.F.init
 
 #remaining SCR stuff to initialize
 #put X in ragged array
-#also make K1D, year by trap operation history, as ragged array.
+#also make K1D, primary occasion by trap operation history, as ragged array.
 X.nim <- array(0,dim=c(n.primary,J.max,2))
 K1D <- matrix(0,n.primary,J.max)
 for(g in 1:n.primary){
@@ -216,7 +216,7 @@ for(g in 1:n.primary){
 s.init <- cbind(runif(M,xlim[1],xlim[2]), runif(M,ylim[1],ylim[2])) #assign random locations
 idx <- which(rowSums(y.nim)>0) #switch for those actually caught
 for(i in idx){
-  trps <- matrix(0,nrow=0,ncol=2) #get locations of traps of capture across years for ind i
+  trps <- matrix(0,nrow=0,ncol=2) #get locations of traps of capture across primary occasions for ind i
   for(g in 1:n.primary){
     if(sum(y.nim[i,g,])>0){
       trps.g <- matrix(X.nim[g,which(y.nim[i,g,]>0),],ncol=2,byrow=FALSE)
@@ -274,7 +274,7 @@ parameters <- c('N','N.M',"N.F",'N.super',
                 'N.recruit','N.recruit.M','N.recruit.F',
                 'N.survive','N.survive.M','N.survive.F',
                 'lambda.y1.M','lambda.y1.F','D0','D.beta1',
-                'gamma.male','gamma.female','phi.sex',
+                'gamma.sex','phi.sex',
                 'p0.sex','sigma.sex')
 parameters2 <- c('sex') #might want to monitor sex if interested in unobserved sex guy posteriors
 
@@ -284,7 +284,7 @@ nt <- 1 #thinning rate
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
 #if you add/remove parameters in model file, do so in config.nodes
-config.nodes <- c('phi.sex','gamma.male','gamma.female', #sex not included here, in custom N/z update, D0, D.beta1 added below
+config.nodes <- c('phi.sex','gamma.sex', #sex not included here, in custom N/z update, D0, D.beta1 added below
                'p.sex','p0.sex','sigma.sex')
 conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,monitors2=parameters2,
                       nodes=config.nodes,useConjugacy = TRUE)
@@ -292,7 +292,7 @@ conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,monitors2=parameters2,
 #N/z updates + sex updates for guys detected without observed sex
 z.super.ups <- round(M*0.25) #how many z.super update proposals per iteration?
 #25% of M seems reasonable, but optimal will depend on data set
-#loop here bc potentially different numbers of traps to vectorize in each year
+#loop here bc potentially different numbers of traps to vectorize in each primary occasion
 y.nodes <- pd.nodes <- c()
 for(g in 1:n.primary){
   y.nodes <- c(y.nodes,Rmodel$expandNodeNames(paste0("y[1:",M,",",g,",1:",J[g],"]"))) #if you change y structure, change here
@@ -339,6 +339,19 @@ for(i in 1:M){
                   type = 'sSamplerDcov',control=list(i=i,res=res,n.cells.x=n.cells.x,n.cells.y=n.cells.y,
                                                      xlim=xlim,ylim=ylim),silent = TRUE)
   #scale parameter here is just the starting scale. It will be tuned.
+}
+
+##optional truncated gamma poisson conjugate samplers. 
+#I would always use these as long as you keep uniform priors on lambda.y1 and gamma[g]
+#Typically gives you much greater ESS that propagates to N/N.recruit
+#if gamma.sex is fixed
+targets <- c("gamma.sex[1]","gamma.sex[2]")
+#if gamma.sex varies by primary occasion
+# targets <- c(paste0("gamma.sex[1,",1:(n.primary-1),"]"),
+#              paste0("gamma.sex[2,",1:(n.primary-1),"]"))
+for(target in targets){
+  conf$removeSamplers(target)
+  conf$addSampler(target=target,type=truncGammaPoisSampler)
 }
 
 #AF slice pretty efficient here. maybe not with too many cells?
