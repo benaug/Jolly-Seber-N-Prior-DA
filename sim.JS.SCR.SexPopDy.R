@@ -58,12 +58,12 @@ sim.JS.SCR.SexPopDy <- function(lambda.y1.M=NA,lambda.y1.F=NA,n.primary=NA,
   if(any(colSums(z)!=N))stop("Simulation bug")
   
   #detection
-  #get maximal x and y extent across yearly grids plus buffer
+  #get maximal x and y extent across primary session grids plus buffer
   xlim <- c(min(unlist(lapply(X, function(x) min(x[,1])))),
             max(unlist(lapply(X, function(x) max(x[,1]))))) + c(-buff, buff)
   ylim <- c(min(unlist(lapply(X, function(x) min(x[,2])))),
             max(unlist(lapply(X, function(x) max(x[,2]))))) + c(-buff, buff)
-  J <- unlist(lapply(X,nrow)) #extract number of traps per year
+  J <- unlist(lapply(X,nrow)) #extract number of traps per primary session
   J.max <- max(J)
   
   #simulate activity centers - fixed through time

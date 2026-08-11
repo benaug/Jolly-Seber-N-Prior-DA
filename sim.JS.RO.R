@@ -2,7 +2,7 @@ sim.JS.RO <- function(psi=NA,gamma=NA,beta0.phi=NA,beta1.phi=NA,
                    p=NA,n.primary=NA,K=NA,M=NA){
   #####Population Dynamics############
   N1 <- rbinom(1,M,psi)
-  if(N1==M)stop("Maxed out M in year 1")
+  if(N1==M)stop("Maxed out M in primary session 1")
   z <- a <- matrix(NA,M,n.primary)
   z[1:N1,1] <- 1
   z[(N1+1):M,1] <- 0

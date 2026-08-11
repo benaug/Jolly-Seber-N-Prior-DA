@@ -13,7 +13,7 @@ sim.JS.SCR.Dcov.SexPopDy <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   N <- N.M <- N.F <- rep(NA,n.primary)
   N.recruit.M <- N.survive.M <- ER.M <- rep(NA,n.primary-1)
   N.recruit.F <- N.survive.F <- ER.F <- rep(NA,n.primary-1)
-  #get expected N in year 1 from D.cov parameters
+  #get expected N in primary session 1 from D.cov parameters
   cellArea <- res^2
   lambda.cell <- InSS*exp(D.beta0 + D.beta1*D.cov)*cellArea
   lambda.y1 <- sum(lambda.cell)
@@ -73,7 +73,7 @@ sim.JS.SCR.Dcov.SexPopDy <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   if(any(colSums(z)!=N))stop("Simulation bug")
   
   #detection
-  J <- unlist(lapply(X,nrow)) #extract number of traps per year
+  J <- unlist(lapply(X,nrow)) #extract number of traps per primary session
   J.max <- max(J)
   
   #simulate activity centers - fixed through time

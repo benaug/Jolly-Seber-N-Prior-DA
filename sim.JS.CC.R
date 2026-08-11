@@ -2,7 +2,7 @@ sim.JS.CC <- function(psi=NA,gamma=NA,beta0.phi=NA,beta1.phi=NA,
                    p=NA,n.primary=NA,K=NA,M=NA){
   #####Population Dynamics############
   N1 <- rbinom(1,M,psi)
-  if(N1==M)stop("Maxed out M in year 1")
+  if(N1==M)stop("Maxed out M in primary session 1")
   z <- a <- matrix(NA,M,n.primary)
   z[1:N1,1] <- 1
   z[(N1+1):M,1] <- 0
@@ -16,7 +16,7 @@ sim.JS.CC <- function(psi=NA,gamma=NA,beta0.phi=NA,beta1.phi=NA,
     A <- M - sum(a[,g-1])
     if(A <= 0)stop("Ran out of recruits, raise M")
     gamma.prime[g-1] <- ER/A
-    if(gamma.prime[g-1]>1)stop("Recruitment probability >1 in one year, raise M")
+    if(gamma.prime[g-1]>1)stop("Recruitment probability >1 in one primary session, raise M")
     Ez <- z[,g-1]*phi + (1 - a[,g-1])*gamma.prime[g-1]
     z[,g] <- rbinom(M, 1, Ez)
     # a[,g] <- apply(z[,1:g], 1, max)  # a=1 if ever been alive

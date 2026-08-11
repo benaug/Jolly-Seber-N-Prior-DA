@@ -9,7 +9,7 @@ sim.JS <- function(lambda.y1=NA,gamma=NA,beta0.phi=NA,beta1.phi=NA,
   #Easiest to increase dimension of z as we simulate bc size not known in advance.
   z <- matrix(0,N[1],n.primary)
   z[1:N[1],1] <- 1
-  cov <- rnorm(N[1],0,1) #simulate ind survival covariate for 1st year guys
+  cov <- rnorm(N[1],0,1) #simulate ind survival covariate for 1st primary session guys
   phi <- matrix(NA,N[1],n.primary-1)
   for(g in 2:n.primary){
     #Simulate recruits

@@ -10,7 +10,7 @@ sim.JS.SCR.Dcov <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   #Population dynamics
   N <- rep(NA,n.primary)
   N.recruit <- N.survive <- ER <- rep(NA,n.primary-1)
-  #get expected N in year 1 from D.cov parameters
+  #get expected N in primary session 1 from D.cov parameters
   cellArea <- res^2
   lambda.cell <- InSS*exp(D.beta0 + D.beta1*D.cov)*cellArea
   lambda.y1 <- sum(lambda.cell)
@@ -29,7 +29,7 @@ sim.JS.SCR.Dcov <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   #Easiest to increase dimension of z as we simulate bc size not known in advance.
   z <- matrix(0,N[1],n.primary)
   z[1:N[1],1] <- 1
-  cov <- rnorm(N[1],0,1) #simulate ind survival covariate for 1st year guys
+  cov <- rnorm(N[1],0,1) #simulate ind survival covariate for 1st primary session guys
   phi <- matrix(NA,N[1],n.primary-1)
   for(g in 2:n.primary){
     #Simulate recruits
@@ -60,7 +60,7 @@ sim.JS.SCR.Dcov <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   hist(phi,main="Distribution of Individual Phi")
 
   #detection
-  J <- unlist(lapply(X,nrow)) #extract number of traps per year
+  J <- unlist(lapply(X,nrow)) #extract number of traps per primary session
   J.max <- max(J)
 
   #simulate activity centers - fixed through time
