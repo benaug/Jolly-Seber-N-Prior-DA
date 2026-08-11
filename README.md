@@ -4,7 +4,7 @@ Efficient MCMC samplers for Jolly–Seber models using N-prior data augmentation
 
 ## Overview
 
-This repository contains efficient MCMC samplers for Jolly–Seber models using **$N$-prior data augmentation**. Poisson priors are placed directly on population entry counts: the initial population size and the number of recruits entering before each subsequent primary occasion. Recruiment is per capita as a function of realized abundance in the previous primary session. This model is an exact Poisson specification of the model of Chandler and Clark (2014). 
+This repository contains efficient MCMC samplers for Jolly–Seber models using **$N$-prior data augmentation**. Poisson priors are placed directly on population entry counts: the initial population size and the number of recruits entering before each subsequent primary occasion. Recruitment is per capita as a function of realized abundance in the previous primary session. This model is an exact Poisson specification of the model of Chandler and Clark (2014).
 
 ## Related repositories
 
@@ -171,7 +171,7 @@ The entry-occasion variable describes only when an individual enters. Survival a
 
 To update the latent population states, I use three custom samplers:
 
-1. **Detected individuals:** Entry and exit occasions are updated separately using categorical proposals over all values compatible with the individual’s observed detections.
+1. **Detected individuals:** Entry and exit occasions are updated separately using Gibbs samplers.
 
 2. **Undetected individuals currently in the superpopulation:** For individuals with $z^{\mathrm{super}}_i = 1$ but no detections, an entry occasion and complete survival history are proposed from the process model and accepted or rejected jointly using a Metropolis-Hastings update.
 
