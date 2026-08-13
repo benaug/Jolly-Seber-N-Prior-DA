@@ -108,7 +108,7 @@ e.nodes <- Rmodel$expandNodeNames("e")
 z.nodes <- Rmodel$expandNodeNames("z")
 surv.p.nodes <- Rmodel$expandNodeNames("surv.p")
 surv.nodes <- Rmodel$expandNodeNames("surv")
-y.p.nodes <- Rmodel$expandNodeNames("y.p")
+y.size.nodes <- Rmodel$expandNodeNames("y.size")
 y.nodes <- Rmodel$expandNodeNames("y")
 N.B.nodes <- Rmodel$expandNodeNames(c("recruit","N","B","N.super"))
 calcNodes <- Rmodel$getDependencies(c("e","surv"))
@@ -119,7 +119,7 @@ conf$addSampler(target=paste0("e[1:",M,"]"), type=eSampler,
                              first.det=first.det,last.det=last.det,
                              e.nodes=e.nodes,z.nodes=z.nodes,
                              surv.p.nodes=surv.p.nodes,surv.nodes=surv.nodes,
-                             y.p.nodes=y.p.nodes,y.nodes=y.nodes,
+                             y.size.nodes=y.size.nodes,y.nodes=y.nodes,
                              N.B.nodes=N.B.nodes,
                              calcNodes=calcNodes))
 
