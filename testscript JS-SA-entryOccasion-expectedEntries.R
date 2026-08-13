@@ -7,7 +7,7 @@ library(nimble)
 library(coda)
 source("sim.JS.SA.expectedEntries.R")
 source("Nimble Model JS-SA-entryOccasion-expectedEntries.R")
-source("Nimble Functions JS-SA-entryOccasion.R") #contains required custom update for e/surv nodes
+source("Nimble Functions JS-SA-entryOccasion-expectedEntries.R") #contains required custom update for e/surv nodes
 
 n.primary <- 4 #number of primary occasions
 M <- 200 #data simulator simulates from Chandler-Clark model with M as a parameter
@@ -27,7 +27,7 @@ K <- rep(10,n.primary) #sampling occasions by primary occasion
 set.seed(33955)
 data <- sim.JS.SA.expectedEntries(lambda=lambda,
                   beta0.phi=beta0.phi,beta1.phi=beta1.phi,
-                  p=p,n.primary=n.primary,K=K,M=M)
+                  p=p,n.primary=n.primary,K=K,M=M,tau=tau)
 data$N #realized abundances
 data$B #realized entries
 data$N.super #realized superpopulation size
@@ -95,7 +95,7 @@ rho.init <- (lambda.super.init-lambda1.init)/sum(tau)
 
 #inits for Nimble
 Niminits <- list(z.super=z.super.init,e=e.init,surv=surv.init,
-                 lambda=lambda1.init,rho=rho.init,
+                 lambda=c(lambda1.init,rep(NA,n.primary-1)),rho=rho.init,
                  beta0.phi=0,beta1.phi=0,p=p.init,
                  phi.cov.mu=mean(data$phi.cov),phi.cov.sd=sd(data$phi.cov))
 

@@ -1,5 +1,5 @@
 sim.JS.SA.expectedEntries <- function(lambda=NA,beta0.phi=NA,beta1.phi=NA,
-                      p=NA,n.primary=NA,K=NA,M=NA){
+                      p=NA,n.primary=NA,K=NA,M=NA,tau=NA){
   if(length(lambda)!=n.primary)stop("lambda must be of length n.primary")
   if(any(lambda <= 0))stop("lambda must be > 0")
   
@@ -16,13 +16,14 @@ sim.JS.SA.expectedEntries <- function(lambda=NA,beta0.phi=NA,beta1.phi=NA,
   e <- rep(0,M) #entry occasion, 0 = never a member
   e[z.super==1] <- sample(1:n.primary,N.super,replace=TRUE,prob=pi)
   phi.cov <- rnorm(M,0,1) #simulate ind survival covariate
-  phi <- plogis(beta0.phi + phi.cov * beta1.phi) #individual survival probs, constant across time
+  phi <- plogis(beta0.phi + phi.cov * beta1.phi) #survival over one unit of time
   
   z <- matrix(0,M,n.primary)
   z[cbind(which(z.super==1),e[z.super==1])] <- 1 #alive at entry
   for(g in 2:n.primary){
-    surv <- rbinom(M,1,phi)*z[,g-1] #survivors from g-1
-    z[,g] <- pmax(z[,g],surv) #add survivors to z
+    phi.int <- phi^tau[g-1]
+    surv <- rbinom(M,1,phi.int)*z[,g-1]
+    z[,g] <- pmax(z[,g],surv)
   }
   
   N <- colSums(z)

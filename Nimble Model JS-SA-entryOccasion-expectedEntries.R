@@ -30,7 +30,8 @@ NimModel <- nimbleCode({
     z[i,1] <- equals(e[i],1)
     recruit[i,1] <- z.super[i]*z[i,1]
     for(g in 2:n.primary){
-      surv.p[i,g] <- phi[i]*z[i,g-1]
+      phi.int[i,g] <- phi[i]^tau[g-1] #survival over actual interval
+      surv.p[i,g] <- phi.int[i,g]*z[i,g-1]
       surv[i,g] ~ dbern(surv.p[i,g])
       z[i,g] <- max(surv[i,g],equals(e[i],g))
       recruit[i,g] <- z.super[i]*equals(e[i],g)
