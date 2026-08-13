@@ -2,6 +2,8 @@
 #but parameterized in terms of expected entries. This example shows
 #how expected entries during each interval scale with interval length
 #while holding the expected number of entries per unit time, rho, fixed.
+# However, this is often not realistic--a fixed per capita recruitment is usually more realistic.
+
 #requires custom samplers to update latent variables e and surv
 library(nimble)
 library(coda)
