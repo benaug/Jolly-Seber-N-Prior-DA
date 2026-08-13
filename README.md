@@ -260,7 +260,11 @@ The three custom samplers operate similarly in the sex-specific models, except t
 
     Nonspatial implementation of the Schwarz–Arnason Jolly–Seber approach of Royle and Dorazio (2008). This is the same model as JS-SA-sequential, but with a different latent-state parameterization. Instead of converting the unconditional entry probabilities to conditional entry probabilities and updating z sequentially, entry occasion is represented directly as e[i] ~ dcat(pi[]), where pi has a Dirichlet prior. Survival is then modeled forward from the entry occasion. A custom sampler updates the entry occasion and subsequent survival trajectory, including the implied exit (death) occasion. This can be viewed as a data-augmentation implementation of the original Schwarz and Arnason (1996) entry-time formulation. Related data-augmentation approaches that explicitly represent latent entry/birth and exit/death processes have been used by Schofield and Barker (2011), Matechou et al. (2016), Wu et al. (2021), and likely others. Dupuis and Schwarz (2007) used a different superpopulation and missing-data augmentation scheme, but developed closely related block Gibbs updates of latent entry, survival, and death histories. The custom trajectory sampler used here follows this block-update strategy and its single-state implementation in Wu et al. (2021). For detected individuals, the entry- and exit-occasion updates correspond to the pre-first-capture and post-last-capture blocks; for undetected superpopulation members, the Gibbs update follows the entrance-time and post-entry trajectory update of Wu et al. (2021). Augmented individuals outside the superpopulation have their latent trajectories redrawn directly from their prior, which is also their full conditional.
     
-11. **JS-SA-marginal**
+11. **JS-SA-entryOccasion-expectedEntries**
+
+This version is parameterized in terms of expected starting population size and expected entries per primary occasion. Allows adjustment for unequal occasion lengths. This is similar to JSSAsecrB in the openCR package. I'm unsure of the origin.
+    
+12. **JS-SA-marginal**
 
     Nonspatial implementation of the Schwarz-Arnason Jolly–Seber approach of Royle and Dorazio 2008, included for comparison. This version marginalizes the latent states out of the likelihood with a 3-state forward algorithm (not yet entered, alive, dead), but retains the M augmented individuals to accommodate an individual survival covariate without using numerical integration. N, B, and N.super are recovered each iteration by forward-filtering backward-sampling the trajectories from their full conditionals. Marginalizing psi and pi prevents the use of their conjugate samplers, which can be used in the two versions above. Due to this, the marginalized version appears less efficient than the two samplers above, at least for several comparisons I made. Marginalization can be considerably faster than it is here if capture histories can be aggregated, for example if there are no individual random effects. Marginalization is not computationally feasible when recruitment is per capita as a function of realized abundance because individuals are no longer independent. This model and marginalization approach have been implemented in Stan, e.g., [js_super.stan](https://github.com/stan-dev/example-models/blob/master/BPA/Ch.10/js_super.stan), where marginalization is required because Stan cannot sample discrete parameters. HMC may be the most efficient approach, I have not made this comparison.
   
@@ -280,15 +284,15 @@ Mobile activity center models generally require informative SCR data to estimate
 
 These models may also require substantially more MCMC iterations to obtain adequate effective sample sizes for movement parameters and possibly survival and recruitment parameters if they are sensitive to the magnitude of movement.
 
-12. **JS-SCR-mobileAC**
+13. **JS-SCR-mobileAC**
 
     Spatial version of model 2 with bivariate normal Markov activity center movement. The movement distribution is truncated by the state-space boundary.
 
-13. **JS-SCR-SexPopDy-mobileAC**
+14. **JS-SCR-SexPopDy-mobileAC**
 
     Version of model 8 with sex-specific population dynamics, detection parameters, and movement parameters.
 
-14. **JS-SCR-Dcov-mobileAC**
+15. **JS-SCR-Dcov-mobileAC**
 
     Version of model 8 with an inhomogeneous density model for activity centers during the first primary occasion and resource selection during subsequent activity center movement.
 
@@ -345,7 +349,7 @@ This normalized product of a movement kernel and resource selection weight was u
 In this implementation, the bivariate normal probability mass within each rectangular cell is calculated analytically from differences of univariate normal cumulative distribution functions, and calculations are restricted to cells with non-negligible probability mass. Storing the availability distributions allows them to be reused when updating $\beta^{\mathrm{RSF}}$. These computational savings come at the cost of increased RAM use.
 
 
-15. **JS-SCR-Dcov-mobileAC-patchy**
+16. **JS-SCR-Dcov-mobileAC-patchy**
 
     Modification of `JS-SCR-Dcov-mobileAC` that applies the same initial density and activity center movement model to a patchy habitat state space.
 
