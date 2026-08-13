@@ -44,9 +44,9 @@ NimModel <- nimbleCode({
   }
   #observation model
   for(g in 1:n.primary){
-    p[g] ~ dunif(0,1)
+    p[g] ~ dbeta(1,1)
     for(i in 1:M){
-      y[i,g] ~ dbinom(p=p[g]*z[i,g]*z.super[i],size=K[g])
+      y[i,g] ~ dbinom(p=p[g],size=K[g]*z[i,g])
     }
   }
   for(g in 1:n.primary){
