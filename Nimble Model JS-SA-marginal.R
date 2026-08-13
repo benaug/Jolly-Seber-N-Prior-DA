@@ -17,10 +17,10 @@ NimModel <- nimbleCode({
     p[g] ~ dunif(0,1)
   }
   for(i in 1:M){
-    phi.cov[i] ~ dnorm(phi.cov.mu, sd = phi.cov.sd)
+    phi.cov[i] ~ dnorm(phi.cov.mu,sd = phi.cov.sd)
     logit(phi[i]) <- beta0.phi + phi.cov[i]*beta1.phi
-    y[i,1:n.primary] ~ dJS(eta = eta[1:n.primary], p = p[1:n.primary],
-                           K = K[1:n.primary], phi = phi[i], psi = psi)
+    y[i,1:n.primary] ~ dJS(eta=eta[1:n.primary],p=p[1:n.primary],
+                           K=K[1:n.primary],phi=phi[i],psi=psi)
   }
   #placeholder priors never used because NBSampler simulates these directly from their
   #full conditionals. do not assign them default samplers
