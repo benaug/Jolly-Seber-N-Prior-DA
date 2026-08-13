@@ -262,7 +262,7 @@ The three custom samplers operate similarly in the sex-specific models, except t
     
 11. **JS-SA-entryOccasion-expectedEntries**
 
-This version is parameterized in terms of expected starting population size and expected entries per primary occasion. Allows adjustment for unequal occasion lengths. This is similar to JSSAsecrB in the openCR package. I'm unsure of the origin.
+This version is parameterized in terms of expected starting population size and expected entries per primary occasion. Allows adjustment for unequal occasion lengths when holding expected entries fixed across primary occasions. However, this is often not realistic--a fixed per capita recruitment is usually more realistic. This time scaling approach is similar to JSSAsecrB in the openCR package. I'm unsure of the origin.
     
 12. **JS-SA-marginal**
 
