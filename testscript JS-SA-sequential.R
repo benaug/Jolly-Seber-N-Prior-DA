@@ -3,6 +3,7 @@ library(nimble)
 library(coda)
 source("sim.JS.SA.R")
 source("Nimble Model JS-SA-sequential.R")
+source("Nimble Functions JS-SA-sequential.R")
 
 n.primary <- 4 #number of primary occasions
 M <- 200 #data simulator simulates from Chandler-Clark model with M as a parameter
@@ -59,7 +60,7 @@ Niminits <- list(z.super=z.super.init,z=z.init,psi=sum(z.super.init)/M,
 Nimdata <- list(y=y,phi.cov=phi.cov.data)
 
 # set parameters to monitor
-parameters <- c('psi','N','beta0.phi','beta1.phi','pi','eta','p','phi.cov.mu','phi.cov.sd',"B","N.super")
+parameters <- c('psi','N','beta0.phi','beta1.phi','pi','p','phi.cov.mu','phi.cov.sd',"B","N.super")
 nt <- 1 #thinning rate
 
 # Build the model, configure the mcmc, and compile
@@ -67,6 +68,23 @@ start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel,constants=constants,data=Nimdata,check=FALSE,inits=Niminits)
 conf <- configureMCMC(Rmodel,monitors=parameters,thin=nt)
 
+
+#z sampler: remove sequential sampler, replace with gibbs
+z.nodes <- grep("^z\\[",Rmodel$getNodeNames(stochOnly=TRUE),value=TRUE)
+z.super.nodes <- grep("^z\\.super\\[",Rmodel$getNodeNames(stochOnly=TRUE),value=TRUE)
+conf$removeSamplers(z.nodes)
+conf$removeSamplers(z.super.nodes)
+
+#summarize data for custom update
+z.obs <- as.integer(rowSums(y)>0)
+first.det <- max.col(y>0,ties.method="first")
+last.det <- ncol(y)+1-max.col((y[,ncol(y):1,drop=FALSE]>0),ties.method="first")
+first.det[z.obs==0] <- 0
+last.det[z.obs==0] <- 0
+
+conf$addSampler(target=c(z.nodes,z.super.nodes),type=zSampler,
+                control=list(M=M,K=K,n.primary=n.primary,z.obs=z.obs,
+                             first.det=first.det,last.det=last.det))
 # Build and compile
 Rmcmc <- buildMCMC(conf)
 Cmodel <- compileNimble(Rmodel)

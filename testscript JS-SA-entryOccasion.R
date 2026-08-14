@@ -94,7 +94,7 @@ Rmodel <- nimbleModel(code=NimModel,constants=constants,data=Nimdata,check=FALSE
 config.nodes <- c('psi','pi','p','beta0.phi','beta1.phi','phi.cov.mu','phi.cov.sd','phi.cov','z.super')
 conf <- configureMCMC(Rmodel,monitors=parameters,thin=nt,nodes=config.nodes)
 
-#add e/surv sampler
+#add z.super/e/surv sampler
 z.obs <- as.numeric(rowSums(y) > 0)
 first.det <- last.det <- rep(0,M)
 for(i in 1:M){
@@ -104,24 +104,16 @@ for(i in 1:M){
     last.det[i] <- max(dets)
   }
 }
+z.super.nodes <- Rmodel$expandNodeNames("z.super")
 e.nodes <- Rmodel$expandNodeNames("e")
-z.nodes <- Rmodel$expandNodeNames("z")
-surv.p.nodes <- Rmodel$expandNodeNames("surv.p")
 surv.nodes <- Rmodel$expandNodeNames("surv")
-y.size.nodes <- Rmodel$expandNodeNames("y.size")
-y.nodes <- Rmodel$expandNodeNames("y")
-N.B.nodes <- Rmodel$expandNodeNames(c("recruit","N","B","N.super"))
-calcNodes <- Rmodel$getDependencies(c("e","surv"))
+calcNodes <- Rmodel$getDependencies(c("z.super","e","surv"))
 
-# conf$removeSampler(c("e","surv")) #remove these if you let nimble configure them above
-conf$addSampler(target=paste0("e[1:",M,"]"), type=eSampler,
+conf$addSampler(target=c(z.super.nodes,e.nodes,surv.nodes), type=eSampler,
                 control=list(M=M,K=K,n.primary=n.primary,z.obs=z.obs,
                              first.det=first.det,last.det=last.det,
-                             e.nodes=e.nodes,z.nodes=z.nodes,
-                             surv.p.nodes=surv.p.nodes,surv.nodes=surv.nodes,
-                             y.size.nodes=y.size.nodes,y.nodes=y.nodes,
-                             N.B.nodes=N.B.nodes,
                              calcNodes=calcNodes))
+
 
 # Build and compile
 Rmcmc <- buildMCMC(conf)

@@ -29,7 +29,7 @@ phi <- c(0.85,0.80,0.90) #unit-time survival by interval
 p <- rep(0.2,n.primary) #detection probability by primary occasion
 K <- rep(10,n.primary) #sampling occasions by primary occasion
 
-set.seed(33955)
+#simulate some data
 data <- sim.JS.SA.perCapitaExpectedN(lambda1=lambda1,gamma=gamma,phi=phi,
                                      p=p,n.primary=n.primary,K=K,M=M,tau=tau)
 
@@ -99,16 +99,14 @@ Niminits <- list(z.super=z.super.init,e=e.init,surv=surv.init,
 Nimdata <- list(y=y,lambda.valid=1)
 
 #set parameters to monitor
-parameters <- c('lambda.super','gamma','phi','EN','N','lambda','p',
-                'B','N.super')
+parameters <- c('lambda.super','gamma','phi','EN','N','lambda','p','B','N.super')
 nt <- 1 #thinning rate
 
 #Build the model, configure the mcmc, and compile
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel,constants=constants,data=Nimdata,check=FALSE,inits=Niminits)
-
-#don't configure e or surv
-config.nodes <- c('lambda[1]','gamma','phi','p','z.super')
+#don't configure e, surv, z.super
+config.nodes <- c('lambda[1]','gamma','phi','p')
 conf <- configureMCMC(Rmodel,monitors=parameters,thin=nt,nodes=config.nodes)
 
 #add e/surv sampler
@@ -121,22 +119,14 @@ for(i in 1:M){
     last.det[i] <- max(dets)
   }
 }
+z.super.nodes <- Rmodel$expandNodeNames("z.super")
 e.nodes <- Rmodel$expandNodeNames("e")
-z.nodes <- Rmodel$expandNodeNames("z")
-surv.p.nodes <- Rmodel$expandNodeNames("surv.p")
 surv.nodes <- Rmodel$expandNodeNames("surv")
-y.size.nodes <- Rmodel$expandNodeNames("y.size")
-y.nodes <- Rmodel$expandNodeNames("y")
-N.B.nodes <- Rmodel$expandNodeNames(c("recruit","N","B","N.super"))
-calcNodes <- Rmodel$getDependencies(c("e","surv"))
+calcNodes <- Rmodel$getDependencies(c("z.super","e","surv"))
 
-conf$addSampler(target=paste0("e[1:",M,"]"), type=eSampler,
+conf$addSampler(target=c(z.super.nodes,e.nodes,surv.nodes),type=eSampler,
                 control=list(M=M,K=K,n.primary=n.primary,z.obs=z.obs,
                              first.det=first.det,last.det=last.det,
-                             e.nodes=e.nodes,z.nodes=z.nodes,
-                             surv.p.nodes=surv.p.nodes,surv.nodes=surv.nodes,
-                             y.size.nodes=y.size.nodes,y.nodes=y.nodes,
-                             N.B.nodes=N.B.nodes,
                              calcNodes=calcNodes))
 
 #Correlated posteriors. AF_slice is relatively cheap here.

@@ -1,13 +1,13 @@
-eSampler <- nimbleFunction(
+zSampler <- nimbleFunction(
   contains = sampler_BASE,
-  setup = function(model, mvSaved, target, control){
+  setup = function(model,mvSaved,target,control){
     M <- control$M
     K <- control$K
     n.primary <- control$n.primary
     z.obs <- control$z.obs
     first.det <- control$first.det
     last.det <- control$last.det
-    calcNodes <- control$calcNodes
+    calcNodes <- model$getDependencies(target)
   },
   run = function(){
     #probability of zero detections in each primary occasion if alive
@@ -17,7 +17,8 @@ eSampler <- nimbleFunction(
     }
     lam <- rep(0,n.primary)
     v <- rep(0,n.primary)
-    prop.probs <- rep(0,n.primary)
+    entry.probs <- rep(0,n.primary)
+    entry.zero.probs <- rep(0,n.primary)
     for(i in 1:M){
       #Wu Type I recursion:
       #lam[g] = probability of having entered, still being alive,
@@ -39,6 +40,10 @@ eSampler <- nimbleFunction(
           v[g] <- (1-model$phi[i]) + model$phi[i]*q[g+1]*v[g+1]
         }
       }
+      #overwrite complete trajectory
+      for(g in 1:n.primary){
+        model$z[i,g] <<- 0
+      }
       #1) detected individuals
       if(z.obs[i]==1){
         model$z.super[i] <<- 1
@@ -47,88 +52,94 @@ eSampler <- nimbleFunction(
         #1a) Wu Type I block:
         #sample entry occasion conditional on first detection at f
         for(g in 1:n.primary){
-          prop.probs[g] <- 0
+          entry.probs[g] <- 0
         }
         remaining <- 1
         for(k in 1:f){
           g <- f-k+1
           cond.entry <- model$pi[g]/lam[g]
-          prop.probs[g] <- remaining*cond.entry
+          entry.probs[g] <- remaining*cond.entry
           remaining <- remaining*(1-cond.entry)
         }
-        prop.probs <- prop.probs/sum(prop.probs)
-        e.curr <- rcat(1,prop.probs)
+        entry.probs <- entry.probs/sum(entry.probs)
+        e.curr <- rcat(1,entry.probs)
+        #known alive from sampled entry through last detection
+        for(g in e.curr:l){
+          model$z[i,g] <<- 1
+        }
         #1b) Wu Type II block:
-        #sample exit occasion conditional on no detections after last detection
-        d.curr <- l
+        #sample departure after last detection conditional on
+        #no subsequent detections
+        alive <- 1
         if(l < n.primary){
           for(g in (l+1):n.primary){
-            if(d.curr == g-1){
+            if(alive==1){
               death.prob <- (1-model$phi[i])/v[g-1]
-              if(rbinom(1,1,death.prob) == 0){
-                d.curr <- g
+              if(rbinom(1,1,death.prob)==1){
+                alive <- 0
+              }else{
+                model$z[i,g] <<- 1
               }
             }
           }
         }
       }else{
-        #2) undetected individuals:
-        #update z.super with entry and survival trajectory marginalized
+        #2) undetected individuals
+        #entry probabilities for an undetected individual that is in
+        #the superpopulation:
+        #P(e=g | y=0,z.super=1) proportional to pi[g]*q[g]*v[g]
         rho <- 0
         for(g in 1:n.primary){
-          prop.probs[g] <- model$pi[g]*q[g]*v[g]
-          rho <- rho+prop.probs[g]
+          entry.zero.probs[g] <- model$pi[g]*q[g]*v[g]
+          rho <- rho+entry.zero.probs[g]
         }
+        for(g in 1:n.primary){
+          entry.zero.probs[g] <- entry.zero.probs[g]/rho
+        }
+        #update z.super with z trajectory marginalized
         z.super.prob <- model$psi[1]*rho/((1-model$psi[1])+model$psi[1]*rho)
         model$z.super[i] <<- rbinom(1,1,z.super.prob)
-        if(model$z.super[i] == 0){
-          #2a) not in superpopulation: trajectory is independent of data,
-          #so draw directly from its full conditional (prior)
+        if(model$z.super[i]==0){
+          #2a) not in superpopulation, draw from prior
           e.curr <- rcat(1,model$pi[1:n.primary])
-          d.curr <- e.curr
+          model$z[i,e.curr] <<- 1
+          alive <- 1
           if(e.curr < n.primary){
             for(g in (e.curr+1):n.primary){
-              if(d.curr == g-1){
-                if(rbinom(1,1,model$phi[i]) == 1){
-                  d.curr <- g
+              if(alive==1){
+                if(rbinom(1,1,model$phi[i])==1){
+                  model$z[i,g] <<- 1
+                }else{
+                  alive <- 0
                 }
               }
             }
           }
         }else{
-          #2b) in superpopulation but undetected:
-          #exact Wu Gibbs update of entry occasion and survival/exit trajectory
-          for(g in 1:n.primary){
-            prop.probs[g] <- prop.probs[g]/rho
-          }
-          e.curr <- rcat(1,prop.probs)
-          d.curr <- e.curr
-          #sample survival/exit conditional on the all-zero capture history
+          #2b) in superpopulation but never detected
+          #Wu Type I block for an all-zero capture history
+          e.curr <- rcat(1,entry.zero.probs)
+          model$z[i,e.curr] <<- 1
+          alive <- 1
+          #Wu Type II block conditional on no detections
           if(e.curr < n.primary){
             for(g in (e.curr+1):n.primary){
-              if(d.curr == g-1){
+              if(alive==1){
                 death.prob <- (1-model$phi[i])/v[g-1]
-                if(rbinom(1,1,death.prob) == 0){
-                  d.curr <- g
+                if(rbinom(1,1,death.prob)==1){
+                  alive <- 0
+                }else{
+                  model$z[i,g] <<- 1
                 }
               }
             }
           }
-        }
-      }
-      #set new entry occasion and survival trajectory
-      model$e[i] <<- e.curr
-      for(g in 2:n.primary){
-        if(g > e.curr & g <= d.curr){
-          model$surv[i,g] <<- 1
-        }else{
-          model$surv[i,g] <<- 0
         }
       }
     }
-    #update deterministic nodes and log probabilities
+    #recalculate z.super and z log probabilities and all downstream nodes
     model$calculate(calcNodes)
-    copy(from = model, to = mvSaved, row = 1, nodes = calcNodes, logProb = TRUE)
+    copy(from=model,to=mvSaved,row=1,nodes=calcNodes,logProb=TRUE)
   },
-  methods = list(reset = function () {})
+  methods=list(reset=function(){})
 )
