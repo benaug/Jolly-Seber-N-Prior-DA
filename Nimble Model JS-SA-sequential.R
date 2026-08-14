@@ -27,8 +27,6 @@ NimModel <- nimbleCode({
   phi.cov.mu ~ dunif(-10, 10) #phi individual covariate mean prior
   phi.cov.sd ~ T(dt(mu=0, sigma=1, df=7), 0, Inf) #phi individual covariate sd prior
   
-  
-  
   #population dynamics
   for(i in 1:M){
     phi.cov[i] ~ dnorm(phi.cov.mu,sd=phi.cov.sd) #individual survival covs
@@ -46,7 +44,7 @@ NimModel <- nimbleCode({
   for(g in 1:n.primary){
     p[g] ~ dbeta(1,1)
     for(i in 1:M){
-      y[i,g] ~ dbinom(p=p[g],size=K[g]*z[i,g])
+      y[i,g] ~ dbinom(p=p[g],size=K[g]*z[i,g]*z.super[i])
     }
   }
   for(g in 1:n.primary){
