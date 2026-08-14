@@ -9,6 +9,8 @@ source("Nimble Functions JS-CC.R")
 n.primary <- 4 #number of primary occasions
 M <- 200 #data simulator simulates from Chandler-Clark model with M as a parameter
 psi <- 0.4 #expected N in primary occasion 1 is M*psi
+#model file currently set up with fixed gamma, so don't vary them in simulation 
+#without updating model file and inits bel0ow
 gamma <- rep(0.2,n.primary-1) #per-capita recruitment by primary occasion
 beta0.phi <- qlogis(0.85) #survival intercept
 beta1.phi <- 0.5
@@ -75,7 +77,7 @@ Niminits <- list(z=z.init,psi=sum(z.init[,1])/M,beta0.phi=0,beta1.phi=0,
 Nimdata <- list(y=y,phi.cov=phi.cov.data)
 
 # set parameters to monitor
-parameters <- c('psi','N','beta0.phi','beta1.phi','gamma','p','phi.cov.mu','phi.cov.sd',"B")
+parameters <- c('psi','N','beta0.phi','beta1.phi','gamma.fixed','p','phi.cov.mu','phi.cov.sd',"B")
 parameters2 <- c('A.raw','gamma.prime.raw') #monitor these to assess whether M is large enough
 nt <- 1 #thinning rate
 nt2 <- 1 #thinning rate for parameters 2

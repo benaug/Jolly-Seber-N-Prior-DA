@@ -9,9 +9,11 @@ NimModel <- nimbleCode({
     N[g] <- sum(z[1:M,g])
     Acum[g] <- sum(a[1:M,g])
   }
+  gamma.fixed ~ dunif(0,1) #fixed gamma
   for(g in 1:(n.primary-1)){
-    gamma[g] ~ dunif(0,2)
-    ER[g] <- N[g]*gamma[g] #expected recruits
+    gamma[g] <- gamma.fixed #fixed gamma
+    # gamma[g] ~ dunif(0,2) #gamma varies by primary occasion
+    ER[g] <- N[g]*gamma[g] #expected recruits, variable gamma
     A.raw[g] <- M - Acum[g] #available recruits
     A[g] <- max(A.raw[g],0.01) #trick to prevent model from crashing, but can bias estimates if it happens
     gamma.prime.raw[g] <- ER[g]/A[g] #individual recruitment prob
