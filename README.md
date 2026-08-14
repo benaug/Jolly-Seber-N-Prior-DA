@@ -244,33 +244,7 @@ The three custom samplers operate similarly in the sex-specific models, except t
 
    Spatial version of model 4 with a habitat mask, density covariates, or both.
 
-7. **JS-RO**
 
-   Nonspatial implementation of the Restricted Occupancy Jolly–Seber approach of Royle and Dorazio 2008, included for comparison. Can choose original priors or priors from Dorazio 2020.
-
-8. **JS-CC**
-
-   Nonspatial implementation of the Jolly–Seber approach of Chandler and Clark (2014), an extension of Restricted Occupancy that estimates per capita recruitment.
-   
-9. **JS-SA-sequential**
-
-   Nonspatial implementation of the Schwarz-Arnason Jolly–Seber approach of Royle and Dorazio 2008, included for comparison. This version uses the conditional entry probabilities to update z sequentially as done by Royle and Dorazio. This testscript and the next two are set up with the same parameter values and seed for comparison.
-   
-10. **JS-SA-entryOccasion**
-
-    Nonspatial implementation of the Schwarz–Arnason Jolly–Seber approach of Royle and Dorazio (2008). This is the same model as JS-SA-sequential, but with a different latent-state parameterization. Instead of converting the unconditional entry probabilities to conditional entry probabilities and updating z sequentially, entry occasion is represented directly as e[i] ~ dcat(pi[]), where pi has a Dirichlet prior. Survival is then modeled forward from the entry occasion. A custom sampler updates the entry occasion and subsequent survival trajectory, including the implied exit (death) occasion. This can be viewed as a data-augmentation implementation of the original Schwarz and Arnason (1996) entry-time formulation. Related data-augmentation approaches that explicitly represent latent entry/birth and exit/death processes have been used by Schofield and Barker (2011), Matechou et al. (2016), Wu et al. (2021), and likely others. Dupuis and Schwarz (2007) used a different superpopulation and missing-data augmentation scheme, but developed closely related block Gibbs updates of latent entry, survival, and death histories. The custom trajectory sampler used here follows this block-update strategy and its single-state implementation in Wu et al. (2021). For detected individuals, the entry- and exit-occasion updates correspond to the pre-first-capture and post-last-capture blocks; for undetected superpopulation members, the Gibbs update follows the entrance-time and post-entry trajectory update of Wu et al. (2021). Augmented individuals outside the superpopulation have their latent trajectories redrawn directly from their prior, which is also their full conditional.
-    
-11. **JS-SA-entryOccasion-expectedEntries**
-
-    This version is parameterized in terms of expected starting population size and expected entries per primary occasion. Allows adjustment for unequal occasion lengths when holding expected entries fixed across primary occasions. However, this is often not realistic--a fixed per capita recruitment is usually more realistic.
-
-12. **JS-SA-entryOccasion-perCapitaExpectedN**
-
-    This version extends the expectedEntries model above to use per capita recruiment as a function of *expected* abundance, unlike the N-prior data augmentation versions that use *realized* abundance. This is similar to Link and Barker 2005, but not the same model. However, to avoid tons of integration, I took the individual survival covariate out. It allows a fixed survival rate or one that varies by primary occasion. Individual survival covariates can be used, but significant model modification would be required and it would run much more slowly. Currently, it runs fast, but takes a while to compile due to the number of dependencies per capita introduces.
-    
-13. **JS-SA-marginal**
-
-    Nonspatial implementation of the Schwarz-Arnason Jolly–Seber approach of Royle and Dorazio 2008, included for comparison. This version marginalizes the latent states out of the likelihood with a 3-state forward algorithm (not yet entered, alive, dead), but retains the M augmented individuals to accommodate an individual survival covariate without using numerical integration. N, B, and N.super are recovered each iteration by forward-filtering backward-sampling the trajectories from their full conditionals. Marginalizing psi and pi prevents the use of their conjugate samplers, which can be used in the two versions above. Due to this, the marginalized version appears less efficient than the two samplers above, at least for several comparisons I made. Marginalization can be considerably faster than it is here if capture histories can be aggregated, for example if there are no individual random effects. Marginalization is not computationally feasible when recruitment is per capita as a function of realized abundance because individuals are no longer independent. This model and marginalization approach have been implemented in Stan, e.g., [js_super.stan](https://github.com/stan-dev/example-models/blob/master/BPA/Ch.10/js_super.stan), where marginalization is required because Stan cannot sample discrete parameters. HMC may be the most efficient approach, I have not made this comparison.
   
 ### Mobile activity centers
 
@@ -288,17 +262,17 @@ Mobile activity center models generally require informative SCR data to estimate
 
 These models may also require substantially more MCMC iterations to obtain adequate effective sample sizes for movement parameters and possibly survival and recruitment parameters if they are sensitive to the magnitude of movement.
 
-14. **JS-SCR-mobileAC**
+7. **JS-SCR-mobileAC**
 
-    Spatial version of model 2 with bivariate normal Markov activity center movement. The movement distribution is truncated by the state-space boundary.
+   Spatial version of model 2 with bivariate normal Markov activity center movement. The movement distribution is truncated by the state-space boundary.
 
-15. **JS-SCR-SexPopDy-mobileAC**
+8. **JS-SCR-SexPopDy-mobileAC**
 
-    Version of model 8 with sex-specific population dynamics, detection parameters, and movement parameters.
+   Version of model 8 with sex-specific population dynamics, detection parameters, and movement parameters.
 
-16. **JS-SCR-Dcov-mobileAC**
+9. **JS-SCR-Dcov-mobileAC**
 
-    Version of model 8 with an inhomogeneous density model for activity centers during the first primary occasion and resource selection during subsequent activity center movement.
+   Version of model 8 with an inhomogeneous density model for activity centers during the first primary occasion and resource selection during subsequent activity center movement.
 
 Let $I_c$ denote the habitat-mask indicator, where $I_c=1$ if cell $c$ is included in the state space and $I_c=0$ otherwise. Let $x_c$ denote the spatial covariate for cell $c$, and let $C$ denote the total number of grid cells.
 
@@ -353,7 +327,7 @@ This normalized product of a movement kernel and resource selection weight was u
 In this implementation, the bivariate normal probability mass within each rectangular cell is calculated analytically from differences of univariate normal cumulative distribution functions, and calculations are restricted to cells with non-negligible probability mass. Storing the availability distributions allows them to be reused when updating $\beta^{\mathrm{RSF}}$. These computational savings come at the cost of increased RAM use.
 
 
-17. **JS-SCR-Dcov-mobileAC-patchy**
+10. **JS-SCR-Dcov-mobileAC-patchy**
 
     Modification of `JS-SCR-Dcov-mobileAC` that applies the same initial density and activity center movement model to a patchy habitat state space.
 
@@ -366,3 +340,36 @@ A discrete proposal based directly on each individual's cell-level use distribut
 
 
 For models 10 and 11, I need to add code that checks whether all initial activity center log probabilities are finite. If any are nonfinite, the sampler may not be able to recover and may cause R to crash. I did not encounter this problem in simulated datasets when initializing  $\sigma_{\mathrm{move}}$ at its true value. It is more likely to occur with real datasets in which the model assumptions are not perfectly met, such as when a small number of observed movements are much larger than the others. If this occurs, increase the initial value of $\sigma_{\mathrm{move}}$.
+
+
+### Alternative Data Augmentation Approaches
+
+Here are several other data augmentation approaches for Jolly-Seber models. 
+
+11. **JS-RO**
+
+    Nonspatial implementation of the Restricted Occupancy Jolly–Seber approach of Royle and Dorazio (2008), included for comparison. Can choose original priors or priors from Dorazio 2020.
+
+12. **JS-CC**
+
+    Nonspatial implementation of the Jolly–Seber approach of Chandler and Clark (2014), an extension of Restricted Occupancy that estimates per capita recruitment. The N-prior data augmentation models in this repository are exact Poisson specifications of this model.
+   
+13. **JS-SA-sequential**
+
+    Nonspatial implementation of the Schwarz-Arnason Jolly–Seber approach of Royle and Dorazio (2008), included for comparison. This version uses the conditional entry probabilities to update z sequentially as done by Royle and Dorazio. This testscript and the next two are set up with the same parameter values and seed for comparison.
+   
+14. **JS-SA-entryOccasion**
+
+    Nonspatial implementation of the Schwarz–Arnason Jolly–Seber approach of Royle and Dorazio (2008). This is the same model as JS-SA-sequential, but with a different latent-state parameterization. Instead of converting the unconditional entry probabilities to conditional entry probabilities and updating z sequentially, entry occasion is represented directly as e[i] ~ dcat(pi[]), where pi has a Dirichlet prior. Survival is then modeled forward from the entry occasion. A custom sampler updates the entry occasion and subsequent survival trajectory, including the implied exit (death) occasion. This can be viewed as a data-augmentation implementation of the original Schwarz and Arnason (1996) entry-time formulation. Related data-augmentation approaches that explicitly represent latent entry/birth and exit/death processes have been used by Schofield and Barker (2011), Matechou et al. (2016), Wu et al. (2021), and likely others. Dupuis and Schwarz (2007) used a different superpopulation and missing-data augmentation scheme, but developed closely related block Gibbs updates of latent entry, survival, and death histories. The custom trajectory sampler used here follows this block-update strategy and its single-state implementation in Wu et al. (2021). For detected individuals, the entry- and exit-occasion updates correspond to the pre-first-capture and post-last-capture blocks; for undetected superpopulation members, the Gibbs update follows the entrance-time and post-entry trajectory update of Wu et al. (2021). Augmented individuals outside the superpopulation have their latent trajectories redrawn directly from their prior, which is also their full conditional.
+    
+15. **JS-SA-entryOccasion-expectedEntries**
+
+    This version is parameterized in terms of expected starting population size and expected entries per primary occasion. Allows adjustment for unequal occasion lengths when holding expected entries fixed across primary occasions. However, this is often not realistic--a fixed per capita recruitment is usually more realistic.
+
+16. **JS-SA-entryOccasion-perCapitaExpectedN**
+
+    This version extends the expectedEntries model above to use per capita recruiment as a function of *expected* abundance, unlike the N-prior data augmentation versions that use *realized* abundance. This is similar to Link and Barker 2005, but not the same model. However, to avoid tons of integration, I took the individual survival covariate out. It allows a fixed survival rate or one that varies by primary occasion. Individual survival covariates can be used, but significant model modification would be required and it would run much more slowly. Currently, it runs fast, but takes a while to compile due to the number of dependencies per capita introduces.
+    
+17. **JS-SA-marginal**
+
+    Nonspatial implementation of the Schwarz-Arnason Jolly–Seber approach of Royle and Dorazio 2008, included for comparison. This version marginalizes the latent states out of the likelihood with a 3-state forward algorithm (not yet entered, alive, dead), but retains the M augmented individuals to accommodate an individual survival covariate without using numerical integration. N, B, and N.super are recovered each iteration by forward-filtering backward-sampling the trajectories from their full conditionals. Marginalizing psi and pi prevents the use of their conjugate samplers, which can be used in the two versions above. Due to this, the marginalized version appears less efficient than the two samplers above, at least for several comparisons I made. Marginalization can be considerably faster than it is here if capture histories can be aggregated, for example if there are no individual random effects. Marginalization is not computationally feasible when recruitment is per capita as a function of realized abundance because individuals are no longer independent. This model and marginalization approach have been implemented in Stan, e.g., [js_super.stan](https://github.com/stan-dev/example-models/blob/master/BPA/Ch.10/js_super.stan), where marginalization is required because Stan cannot sample discrete parameters. HMC may be the most efficient approach, I have not made this comparison.
