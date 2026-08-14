@@ -1,44 +1,43 @@
 #This is the Schwarz-Arnason model from Royle and Dorazio 2008,
-#but parameterized in terms of expected entries. This example shows
-#how expected entries during each interval scale with interval length
-#while holding the expected number of entries per unit time, gamma, fixed.
-#However, this is often not realistic--a fixed per capita recruitment is usually more realistic.
-#The entryOccasion-perCapitaExpectedN version does this using expected per capita recruitment
-#The JS models, using N-prior data augmentation, does this using realized per capita recruitment
-
+#but parameterized in terms of expected entries. Expected recruitment is
+#per capita as a function of *expected* abundance, with linear scaling by interval length.
+#Survival and per capita recruitment are occasion-specific unit-time parameters.
+#I removed the individual survival covariate here to avoid numerical integration.
+#individual covariates on detection can still be used, meaning this would work for SCR.
 #requires custom samplers to update latent variables e and surv
+#this per capita version takes longer to build the model due to more dependencies,
+#but runs fast
+#The JS models, using N-prior data augmentation, model recruitment as a function of *realized*
+#abundance, which makes more sense to me. 
+
 library(nimble)
 library(coda)
-source("sim.JS.SA.expectedEntries.R")
-source("Nimble Model JS-SA-entryOccasion-expectedEntries.R")
-source("Nimble Functions JS-SA-entryOccasion-expectedEntries.R") #contains required custom update for e/surv nodes
+source("sim.JS.SA.perCapitaExpectedN.R")
+source("Nimble Model JS-SA-entryOccasion-perCapitaExpectedN.R")
+source("Nimble Functions JS-SA-entryOccasion-perCapitaExpectedN.R") #contains required custom update for e/surv nodes
 
 n.primary <- 4 #number of primary occasions
-M <- 200 #data simulator simulates from Chandler-Clark model with M as a parameter
+M <- 200 #data augmentation size
 
 primary.time <- c(0,1,3,4) #time of each primary occasion
 tau <- diff(primary.time) #length of intervals preceding occasions 2:n.primary
 
 lambda1 <- 75 #expected initial population
-gamma <- 18.75 #expected entries per unit time
-lambda <- c(lambda1,gamma*tau) #expected entries by primary occasion
-
-beta0.phi <- qlogis(0.85) #survival intercept
-beta1.phi <- 0.5
+#model file is set up for fixed gamma per primary occasion, so keep them the same here or change model file
+gamma <- c(0.20,0.20,0.20) #per capita expected recruitment per unit time by interval
+phi <- c(0.85,0.80,0.90) #unit-time survival by interval
 p <- rep(0.2,n.primary) #detection probability by primary occasion
 K <- rep(10,n.primary) #sampling occasions by primary occasion
 
 set.seed(33955)
-data <- sim.JS.SA.expectedEntries(lambda=lambda,
-                  beta0.phi=beta0.phi,beta1.phi=beta1.phi,
-                  p=p,n.primary=n.primary,K=K,M=M,tau=tau)
+data <- sim.JS.SA.perCapitaExpectedN(lambda1=lambda1,gamma=gamma,phi=phi,
+                                     p=p,n.primary=n.primary,K=K,M=M,tau=tau)
+
 data$N #realized abundances
 data$B #realized entries
 data$N.super #realized superpopulation size
 
-
 ##### Initialize e, surv, z.super
-
 n.det <- nrow(data$y)
 y <- rbind(data$y,matrix(0,M-n.det,n.primary))
 first.det <- last.det <- rep(0,M)
@@ -79,36 +78,29 @@ for(i in 1:n.det){
 p.init <- p.num/p.den
 p.init <- pmin(pmax(p.init,0.01),0.99)
 
-#augment data
-y <- rbind(data$y,matrix(0,M-n.det,n.primary))
-
-#phi covariate data. nimble can init for undetected inds
-phi.cov.data <- rep(NA,M)
-phi.cov.data[1:n.det] <- data$phi.cov
-
 #time intervals
 tau <- diff(primary.time)
 
 #constants for Nimble
 constants <- list(n.primary=n.primary,K=K,M=M,tau=tau)
 
-#initial expected entries
+#initial values
 lambda.super.init <- sum(z.super.init)
-lambda1.init <- lambda.super.init/2
-gamma.init <- (lambda.super.init-lambda1.init)/sum(tau)
+lambda1.init <- max(lambda.super.init*0.6,1)
+gamma.init <- 0.1
+phi.init <- rep(0.8,n.primary-1)
 
 #inits for Nimble
 Niminits <- list(z.super=z.super.init,e=e.init,surv=surv.init,
                  lambda=c(lambda1.init,rep(NA,n.primary-1)),gamma=gamma.init,
-                 beta0.phi=0,beta1.phi=0,p=p.init,
-                 phi.cov.mu=mean(data$phi.cov),phi.cov.sd=sd(data$phi.cov))
+                 phi=phi.init,p=p.init)
 
 #data for Nimble
-Nimdata <- list(y=y,phi.cov=phi.cov.data,lambda.valid=1)
+Nimdata <- list(y=y,lambda.valid=1)
 
 #set parameters to monitor
-parameters <- c('lambda.super','gamma','N','beta0.phi','beta1.phi','lambda','p',
-                'phi.cov.mu','phi.cov.sd',"B","N.super")
+parameters <- c('lambda.super','gamma','phi','EN','N','lambda','p',
+                'B','N.super')
 nt <- 1 #thinning rate
 
 #Build the model, configure the mcmc, and compile
@@ -116,8 +108,7 @@ start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel,constants=constants,data=Nimdata,check=FALSE,inits=Niminits)
 
 #don't configure e or surv
-config.nodes <- c('lambda[1]','gamma','p','beta0.phi','beta1.phi',
-                  'phi.cov.mu','phi.cov.sd','phi.cov','z.super')
+config.nodes <- c('lambda[1]','gamma','phi','p','z.super')
 conf <- configureMCMC(Rmodel,monitors=parameters,thin=nt,nodes=config.nodes)
 
 #add e/surv sampler
@@ -150,9 +141,9 @@ conf$addSampler(target=paste0("e[1:",M,"]"), type=eSampler,
 
 #Correlated posteriors. AF_slice is relatively cheap here.
 #If you estimate one lambda per primary occasion, I'm sure this will become too slow with many occasions
-conf$removeSampler("lambda[1]","gamma")
-conf$addSampler(target = c("lambda[1]","gamma"),
-                type = 'AF_slice',control=list(adaptive=TRUE),silent = TRUE)
+entry.nodes <- c("lambda[1]",Rmodel$expandNodeNames("gamma"))
+conf$removeSampler(entry.nodes)
+conf$addSampler(target=entry.nodes,type='AF_slice',control=list(adaptive=TRUE),silent=TRUE)
 
 #Build and compile
 Rmcmc <- buildMCMC(conf)
@@ -174,5 +165,5 @@ plot(mcmc(mvSamples[-c(1:200),]))
 data$N #realized abundance
 data$B #realized recruits
 data$N.super #realized N.super
-gamma #expected recruitment rate
-
+gamma #per capita expected recruitment rates
+phi #unit-time survival probabilities
