@@ -1,10 +1,11 @@
-#This is the Schwarz-Arnason model from Royle and Dorazio 2008,
-#but parameterized in terms of expected entries. Expected recruitment is
-#per capita as a function of *expected* abundance, with linear scaling by interval length.
+#This is the Schwarz-Arnason model from Royle and Dorazio 2008.
+#Expected recruitment is per capita as a function of *expected* abundance,
+#with linear scaling by interval length. The demographic recursion is on a
+#relative scale, with psi.super supplying the absolute superpopulation scale.
 #Survival and per capita recruitment are occasion-specific unit-time parameters.
 #I removed the individual survival covariate here to avoid numerical integration.
 #individual covariates on detection can still be used, meaning this would work for SCR.
-#requires custom samplers to update latent variables e and surv
+#requires custom sampler to update latent variables z.super, e, and surv
 #this per capita version takes longer to build the model due to more dependencies,
 #but runs fast
 #The JS models, using N-prior data augmentation, model recruitment as a function of *realized*
@@ -14,7 +15,7 @@ library(nimble)
 library(coda)
 source("sim.JS.SA.perCapitaExpectedN.R")
 source("Nimble Model JS-SA-entryOccasion-perCapitaExpectedN.R")
-source("Nimble Functions JS-SA-entryOccasion-perCapitaExpectedN.R") #contains required custom update for e/surv nodes
+source("Nimble Functions JS-SA-entryOccasion-perCapitaExpectedN.R") #contains required custom update for z.super/e/surv nodes
 
 n.primary <- 4 #number of primary occasions
 M <- 200 #data augmentation size
@@ -22,8 +23,8 @@ M <- 200 #data augmentation size
 primary.time <- c(0,1,3,4) #time of each primary occasion
 tau <- diff(primary.time) #length of intervals preceding occasions 2:n.primary
 
-lambda1 <- 75 #expected initial population
-#model file is set up for fixed gamma per primary occasion, so keep them the same here or change model file
+lambda1 <- 75 #expected initial population used to simulate data
+#model file is set up for fixed gamma, so keep them the same here or change model file
 gamma <- c(0.20,0.20,0.20) #per capita expected recruitment per unit time by interval
 phi <- c(0.85,0.80,0.90) #unit-time survival by interval
 p <- rep(0.2,n.primary) #detection probability by primary occasion
@@ -85,31 +86,30 @@ tau <- diff(primary.time)
 constants <- list(n.primary=n.primary,K=K,M=M,tau=tau)
 
 #initial values
-lambda.super.init <- sum(z.super.init)
-lambda1.init <- max(lambda.super.init*0.6,1)
+psi.super.init <- max(sum(z.super.init)/M,0.01)
 gamma.init <- 0.1
 phi.init <- rep(0.8,n.primary-1)
 
 #inits for Nimble
 Niminits <- list(z.super=z.super.init,e=e.init,surv=surv.init,
-                 lambda=c(lambda1.init,rep(NA,n.primary-1)),gamma=gamma.init,
+                 psi.super=psi.super.init,gamma=gamma.init,
                  phi=phi.init,p=p.init)
 
 #data for Nimble
-Nimdata <- list(y=y,lambda.valid=1)
+Nimdata <- list(y=y)
 
 #set parameters to monitor
-parameters <- c('lambda.super','gamma','phi','EN','N','lambda','p','B','N.super')
+parameters <- c('psi.super','gamma','phi','EN','EB','N','pi','p','B','N.super')
 nt <- 1 #thinning rate
 
 #Build the model, configure the mcmc, and compile
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel,constants=constants,data=Nimdata,check=FALSE,inits=Niminits)
 #don't configure e, surv, z.super
-config.nodes <- c('lambda[1]','gamma','phi','p')
+config.nodes <- c('psi.super','gamma','phi','p')
 conf <- configureMCMC(Rmodel,monitors=parameters,thin=nt,nodes=config.nodes)
 
-#add e/surv sampler
+#add z.super/e/surv sampler
 z.obs <- as.numeric(rowSums(y) > 0)
 first.det <- last.det <- rep(0,M)
 for(i in 1:M){
@@ -128,12 +128,6 @@ conf$addSampler(target=c(z.super.nodes,e.nodes,surv.nodes),type=eSampler,
                 control=list(M=M,K=K,n.primary=n.primary,z.obs=z.obs,
                              first.det=first.det,last.det=last.det,
                              calcNodes=calcNodes))
-
-#Correlated posteriors. AF_slice is relatively cheap here.
-#If you estimate one lambda per primary occasion, I'm sure this will become too slow with many occasions
-entry.nodes <- c("lambda[1]",Rmodel$expandNodeNames("gamma"))
-conf$removeSampler(entry.nodes)
-conf$addSampler(target=entry.nodes,type='AF_slice',control=list(adaptive=TRUE),silent=TRUE)
 
 #Build and compile
 Rmcmc <- buildMCMC(conf)
@@ -157,3 +151,7 @@ data$B #realized recruits
 data$N.super #realized N.super
 gamma #per capita expected recruitment rates
 phi #unit-time survival probabilities
+
+#ESS per time (check time units)
+effectiveSize(mcmc(mvSamples[-c(1:200),]))/as.numeric(time2)
+

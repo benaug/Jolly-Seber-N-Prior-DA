@@ -51,7 +51,7 @@ eSampler <- nimbleFunction(
     }
     #probability an undetected individual is in the superpopulation,
     #with its entry and survival trajectory marginalized
-    z.super.prob <- model$psi[1]*rho/((1-model$psi[1])+model$psi[1]*rho)
+    z.super.prob <- model$psi.super[1]*rho/((1-model$psi.super[1])+model$psi.super[1]*rho)
     prop.probs <- rep(0,n.primary)
     for(i in 1:M){
       #1) detected individuals
