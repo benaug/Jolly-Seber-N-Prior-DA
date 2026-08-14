@@ -344,7 +344,7 @@ For models 10 and 11, I need to add code that checks whether all initial activit
 
 ### Alternative Data Augmentation Approaches
 
-Here are several other data augmentation approaches for Jolly-Seber models. 
+Here are several other data augmentation approaches for Jolly-Seber models. This first set is set up with individual survival covariates.
 
 11. **JS-RO**
 
@@ -366,10 +366,13 @@ Here are several other data augmentation approaches for Jolly-Seber models.
 
     This version is parameterized in terms of expected starting population size and expected entries per primary occasion. Allows adjustment for unequal occasion lengths when holding expected entries fixed across primary occasions. However, this is often not realistic--a fixed per capita recruitment is usually more realistic.
 
-16. **JS-SA-entryOccasion-perCapitaExpectedN**
+16. **JS-SA-marginal**
+
+    Nonspatial implementation of the Schwarz-Arnason Jolly–Seber approach of Royle and Dorazio 2008, included for comparison. This version marginalizes the latent states out of the likelihood with a 3-state forward algorithm (not yet entered, alive, dead), but retains the M augmented individuals to accommodate an individual survival covariate without using numerical integration. N, B, and N.super are recovered each iteration by forward-filtering backward-sampling the trajectories from their full conditionals. Marginalizing psi and pi prevents the use of their conjugate samplers, which can be used in the two versions above. Due to this, the marginalized version appears less efficient than the two samplers above, at least for several comparisons I made. Marginalization can be considerably faster than it is here if capture histories can be aggregated, for example if there are no individual random effects. Marginalization is not computationally feasible when recruitment is per capita as a function of realized abundance because individuals are no longer independent. This model and marginalization approach have been implemented in Stan, e.g., [js_super.stan](https://github.com/stan-dev/example-models/blob/master/BPA/Ch.10/js_super.stan), where marginalization is required because Stan cannot sample discrete parameters. HMC may be the most efficient approach, I have not made this comparison.
+
+This model adds per capita recruitment as a function of expected N, but removes the individual survival covariate so we do not have to do a lot of numerical integration and slow down the MCMC substantially.
+
+17. **JS-SA-entryOccasion-perCapitaExpectedN**
 
     This version extends the expectedEntries model above to use per capita recruiment as a function of *expected* abundance, unlike the N-prior data augmentation versions that use *realized* abundance. This is similar to Link and Barker 2005, but not the same model. However, to avoid tons of integration, I took the individual survival covariate out. It allows a fixed survival rate or one that varies by primary occasion. Individual survival covariates can be used, but significant model modification would be required and it would run much more slowly. Currently, it runs fast, but takes a while to compile due to the number of dependencies per capita introduces.
     
-17. **JS-SA-marginal**
-
-    Nonspatial implementation of the Schwarz-Arnason Jolly–Seber approach of Royle and Dorazio 2008, included for comparison. This version marginalizes the latent states out of the likelihood with a 3-state forward algorithm (not yet entered, alive, dead), but retains the M augmented individuals to accommodate an individual survival covariate without using numerical integration. N, B, and N.super are recovered each iteration by forward-filtering backward-sampling the trajectories from their full conditionals. Marginalizing psi and pi prevents the use of their conjugate samplers, which can be used in the two versions above. Due to this, the marginalized version appears less efficient than the two samplers above, at least for several comparisons I made. Marginalization can be considerably faster than it is here if capture histories can be aggregated, for example if there are no individual random effects. Marginalization is not computationally feasible when recruitment is per capita as a function of realized abundance because individuals are no longer independent. This model and marginalization approach have been implemented in Stan, e.g., [js_super.stan](https://github.com/stan-dev/example-models/blob/master/BPA/Ch.10/js_super.stan), where marginalization is required because Stan cannot sample discrete parameters. HMC may be the most efficient approach, I have not made this comparison.
