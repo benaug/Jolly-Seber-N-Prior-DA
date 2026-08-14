@@ -1,8 +1,10 @@
-#This is the Chandler and Clark (2014) approach with per capita recruitment
+#This is the Chandler and Clark (2014) approach with per capita recruitment. 
+#Wu-type whole-history Gibbs update. So much faster
 library(nimble)
 library(coda)
 source("sim.JS.CC.R")
 source("Nimble Model JS-CC.R")
+source("Nimble Functions JS-CC.R")
 
 n.primary <- 4 #number of primary occasions
 M <- 200 #data simulator simulates from Chandler-Clark model with M as a parameter
@@ -17,14 +19,17 @@ M*psi #expected N[1]
 
 #data simulator will give error messages if M not set large enough
 #there are two criteria to consider
-#1) you max out M and run out of individuals to recruit. 
+#1) you max out M and run out of individuals to recruit.
 #This is very bad and will stop the data simulator and ask you to raise M
-#2) you don't have enough possible recruits left for the binomial approximation of
-#Poisson recruitment to be accurate. This is more of a grey area. The variance in recruits
-#will artificially decrease through time. Generally, M needs to be set much higher than
-#we would like for efficient MCMC to achieve this. This is a drawback of this parameterization.
-#current parameter settings above do not allow for good Poisson approximation for recruits
-#if gamma.prime is 0.05, poisson recruit variance underestimated 5%. if 0.1, 10%, if 0.2, 20%, etc.
+#2) finite M makes recruitment conditionally binomial rather than Poisson.
+#Conditional on N, gamma, and the number available to recruit, the recruitment
+#mean is N*gamma, but the variance is N*gamma*(1-gamma.prime). Thus, relative
+#to a Poisson distribution with the same conditional mean, gamma.prime=0.05
+#gives 5% lower conditional variance, gamma.prime=0.1 gives 10% lower variance, etc.
+#This conditional comparison does not directly imply the same reduction in the
+#posterior variance of recruitment when gamma and abundance are estimated.
+#Larger M reduces gamma.prime and makes the conditional recruitment distribution
+#closer to Poisson, but may reduce computational efficiency.
 
 data <- sim.JS.CC(psi=psi,gamma=gamma,
             beta0.phi=beta0.phi,beta1.phi=beta1.phi,
@@ -35,9 +40,14 @@ data$B #realized entries
 data$N.super #realized superpopulation size
 
 #you may need to raise M from what was used to simulate for model fitting.
-#monitoring A.raw lets you see if you run out of possible recruits.
-#also, gamma.prime needs to be <0.05-0.1 for Poisson recruitment variance approximation to hold within 5-10%
-data$gamma.prime #can check for simulated data sets
+#monitoring A.raw lets you see whether the augmented pool is being exhausted.
+#gamma.prime measures the departure of the conditional recruitment distribution
+#from its Poisson limit: conditional variance is multiplied by (1-gamma.prime).
+#This does not directly measure distortion of the marginal posterior because
+#uncertainty in gamma, N, and A also contributes to posterior variation.
+#Sensitivity of posterior inference to M is therefore more informative than
+#gamma.prime alone.
+data$gamma.prime #can check conditional Poisson approximation for simulated data sets
 
 ##### Initialize z using observed data #####
 z.init <- matrix(0,M,n.primary)
@@ -76,6 +86,12 @@ Rmodel <- nimbleModel(code=NimModel,constants=constants,data=Nimdata,check=FALSE
 conf <- configureMCMC(Rmodel,monitors=parameters,thin=nt,
                       monitors2=parameters2,thin2=nt2)
 
+#replace single-site z updates with Wu-type whole-history Gibbs sampler
+z.nodes <- grep("^z\\[",Rmodel$getNodeNames(stochOnly=TRUE),value=TRUE)
+conf$removeSamplers(z.nodes)
+conf$addSampler(target=z.nodes,type=zSampler,
+                control=list(M=M,K=K,n.primary=n.primary))
+
 # Build and compile
 Rmcmc <- buildMCMC(conf)
 Cmodel <- compileNimble(Rmodel)
@@ -83,7 +99,7 @@ Cmcmc <- compileNimble(Rmcmc, project = Rmodel)
 
 # Run the model.
 start.time2 <- Sys.time()
-Cmcmc$run(1000,reset=FALSE) #can extend run by rerunning this line
+Cmcmc$run(5000,reset=FALSE) #can extend run by rerunning this line
 end.time <- Sys.time()
 time1 <- end.time-start.time  # total time for compilation, replacing samplers, and fitting
 time2 <- end.time-start.time2 # post-compilation run time
@@ -101,10 +117,14 @@ data$N.super #realized N.super
 mvSamples2 <- as.matrix(Cmcmc$mvSamples2)
 plot(mcmc(mvSamples2[-c(1:200),]))
 
-#Things to check to ensure M is not 1) inducing bias or 2) constraining variance
-#if A.raw hits 0, that means you maxed out M and ran out of possible recruits
-#if gamma.prime.raw posterior iteration hits 1, parameter estimates may be biased
-#if any gamma.prime.raw posterior mean > 0.05-0.1, Poisson recruitment approximation is likely not great
-#and posterior variances of entry counts may be underestimated
+#Things to check for finite-M effects
+#if A.raw hits 0, you maxed out M and ran out of possible recruits
+#if gamma.prime.raw reaches 1, the model hits the artificial recruitment-probability cap
+#larger gamma.prime.raw means a poorer conditional Poisson approximation:
+#conditional recruitment variance is N*gamma*(1-gamma.prime)
+#however, this does not imply an equivalent reduction in posterior recruitment variance
+#because gamma, N, and A are estimated rather than fixed
+#the most direct check for consequential finite-M effects is sensitivity of posterior
+#inference to increasing M
 
 
