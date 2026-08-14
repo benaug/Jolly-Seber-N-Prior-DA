@@ -3,6 +3,7 @@ library(nimble)
 library(coda)
 source("sim.JS.RO.R")
 source("Nimble Model JS-RO.R")
+source("Nimble Functions JS-RO.R")
 
 n.primary <- 4 #number of primary occasions
 M <- 200 #data simulator simulates from Chandler-Clark model with M as a parameter
@@ -15,6 +16,7 @@ K <- rep(10,n.primary) #sampling occasions by primary occasion
 
 M*psi #expected N[1]
 
+set.seed(33955)
 data <- sim.JS.RO(psi=psi,gamma=gamma,
             beta0.phi=beta0.phi,beta1.phi=beta1.phi,
             p=p,n.primary=n.primary,K=K,M=M)
@@ -69,6 +71,21 @@ start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel,constants=constants,data=Nimdata,check=FALSE,inits=Niminits)
 conf <- configureMCMC(Rmodel,monitors=parameters,thin=nt)
 
+#z sampler: remove sequential sampler, replace with Wu block Gibbs sampler
+z.nodes <- grep("^z\\[",Rmodel$getNodeNames(stochOnly=TRUE),value=TRUE)
+conf$removeSamplers(z.nodes)
+
+#summarize data for custom update
+z.obs <- as.integer(rowSums(y)>0)
+first.det <- max.col(y>0,ties.method="first")
+last.det <- ncol(y)+1-max.col((y[,ncol(y):1,drop=FALSE]>0),ties.method="first")
+first.det[z.obs==0] <- 0
+last.det[z.obs==0] <- 0
+
+conf$addSampler(target=z.nodes,type=zSampler,
+                control=list(M=M,K=K,n.primary=n.primary,z.obs=z.obs,
+                             first.det=first.det,last.det=last.det))
+
 # Build and compile
 Rmcmc <- buildMCMC(conf)
 Cmodel <- compileNimble(Rmodel)
@@ -80,6 +97,7 @@ Cmcmc$run(5000,reset=FALSE) #can extend run by rerunning this line
 end.time <- Sys.time()
 time1 <- end.time-start.time  # total time for compilation, replacing samplers, and fitting
 time2 <- end.time-start.time2 # post-compilation run time
+time2
 
 mvSamples <- as.matrix(Cmcmc$mvSamples)
 #compute N.super posterior and append it to mvSamples
@@ -90,3 +108,6 @@ plot(mcmc(mvSamples[-c(1:200),]))
 data$N #realized abundance
 data$B #realized recruits
 data$N.super #realized N.super
+
+#ESS per time (check time units)
+effectiveSize(mcmc(mvSamples[-c(1:200),]))/as.numeric(time2)

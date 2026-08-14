@@ -22,7 +22,7 @@ NimModel <- nimbleCode({
     N[g] <- sum(z[1:M,g])
     Acum[g] <- sum(a[1:M,g])
   }
-  phi.cov.mu ~ dunif(-10, 10) #phi individual covariate mean prior
+  phi.cov.mu ~ dunif(-10,10) #phi individual covariate mean prior
   phi.cov.sd ~ T(dt(mu=0, sigma=1, df=7), 0, Inf) #phi individual covariate sd prior
   for(i in 1:M){
     phi.cov[i] ~  dnorm(phi.cov.mu, sd = phi.cov.sd) #individual survival covs
@@ -32,7 +32,6 @@ NimModel <- nimbleCode({
     for(g in 2:n.primary){
       Ez[i,g-1] <- z[i,g-1]*phi[i] + (1-a[i,g-1])*gamma[g-1]
       z[i,g] ~ dbern(Ez[i,g-1])
-      # a[i,g] <- max(z[i,1:g]) #not available to recruit if previously alive
       a[i,g] <- max(a[i,g-1],z[i,g]) #not available to recruit if previously alive
     }
   }

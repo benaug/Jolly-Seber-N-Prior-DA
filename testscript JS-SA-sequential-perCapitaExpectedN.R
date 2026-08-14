@@ -3,7 +3,7 @@
 #with linear scaling by interval length. The fitted model uses relative expected abundance internally.
 library(nimble)
 library(coda)
-source("sim.JS.SA.sequentialPerCapitaExpectedN.R")
+source("sim.JS.SA.sequential.PerCapitaExpectedN.R")
 source("Nimble Model JS-SA-sequential-perCapitaExpectedN.R")
 source("Nimble Functions JS-SA-sequential-perCapitaExpectedN.R")
 
@@ -21,6 +21,7 @@ p <- rep(0.2,n.primary) #detection probability by primary occasion
 K <- rep(5,n.primary) #sampling occasions by primary occasion
 
 #simulate some data
+set.seed(33955)
 data <- sim.JS.SA(lambda1=lambda1,phi=phi,gamma=gamma,
                   p=p,n.primary=n.primary,K=K,M=M,tau=tau)
 data$EN #expected abundance
@@ -118,3 +119,7 @@ data$lambda #expected recruits
 data$N #realized abundance
 data$B #realized recruits
 data$N.super #realized N.super
+
+
+#ESS per time (check time units)
+effectiveSize(mcmc(mvSamples[-c(1:200),]))/as.numeric(time2)
