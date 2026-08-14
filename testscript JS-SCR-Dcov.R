@@ -297,6 +297,7 @@ for(i in 1:M){
 #optional truncated gamma poisson conjugate samplers. 
 #I would always use these as long as you keep uniform priors on gamma or gamma[g]
 #Typically gives you much greater ESS that propagates to N/N.recruit
+#Note: if you add time scaling to model file, need to include that in custom update
 #if one gamma per primary occasion
 for(g in 1:(n.primary-1)){
   target <- paste0("gamma[",g,"]")
