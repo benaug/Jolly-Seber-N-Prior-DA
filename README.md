@@ -262,11 +262,11 @@ The three custom samplers operate similarly in the sex-specific models, except t
     
 11. **JS-SA-entryOccasion-expectedEntries**
 
-This version is parameterized in terms of expected starting population size and expected entries per primary occasion. Allows adjustment for unequal occasion lengths when holding expected entries fixed across primary occasions. However, this is often not realistic--a fixed per capita recruitment is usually more realistic.
+    This version is parameterized in terms of expected starting population size and expected entries per primary occasion. Allows adjustment for unequal occasion lengths when holding expected entries fixed across primary occasions. However, this is often not realistic--a fixed per capita recruitment is usually more realistic.
 
 12. **JS-SA-entryOccasion-perCapitaExpectedN**
 
-This version extends the expectedEntries model above to use per capita recruiment as a function of *expected* abundance, unlike the N-prior data augmentation versions that use *realized* abundance. This is similar to Link and Barker 2005, but not the same model. However, to avoid tons of integration, I took the individual survival covariate out. It allows a fixed survival rate or one that varies by primary occasion. Individual survival covariates can be used, but significant model modification would be required and it would run much more slowly. Currently, it runs fast, but takes a while to compile due to the number of dependencies per capita introduces.
+    This version extends the expectedEntries model above to use per capita recruiment as a function of *expected* abundance, unlike the N-prior data augmentation versions that use *realized* abundance. This is similar to Link and Barker 2005, but not the same model. However, to avoid tons of integration, I took the individual survival covariate out. It allows a fixed survival rate or one that varies by primary occasion. Individual survival covariates can be used, but significant model modification would be required and it would run much more slowly. Currently, it runs fast, but takes a while to compile due to the number of dependencies per capita introduces.
     
 13. **JS-SA-marginal**
 
