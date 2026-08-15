@@ -41,7 +41,7 @@ NimModel <- nimbleCode({
   for(i in 1:M){
     phi.cov[i] ~ dnorm(phi.cov.mu, sd=phi.cov.sd)
     #all s set to 0 if not in population, z.super[i]=0
-    s[i,1,1:2] ~ dHabYear1(pi.cell=pi.cell[1:n.cells],cells=cells[1:n.cells.x,1:n.cells.y],
+    s[i,1,1:2] ~ dHab1(pi.cell=pi.cell[1:n.cells],cells=cells[1:n.cells.x,1:n.cells.y],
                            res=res,dSS=dSS[1:n.cells,1:2],xlim=xlim[1:2],ylim=ylim[1:2],z.super=z.super[i])
     #subsequent primary occasion activity center - movement with resource selection
     for(g in 2:n.primary){
