@@ -32,7 +32,6 @@ M*psi #expected N[1]
 #posterior variance of recruitment when gamma and abundance are estimated.
 #Larger M reduces gamma.prime and makes the conditional recruitment distribution
 #closer to Poisson, but may reduce computational efficiency.
-
 data <- sim.JS.CC(psi=psi,gamma=gamma,
             beta0.phi=beta0.phi,beta1.phi=beta1.phi,
             p=p,n.primary=n.primary,K=K,M=M)

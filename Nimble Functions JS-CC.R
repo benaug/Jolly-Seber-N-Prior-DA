@@ -1,11 +1,10 @@
-#Wu-type whole-history Gibbs update for Chandler and Clark (2014)
+#Wu-type entry/departure Gibbs updates for Chandler and Clark (2014)
 #Because realized N determines recruitment probabilities, individuals are not
 #conditionally independent. Conditional on all other individual histories,
-#however, the focal individual's full conditional is a 3-state HMM:
-#1 = not yet entered, 2 = alive, 3 = entered previously and dead.
-#This sampler uses exact forward-filtering/backward-sampling in O(n.primary)
-#for each individual, while accounting for the focal individual's effect on
-#the recruitment probabilities of all other individuals.
+#the focal individual's likelihood still factors by primary occasion.
+#Detected individuals use separate Type I entry and Type II departure updates.
+#For undetected individuals, entry/never-entry is sampled with departure
+#marginalized, followed by a Type II departure draw conditional on entry.
 
 zSampler <- nimbleFunction(
   contains = sampler_BASE,
@@ -19,11 +18,7 @@ zSampler <- nimbleFunction(
     #current abundance and cumulative-entry counts
     N.curr <- rep(0,n.primary)
     Acum.curr <- rep(0,n.primary)
-    if(n.primary > 1){
-      B.curr <- rep(0,n.primary-1)
-    }else{
-      B.curr <- rep(0,1)
-    }
+    B.curr <- rep(0,max(1,n.primary-1))
     for(i in 1:M){
       entered <- 0
       for(g in 1:n.primary){
@@ -39,8 +34,7 @@ zSampler <- nimbleFunction(
         B.curr[g] <- Acum.curr[g+1] - Acum.curr[g]
       }
     }
-
-    #update complete history for each individual
+    
     for(i in 1:M){
       z.curr <- rep(0,n.primary)
       a.curr <- rep(0,n.primary)
@@ -48,13 +42,24 @@ zSampler <- nimbleFunction(
       a.new <- rep(0,n.primary)
       N.minus <- rep(0,n.primary)
       Acum.minus <- rep(0,n.primary)
-      state <- rep(0,n.primary)
-      alpha <- rep(-Inf,3*n.primary)
-      probs <- rep(0,3)
-      logw <- rep(-Inf,3)
-
-      #leave-one-out population counts
+      log.y.abs <- rep(0,n.primary)
+      log.y.alive <- rep(0,n.primary)
+      r.U <- rep(0,n.primary)
+      logH.U <- rep(0,n.primary)
+      logH.A <- rep(0,n.primary)
+      logH.D <- rep(0,n.primary)
+      logV.A <- rep(0,n.primary)
+      logV.D <- rep(0,n.primary)
+      logUreach <- rep(-Inf,n.primary)
+      logAliveToFirst <- rep(0,n.primary)
+      logw <- rep(-Inf,n.primary+1)
+      probs <- rep(0,n.primary+1)
+      
+      #current focal history and leave-one-out population counts
       entered <- 0
+      detected <- 0
+      first.det <- n.primary+1
+      last.det <- 0
       for(g in 1:n.primary){
         z.curr[g] <- model$z[i,g]
         if(z.curr[g] == 1){
@@ -63,206 +68,271 @@ zSampler <- nimbleFunction(
         a.curr[g] <- entered
         N.minus[g] <- N.curr[g] - z.curr[g]
         Acum.minus[g] <- Acum.curr[g] - a.curr[g]
+        if(model$y[i,g] == 0){
+          log.y.abs[g] <- 0
+        }else{
+          log.y.abs[g] <- -Inf
+          detected <- 1
+          if(first.det == n.primary+1){
+            first.det <- g
+          }
+          last.det <- g
+        }
+        log.y.alive[g] <- dbinom(model$y[i,g],size=K[g],p=model$p[g],log=TRUE)
       }
-
-      #for each interval and each possible focal state, calculate
-      #1) gamma.prime implied by that state and
-      #2) recruitment likelihood of all OTHER individuals
+      
+      #For each interval, calculate the recruitment probability implied by the
+      #focal individual being not yet entered, and the recruitment likelihood
+      #of all OTHER individuals under each possible focal state at occasion g:
+      #U = not yet entered, A = alive, D = entered previously and dead.
       if(n.primary > 1){
-        r.state <- rep(0,3*(n.primary-1))
-        logH.state <- rep(0,3*(n.primary-1))
         for(g in 1:(n.primary-1)){
           recruit.curr <- a.curr[g+1] - a.curr[g]
           R.minus <- B.curr[g] - recruit.curr
           U.minus <- (M-1) - Acum.minus[g]
           stayU.minus <- U.minus - R.minus
-
-          for(s in 1:3){
-            alive.cand <- 0
-            entered.cand <- 0
-            if(s == 2){
-              alive.cand <- 1
-              entered.cand <- 1
-            }
-            if(s == 3){
-              entered.cand <- 1
-            }
-
-            N.cand <- N.minus[g] + alive.cand
-            Acum.cand <- Acum.minus[g] + entered.cand
-            A.raw.cand <- M - Acum.cand
-            if(A.raw.cand < 0.01){
-              A.cand <- 0.01
+          
+          #U: focal individual has not yet entered
+          A.raw.cand <- M - Acum.minus[g]
+          if(A.raw.cand < 0.01){
+            A.cand <- 0.01
+          }else{
+            A.cand <- A.raw.cand
+          }
+          r.cand <- N.minus[g]*model$gamma[g]/A.cand
+          if(r.cand > 0.999){
+            r.cand <- 0.999
+          }
+          r.U[g] <- r.cand
+          lp <- 0
+          if(R.minus > 0){
+            if(r.cand > 0){
+              lp <- lp + R.minus*log(r.cand)
             }else{
-              A.cand <- A.raw.cand
+              lp <- -Inf
             }
-            r.cand <- N.cand*model$gamma[g]/A.cand
-            if(r.cand > 0.999){
-              r.cand <- 0.999
+          }
+          if(stayU.minus > 0 & lp > -Inf){
+            lp <- lp + stayU.minus*log(1-r.cand)
+          }
+          logH.U[g] <- lp
+          
+          #A: focal individual has entered and is alive
+          A.raw.cand <- M - (Acum.minus[g]+1)
+          if(A.raw.cand < 0.01){
+            A.cand <- 0.01
+          }else{
+            A.cand <- A.raw.cand
+          }
+          r.cand <- (N.minus[g]+1)*model$gamma[g]/A.cand
+          if(r.cand > 0.999){
+            r.cand <- 0.999
+          }
+          lp <- 0
+          if(R.minus > 0){
+            if(r.cand > 0){
+              lp <- lp + R.minus*log(r.cand)
+            }else{
+              lp <- -Inf
             }
-
-            idx <- (g-1)*3+s
-            r.state[idx] <- r.cand
-            lp <- 0
-            if(R.minus > 0){
-              if(r.cand > 0){
-                lp <- lp + R.minus*log(r.cand)
-              }else{
-                lp <- -Inf
-              }
+          }
+          if(stayU.minus > 0 & lp > -Inf){
+            lp <- lp + stayU.minus*log(1-r.cand)
+          }
+          logH.A[g] <- lp
+          
+          #D: focal individual has entered previously and is dead
+          r.cand <- N.minus[g]*model$gamma[g]/A.cand
+          if(r.cand > 0.999){
+            r.cand <- 0.999
+          }
+          lp <- 0
+          if(R.minus > 0){
+            if(r.cand > 0){
+              lp <- lp + R.minus*log(r.cand)
+            }else{
+              lp <- -Inf
             }
-            if(stayU.minus > 0 & lp > -Inf){
-              lp <- lp + stayU.minus*log(1-r.cand)
-            }
-            logH.state[idx] <- lp
           }
-        }
-      }else{
-        r.state <- rep(0,3)
-        logH.state <- rep(0,3)
-      }
-
-      #forward filtering
-      #state 1 = not yet entered
-      #state 2 = alive
-      #state 3 = entered previously and dead
-      if(model$y[i,1] == 0){
-        log.y.abs <- 0
-      }else{
-        log.y.abs <- -Inf
-      }
-      log.y.alive <- dbinom(model$y[i,1],size=K[1],p=model$p[1],log=TRUE)
-      alpha[1] <- log(1-model$psi[1]) + log.y.abs
-      alpha[2] <- log(model$psi[1]) + log.y.alive
-      alpha[3] <- -Inf
-
-      if(n.primary > 1){
-        for(g in 1:(n.primary-1)){
-          idx.U <- (g-1)*3+1
-          idx.A <- (g-1)*3+2
-          idx.D <- (g-1)*3+3
-          idx.next.U <- g*3+1
-          idx.next.A <- g*3+2
-          idx.next.D <- g*3+3
-
-          r.U <- r.state[idx.U]
-          logH.U <- logH.state[idx.U]
-          logH.A <- logH.state[idx.A]
-          logH.D <- logH.state[idx.D]
-
-          if(model$y[i,g+1] == 0){
-            log.y.abs <- 0
-          }else{
-            log.y.abs <- -Inf
+          if(stayU.minus > 0 & lp > -Inf){
+            lp <- lp + stayU.minus*log(1-r.cand)
           }
-          log.y.alive <- dbinom(model$y[i,g+1],size=K[g+1],p=model$p[g+1],log=TRUE)
-
-          #not yet entered -> not yet entered
-          alpha[idx.next.U] <- log.y.abs + alpha[idx.U] + logH.U + log(1-r.U)
-
-          #not yet entered -> alive OR alive -> alive
-          if(r.U > 0){
-            x1 <- alpha[idx.U] + logH.U + log(r.U)
-          }else{
-            x1 <- -Inf
-          }
-          x2 <- alpha[idx.A] + logH.A + log(model$phi[i])
-          if(x1 > x2){
-            maxlp <- x1
-          }else{
-            maxlp <- x2
-          }
-          if(maxlp == -Inf){
-            alpha[idx.next.A] <- -Inf
-          }else{
-            alpha[idx.next.A] <- log.y.alive + maxlp +
-              log(exp(x1-maxlp)+exp(x2-maxlp))
-          }
-
-          #alive -> dead OR dead -> dead
-          x1 <- alpha[idx.A] + logH.A + log(1-model$phi[i])
-          x2 <- alpha[idx.D] + logH.D
-          if(x1 > x2){
-            maxlp <- x1
-          }else{
-            maxlp <- x2
-          }
-          if(maxlp == -Inf){
-            alpha[idx.next.D] <- -Inf
-          }else{
-            alpha[idx.next.D] <- log.y.abs + maxlp +
-              log(exp(x1-maxlp)+exp(x2-maxlp))
-          }
+          logH.D[g] <- lp
         }
       }
-
-      #sample state in final primary occasion
-      for(s in 1:3){
-        logw[s] <- alpha[(n.primary-1)*3+s]
-      }
-      maxlp <- max(logw)
-      for(s in 1:3){
-        probs[s] <- exp(logw[s]-maxlp)
-      }
-      probs <- probs/sum(probs)
-      state[n.primary] <- rcat(1,probs)
-
-      #backward sampling
+      
+      #Type II backward quantities. These integrate over future departure when
+      #sampling entry for an undetected individual, and are then reused to draw
+      #departure conditional on the sampled entry occasion.
+      logV.A[n.primary] <- 0
+      logV.D[n.primary] <- 0
       if(n.primary > 1){
-        #nimble does not allow decreasing numbers in loops
         for(k in 1:(n.primary-1)){
           g <- n.primary-k
-          next.state <- state[g+1]
-          for(s in 1:3){
-            logw[s] <- -Inf
+          logV.D[g] <- logH.D[g] + log.y.abs[g+1] + logV.D[g+1]
+          
+          x1 <- log(model$phi[i]) + log.y.alive[g+1] + logV.A[g+1]
+          x2 <- log(1-model$phi[i]) + log.y.abs[g+1] + logV.D[g+1]
+          if(x1 > x2){
+            maxlp <- x1
+          }else{
+            maxlp <- x2
           }
-
-          #previous state = not yet entered
-          idx <- (g-1)*3+1
-          r.U <- r.state[idx]
-          if(next.state == 1){
-            logw[1] <- alpha[idx] + logH.state[idx] + log(1-r.U)
+          if(maxlp == -Inf){
+            logV.A[g] <- -Inf
+          }else{
+            logV.A[g] <- logH.A[g] + maxlp + log(exp(x1-maxlp)+exp(x2-maxlp))
           }
-          if(next.state == 2 & r.U > 0){
-            logw[1] <- alpha[idx] + logH.state[idx] + log(r.U)
-          }
-
-          #previous state = alive
-          idx <- (g-1)*3+2
-          if(next.state == 2){
-            logw[2] <- alpha[idx] + logH.state[idx] + log(model$phi[i])
-          }
-          if(next.state == 3){
-            logw[2] <- alpha[idx] + logH.state[idx] + log(1-model$phi[i])
-          }
-
-          #previous state = entered previously and dead
-          idx <- (g-1)*3+3
-          if(next.state == 3){
-            logw[3] <- alpha[idx] + logH.state[idx]
-          }
-
-          maxlp <- max(logw)
-          for(s in 1:3){
-            probs[s] <- exp(logw[s]-maxlp)
-          }
-          probs <- probs/sum(probs)
-          state[g] <- rcat(1,probs)
         }
       }
-
-      #replace focal history and update aggregate counts for next individual
-      for(g in 1:n.primary){
-        if(state[g] == 2){
-          z.new[g] <- 1
-        }else{
+      
+      #probability of reaching each occasion without having entered
+      logUreach[1] <- log(1-model$psi[1]) + log.y.abs[1]
+      if(n.primary > 1){
+        for(g in 1:(n.primary-1)){
+          logUreach[g+1] <- logUreach[g] + logH.U[g] + log(1-r.U[g]) + log.y.abs[g+1]
+        }
+      }
+      
+      if(detected == 1){
+        #Type I: sample entry occasion conditional on being alive at first detection.
+        #The current/post-detection departure history is not part of this update.
+        logAliveToFirst[first.det] <- 0
+        if(first.det > 1){
+          for(k in 1:(first.det-1)){
+            g <- first.det-k
+            logAliveToFirst[g] <- logH.A[g] + log(model$phi[i]) +
+              log.y.alive[g+1] + logAliveToFirst[g+1]
+          }
+        }
+        
+        logw[1] <- log(model$psi[1]) + log.y.alive[1] + logAliveToFirst[1]
+        if(first.det > 1){
+          for(e in 2:first.det){
+            if(r.U[e-1] > 0){
+              logw[e] <- logUreach[e-1] + logH.U[e-1] + log(r.U[e-1]) +
+                log.y.alive[e] + logAliveToFirst[e]
+            }else{
+              logw[e] <- -Inf
+            }
+          }
+        }
+        
+        maxlp <- max(logw[1:first.det])
+        for(e in 1:first.det){
+          probs[e] <- exp(logw[e]-maxlp)
+        }
+        p.denom <- sum(probs[1:first.det])
+        for(e in 1:first.det){
+          probs[e] <- probs[e]/p.denom
+        }
+        entry.new <- rcat(1,probs[1:first.det])
+        
+        #alive from entry through last detection
+        for(g in 1:n.primary){
           z.new[g] <- 0
         }
-        if(state[g] == 1){
-          a.new[g] <- 0
-        }else{
-          a.new[g] <- 1
+        for(g in entry.new:last.det){
+          z.new[g] <- 1
         }
+        
+        #Type II: sample departure after the last detection, conditional on entry.
+        alive <- 1
+        if(last.det < n.primary){
+          for(g in last.det:(n.primary-1)){
+            if(alive == 1){
+              x1 <- log(model$phi[i]) + log.y.alive[g+1] + logV.A[g+1]
+              x2 <- log(1-model$phi[i]) + log.y.abs[g+1] + logV.D[g+1]
+              if(x1 > x2){
+                maxlp <- x1
+              }else{
+                maxlp <- x2
+              }
+              probs[1] <- exp(x1-maxlp)
+              probs[2] <- exp(x2-maxlp)
+              p.denom <- probs[1]+probs[2]
+              probs[1] <- probs[1]/p.denom
+              probs[2] <- probs[2]/p.denom
+              survive <- rcat(1,probs[1:2])
+              if(survive == 1){
+                z.new[g+1] <- 1
+              }else{
+                z.new[g+1] <- 0
+                alive <- 0
+              }
+            }else{
+              z.new[g+1] <- 0
+            }
+          }
+        }
+      }else{
+        #Undetected individual: sample never-entry or entry occasion with future
+        #departure marginalized, as in the Wu-type undetected-history update.
+        logw[1] <- log(model$psi[1]) + log.y.alive[1] + logV.A[1]
+        if(n.primary > 1){
+          for(e in 2:n.primary){
+            if(r.U[e-1] > 0){
+              logw[e] <- logUreach[e-1] + logH.U[e-1] + log(r.U[e-1]) +
+                log.y.alive[e] + logV.A[e]
+            }else{
+              logw[e] <- -Inf
+            }
+          }
+        }
+        logw[n.primary+1] <- logUreach[n.primary] #never enters
+        
+        maxlp <- max(logw)
+        for(e in 1:(n.primary+1)){
+          probs[e] <- exp(logw[e]-maxlp)
+        }
+        probs <- probs/sum(probs)
+        entry.new <- rcat(1,probs)
+        
+        for(g in 1:n.primary){
+          z.new[g] <- 0
+        }
+        if(entry.new <= n.primary){
+          z.new[entry.new] <- 1
+          
+          #Type II: sample departure conditional on the new entry occasion.
+          alive <- 1
+          if(entry.new < n.primary){
+            for(g in entry.new:(n.primary-1)){
+              if(alive == 1){
+                x1 <- log(model$phi[i]) + log.y.alive[g+1] + logV.A[g+1]
+                x2 <- log(1-model$phi[i]) + log.y.abs[g+1] + logV.D[g+1]
+                if(x1 > x2){
+                  maxlp <- x1
+                }else{
+                  maxlp <- x2
+                }
+                probs[1] <- exp(x1-maxlp)
+                probs[2] <- exp(x2-maxlp)
+                p.denom <- probs[1]+probs[2]
+                probs[1] <- probs[1]/p.denom
+                probs[2] <- probs[2]/p.denom
+                survive <- rcat(1,probs[1:2])
+                if(survive == 1){
+                  z.new[g+1] <- 1
+                }else{
+                  z.new[g+1] <- 0
+                  alive <- 0
+                }
+              }else{
+                z.new[g+1] <- 0
+              }
+            }
+          }
+        }
+      }
+      
+      #replace focal history and update aggregate counts for next individual
+      entered <- 0
+      for(g in 1:n.primary){
+        if(z.new[g] == 1){
+          entered <- 1
+        }
+        a.new[g] <- entered
         model$z[i,g] <<- z.new[g]
         N.curr[g] <- N.curr[g] - z.curr[g] + z.new[g]
         Acum.curr[g] <- Acum.curr[g] - a.curr[g] + a.new[g]
@@ -273,7 +343,7 @@ zSampler <- nimbleFunction(
         }
       }
     }
-
+    
     #update deterministic nodes and log probabilities once after the full sweep
     model$calculate(calcNodes)
     copy(from=model,to=mvSaved,row=1,nodes=calcNodes,logProb=TRUE)
