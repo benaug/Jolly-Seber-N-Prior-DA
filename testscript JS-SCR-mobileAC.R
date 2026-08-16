@@ -206,7 +206,7 @@ Cmcmc <- compileNimble(Rmcmc, project = Rmodel)
 
 # Run the model.
 start.time2 <- Sys.time()
-Cmcmc$run(10000,reset=FALSE) #can extend run by rerunning this line
+Cmcmc$run(5000,reset=FALSE) #can extend run by rerunning this line
 end.time <- Sys.time()
 time1 <- end.time-start.time  #total time for compilation, replacing samplers, and fitting
 time2 <- end.time-start.time2 #post-compilation run time

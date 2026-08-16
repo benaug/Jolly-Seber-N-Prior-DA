@@ -7,7 +7,7 @@
 #Need to modify custom updates in this case
 #2) Object names that cannot be changed in the nimble model without changes in custom updates:
 #N, N.recruit, N.survive, ER, lambda.y1, z.start, z.stop, z.obs, pd
-#phi[i,g] (must be of dimension M x n.primary),
+#phi[i,g] (must be of dimension M x n.primary-1),
 #Poisson assumptions on N[1] and N.recruit (but can include overdispersion with random effects)
 #y can change dimension (e.g., for SCR), but need to account for that in defining "y.nodes"
 #below to add custom updates. I think that is all...
@@ -337,7 +337,6 @@ data$N
 data$N.recruit
 data$N.survive
 data$truth$N.super #N.super
-
 
 # #Some sanity checks I used during debugging. Just checking that final
 # #model states match between z and N objects

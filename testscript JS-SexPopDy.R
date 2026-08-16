@@ -4,7 +4,7 @@
 #2) Object names that cannot be changed in the nimble model without changes in custom updates:
 #N, N.recruit, N.survive, ER (male and female counterparts for all these, too),
 # lambda.y1.M, lambda.y1.F, z.start, z.stop, z.obs
-#phi[i,g] (must be of dimension M x n.primary),
+#phi[i,g] (must be of dimension M x n.primary-1),
 #Poisson assumptions on N.M[1], N.F[1] and N.recruit.M/N.recruit.F (but can include overdispersion with random effects)
 #y can change dimension (e.g., for SCR), but need to account for that in defining "y.nodes"
 #below to add custom updates. I think that is all...
@@ -62,7 +62,7 @@ for(i in 1:N.super.init){
 z.super.init <- c(rep(1,N.super.init),rep(0,M-N.super.init))
 z.obs <- 1*(rowSums(y.nim)>0) #indicator for "ever observed"
 
-#now individual sex covariate. convert to 0 for female, 1 for male
+#now individual sex covariate. convert to 0 for male, 1 for female
 sex.data <- c(data$sex,rep(NA,M-length(data$sex)))-1
 sex.up <- which(is.na(sex.data)) #which individuals have missing cov values, used to determine which sexes need updating
 #initialize missing sexes
@@ -179,7 +179,7 @@ Cmcmc <- compileNimble(Rmcmc, project = Rmodel)
 
 # Run the model.
 start.time2 <- Sys.time()
-Cmcmc$run(2000,reset=FALSE) #can extend run by rerunning this line
+Cmcmc$run(5000,reset=FALSE) #can extend run by rerunning this line
 end.time <- Sys.time()
 time1 <- end.time-start.time  # total time for compilation, replacing samplers, and fitting
 time2 <- end.time-start.time2 # post-compilation run time

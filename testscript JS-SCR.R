@@ -5,7 +5,7 @@
 #Need to modify custom updates in this case
 #2) Object names that cannot be changed in the nimble model without changes in custom updates:
 #N, N.recruit, N.survive, ER, lambda.y1, z.start, z.stop, z.obs, pd
-#phi[i,g] (must be of dimension M x n.primary),
+#phi[i,g] (must be of dimension M x n.primary-1),
 #Poisson assumptions on N[1] and N.recruit (but can include overdispersion with random effects)
 #y can change dimension (e.g., for SCR), but need to account for that in defining "y.nodes"
 #below to add custom updates. I think that is all...
@@ -204,7 +204,7 @@ Cmcmc <- compileNimble(Rmcmc, project = Rmodel)
 
 # Run the model.
 start.time2 <- Sys.time()
-Cmcmc$run(2500,reset=FALSE) #can extend run by rerunning this line
+Cmcmc$run(5000,reset=FALSE) #can extend run by rerunning this line
 end.time <- Sys.time()
 time1 <- end.time-start.time  # total time for compilation, replacing samplers, and fitting
 time2 <- end.time-start.time2 # post-compilation run time
