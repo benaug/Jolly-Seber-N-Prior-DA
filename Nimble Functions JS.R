@@ -632,13 +632,14 @@ zSampler <- nimbleFunction(
           #log.z.prior.for <- - (lgamma(M+1) - sum(lgamma(entry.counts.curr+1)))
           pick.idx <- seq(pick,M*n.primary,M) #used to reference correct y nodes
           
-          #get initial logProbs (survival logProb does not change)
+          #get initial logProbs
           lp.initial.N <- model$getLogProb(N.nodes[1])
           lp.initial.N.recruit <- model$getLogProb(N.recruit.nodes)
           lp.initial.y <- model$getLogProb(y.nodes[pick.idx])
           #lp.initial.surv <- model$getLogProb(z.nodes[pick]) #survival likelihood cancels exactly with reverse survival proposal probability
+          
           #propose new N.super/z.super/z.start/z.stop
-          model$N.super <<-  model$N.super - 1
+          model$N.super <<- model$N.super - 1
           model$z.super[pick] <<- 0
           model$z.start[pick] <<- 0
           model$z.stop[pick] <<- 0
@@ -647,66 +648,56 @@ zSampler <- nimbleFunction(
           #update N, N.recruit, N.survive
           #1) Update N
           model$N <<- model$N - z.curr
+          
           #2) Update N.recruit
-          if(z.start.curr > 1){ #if wasn't in pop in primary occasion 1
+          if(z.start.curr > 1){
             model$N.recruit[z.start.curr-1] <<- model$N.recruit[z.start.curr-1] - 1
           }
+          
           #3) Update N.survive
-          model$N.survive <<- model$N[2:n.primary]-model$N.recruit #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
-          model$calculate(ER.nodes) #update ER when N updated
+          model$N.survive <<- model$N[2:n.primary]-model$N.recruit
+          model$calculate(ER.nodes)
           
           #Reverse proposal probs
-          recruit.probs.back <- c(model$lambda.y1, model$ER)
-          recruit.probs.back <- recruit.probs.back / sum(recruit.probs.back)
+          recruit.probs.back <- c(model$lambda.y1,model$ER)
+          recruit.probs.back <- recruit.probs.back/sum(recruit.probs.back)
           log.prop.back <- log(recruit.probs.back[z.start.curr])
           #survival proposal probability cancels exactly with current survival likelihood
-          #if(z.start.curr < n.primary){
-          #  for(g in (z.start.curr+1):n.primary){
-          #    log.prop.back <- log.prop.back + dbinom(z.curr[g],1,model$phi[pick,g-1]*z.curr[g-1],log=TRUE)
-          #  }
-          #}
           
-          #get proposed logProbs for N, N.recruit, and y
+          #get proposed logProbs
           lp.proposed.N <- model$calculate(N.nodes[1])
           lp.proposed.N.recruit <- model$calculate(N.recruit.nodes)
-          lp.proposed.y <- model$calculate(y.nodes[pick.idx]) #will always be 0
-          #lp.proposed.surv <- model$calculate(z.nodes[pick]) #survival likelihood cancels exactly with reverse survival proposal probability
-          #survival target/proposal terms cancel exactly, so they are omitted from the MH totals
-          #lp.initial.total <- lp.initial.N + lp.initial.y + lp.initial.N.recruit + lp.initial.surv
-          #lp.proposed.total <- lp.proposed.N + lp.proposed.y + lp.proposed.N.recruit + lp.proposed.surv
+          lp.proposed.y <- model$calculate(y.nodes[pick.idx])
+          
+          #survival target/proposal terms cancel exactly
           lp.initial.total <- lp.initial.N + lp.initial.y + lp.initial.N.recruit
           lp.proposed.total <- lp.proposed.N + lp.proposed.y + lp.proposed.N.recruit
-          #backwards prior and select probs
-          #move from class z.start.curr in z.super==0 to class g in z.super==1
+          
+          #multinomial coefficient ratio
           entry.counts.prop <- entry.counts.curr
           entry.counts.prop[z.start.curr] <- entry.counts.prop[z.start.curr] - 1
-          entry.counts.prop[n.primary + 1] <- entry.counts.prop[n.primary + 1] + 1
+          entry.counts.prop[n.primary+1] <- entry.counts.prop[n.primary+1] + 1
           
-          #p select off guy
+          #backwards selection probability
           noff.back <- noff.curr+1
           log.p.select.back <- log(1/noff.back)
           
-          #log multinomial coefficient prior
-          #log.z.prior.back <- - (lgamma(M+1) - sum(lgamma(entry.counts.prop+1)))
-          #In log.z.prior.back-log.z.prior.for, -lgamma(M+1) and all unchanged
-          #entry-class lgamma terms cancel. Only the old entry class and off class change:
-          #lgamma(n.entry)-lgamma(n.entry+1)=-log(n.entry)
-          #lgamma(n.off+2)-lgamma(n.off+1)=log(n.off+1)
-          log.z.prior.ratio <- log(entry.counts.curr[n.primary+1]+1)-log(entry.counts.curr[z.start.curr])
+          log.z.prior.ratio <- log(entry.counts.curr[n.primary+1]+1) -
+            log(entry.counts.curr[z.start.curr])
           log.prop.for <- 0
           
           #MH step
-          log_MH_ratio <- (lp.proposed.total + log.z.prior.ratio + log.p.select.back + log.prop.back) -
+          log_MH_ratio <- (lp.proposed.total + log.z.prior.ratio +
+                             log.p.select.back + log.prop.back) -
             (lp.initial.total + log.p.select.for + log.prop.for)
           
           accept <- decide(log_MH_ratio)
+          
           if(accept){
-            #survival logProb was omitted from the MH calculation because it cancels with the proposal;
-            #calculate it once now to synchronize the accepted model state
-            #model$calculate(z.nodes[pick]) #not needed after rejection: survival logProb was never recalculated for the proposal
-            #survival logProb was omitted from the MH calculation because it cancels with the proposal;
-            #calculate it once now to synchronize the accepted model state
-            #model$calculate(z.nodes[pick]) #not needed after rejection: survival logProb was never recalculated for the proposal
+            #survival term cancelled from MH ratio, but cached logProb must
+            #be synchronized to the accepted z.super=0 state
+            model$calculate(z.nodes[pick])
+            
             mvSaved["z.start",1][pick] <<- model[["z.start"]][pick]
             mvSaved["z.stop",1][pick] <<- model[["z.stop"]][pick]
             mvSaved["z",1][pick,] <<- model[["z"]][pick,]
@@ -716,13 +707,16 @@ zSampler <- nimbleFunction(
             mvSaved["N.recruit",1] <<- model[["N.recruit"]]
             mvSaved["N.super",1][1] <<- model[["N.super"]]
             mvSaved["ER",1] <<- model[["ER"]]
+            
             entry.counts.curr <- entry.counts.prop
+            
             #move guy from on list to off list
             z.on[pick.pos] <- z.on[non.curr]
             z.on[non.curr] <- 0
             non.curr <- non.curr-1
             noff.curr <- noff.curr+1
             z.off[noff.curr] <- pick
+            
           }else{
             model[["z.start"]][pick] <<- mvSaved["z.start",1][pick]
             model[["z.stop"]][pick] <<- mvSaved["z.stop",1][pick]
@@ -733,6 +727,7 @@ zSampler <- nimbleFunction(
             model[["N.recruit"]] <<- mvSaved["N.recruit",1]
             model[["N.super"]] <<- mvSaved["N.super",1][1]
             model[["ER"]] <<- mvSaved["ER",1]
+            
             #set these logProbs back
             model$calculate(y.nodes[pick.idx])
             model$calculate(z.nodes[pick])
@@ -742,97 +737,99 @@ zSampler <- nimbleFunction(
         }
         
       }else{#add
-        if(model$N.super[1] < M){ #cannot update if z.super maxed out. Need to raise M
+        
+        if(model$N.super[1] < M){
           #find all z's currently off and undetected
           noff.init <- noff.curr
+          
           if(noff.init>0){
-            pick.pos <- rcat(1,rep(1/noff.init,noff.init)) #select one of these individuals
+            pick.pos <- rcat(1,rep(1/noff.init,noff.init))
             pick <- z.off[pick.pos]
             pick.idx <- seq(pick,M*n.primary,M)
             
             #p select off guy
             log.p.select.for <- log(1/noff.init)
             
-            #log multinomial coefficient prior
-            #log.z.prior.for <- - (lgamma(M+1) - sum(lgamma(entry.counts.curr+1)))
-            
-            #get initial logProbs (survival logProb does not change)
+            #get initial logProbs
             lp.initial.N <- model$getLogProb(N.nodes[1])
             lp.initial.N.recruit <- model$getLogProb(N.recruit.nodes)
-            lp.initial.y <- model$getLogProb(y.nodes[pick.idx]) #will always be 0
-            #lp.initial.surv <- model$getLogProb(z.nodes[pick]) #survival likelihood cancels exactly with forward survival proposal probability
-            # Propose new z.start for the new on individual
-            recruit.probs.for <- c(model$lambda.y1, model$ER)
-            recruit.probs.for <- recruit.probs.for / sum(recruit.probs.for)
-            z.start.prop <- rcat(1, recruit.probs.for)  # propose entry cohort
+            lp.initial.y <- model$getLogProb(y.nodes[pick.idx])
+            #lp.initial.surv <- model$getLogProb(z.nodes[pick]) #cancels with forward survival proposal
+            
+            #propose entry cohort
+            recruit.probs.for <- c(model$lambda.y1,model$ER)
+            recruit.probs.for <- recruit.probs.for/sum(recruit.probs.for)
+            z.start.prop <- rcat(1,recruit.probs.for)
             log.prop.for <- log(recruit.probs.for[z.start.prop])
             model$z.start[pick] <<- z.start.prop
             
-            #Simulate survival path
-            model$z[pick,] <<- 0 # initialize to 0
-            model$z[pick, z.start.prop] <<- 1
+            #simulate survival path
+            model$z[pick,] <<- 0
+            model$z[pick,z.start.prop] <<- 1
+            
             if(z.start.prop < n.primary){
               for(g in (z.start.prop+1):n.primary){
-                model$z[pick, g] <<- rbinom(1, 1, model$phi[pick, g-1] * model$z[pick, g-1])
-                #log.prop.for <- log.prop.for + dbinom(model$z[pick, g], 1, model$phi[pick, g-1] * model$z[pick, g-1], log=TRUE) #survival proposal probability cancels exactly with proposed survival likelihood
+                model$z[pick,g] <<-
+                  rbinom(1,1,model$phi[pick,g-1]*model$z[pick,g-1])
               }
             }
             
-            #Update z.stop
-            z.on.prop <- which(model$z[pick,] == 1)
+            #update z.stop
+            z.on.prop <- which(model$z[pick,]==1)
             z.stop.prop <- max(z.on.prop)
             model$z.stop[pick] <<- z.stop.prop
             
-            #propose new N/z
-            model$N.super <<-  model$N.super + 1
+            #propose new N.super/z.super
+            model$N.super <<- model$N.super + 1
             model$z.super[pick] <<- 1
             
-            #update N, N.recruit, N.survive
-            #1) Update N
+            #update N
             model$N <<- model$N + model$z[pick,]
-            #2) Update N.recruit
-            if(model$z.start[pick] > 1){ #if wasn't in pop in primary occasion 1
-              model$N.recruit[z.start.prop-1] <<- model$N.recruit[z.start.prop-1] + 1
-            }
-            #3) Update N.survive
-            model$N.survive <<- model$N[2:n.primary] - model$N.recruit #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
-            model$calculate(ER.nodes) #update ER when N updated
             
-            #get proposed logprobs for N and y
+            #update N.recruit
+            if(model$z.start[pick] > 1){
+              model$N.recruit[z.start.prop-1] <<-
+                model$N.recruit[z.start.prop-1] + 1
+            }
+            
+            #update N.survive
+            model$N.survive <<- model$N[2:n.primary]-model$N.recruit
+            model$calculate(ER.nodes)
+            
+            #get proposed logProbs
             lp.proposed.N <- model$calculate(N.nodes[1])
             lp.proposed.N.recruit <- model$calculate(N.recruit.nodes)
             lp.proposed.y <- model$calculate(y.nodes[pick.idx])
-            #lp.proposed.surv <- model$calculate(z.nodes[pick]) #survival likelihood cancels exactly with forward survival proposal probability
-            #survival target/proposal terms cancel exactly, so they are omitted from the MH totals
-            #lp.initial.total <- lp.initial.N + lp.initial.y + lp.initial.N.recruit + lp.initial.surv
-            #lp.proposed.total <- lp.proposed.N + lp.proposed.y + lp.proposed.N.recruit + lp.proposed.surv
+            
+            #survival target/proposal terms cancel exactly
             lp.initial.total <- lp.initial.N + lp.initial.y + lp.initial.N.recruit
             lp.proposed.total <- lp.proposed.N + lp.proposed.y + lp.proposed.N.recruit
-            #backwards prior and select probs
-            #move from class g in z.super==0 to class g in z.super==1
+            
+            #multinomial coefficient ratio
             entry.counts.prop <- entry.counts.curr
             entry.counts.prop[z.start.prop] <- entry.counts.prop[z.start.prop] + 1
-            entry.counts.prop[n.primary + 1] <- entry.counts.prop[n.primary + 1] - 1
+            entry.counts.prop[n.primary+1] <- entry.counts.prop[n.primary+1] - 1
             
-            #p select on guy
+            #backwards selection probability
             non.back <- non.curr+1
             log.p.select.back <- log(1/non.back)
             
-            #log multinomial coefficient prior
-            #log.z.prior.back <- - (lgamma(M+1) - sum(lgamma(entry.counts.prop+1)))
-            #In log.z.prior.back-log.z.prior.for, -lgamma(M+1) and all unchanged
-            #entry-class lgamma terms cancel. Only the new entry class and off class change:
-            #lgamma(n.entry+2)-lgamma(n.entry+1)=log(n.entry+1)
-            #lgamma(n.off)-lgamma(n.off+1)=-log(n.off)
-            log.z.prior.ratio <- log(entry.counts.curr[z.start.prop]+1)-log(entry.counts.curr[n.primary+1])
+            log.z.prior.ratio <- log(entry.counts.curr[z.start.prop]+1) -
+              log(entry.counts.curr[n.primary+1])
             log.prop.back <- 0
             
             #MH step
-            log_MH_ratio <- (lp.proposed.total + log.z.prior.ratio + log.p.select.back + log.prop.back) -
+            log_MH_ratio <- (lp.proposed.total + log.z.prior.ratio +
+                               log.p.select.back + log.prop.back) -
               (lp.initial.total + log.p.select.for + log.prop.for)
             
             accept <- decide(log_MH_ratio)
+            
             if(accept){
+              #survival term cancelled from MH ratio, but cached logProb must
+              #be synchronized to the accepted z.super=1 survival history
+              model$calculate(z.nodes[pick])
+              
               mvSaved["z.start",1][pick] <<- model[["z.start"]][pick]
               mvSaved["z.stop",1][pick] <<- model[["z.stop"]][pick]
               mvSaved["z",1][pick,] <<- model[["z"]][pick,]
@@ -842,13 +839,16 @@ zSampler <- nimbleFunction(
               mvSaved["N.recruit",1] <<- model[["N.recruit"]]
               mvSaved["N.super",1][1] <<- model[["N.super"]]
               mvSaved["ER",1] <<- model[["ER"]]
+              
               entry.counts.curr <- entry.counts.prop
+              
               #move guy from off list to on list
               z.off[pick.pos] <- z.off[noff.curr]
               z.off[noff.curr] <- 0
               noff.curr <- noff.curr-1
               non.curr <- non.curr+1
               z.on[non.curr] <- pick
+              
             }else{
               model[["z.start"]][pick] <<- mvSaved["z.start",1][pick]
               model[["z.stop"]][pick] <<- mvSaved["z.stop",1][pick]
@@ -859,6 +859,7 @@ zSampler <- nimbleFunction(
               model[["N.recruit"]] <<- mvSaved["N.recruit",1]
               model[["N.super"]] <<- mvSaved["N.super",1][1]
               model[["ER"]] <<- mvSaved["ER",1]
+              
               #set these logProbs back
               model$calculate(y.nodes[pick.idx])
               model$calculate(z.nodes[pick])
