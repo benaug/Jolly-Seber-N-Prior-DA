@@ -4,9 +4,9 @@ Efficient MCMC samplers for Jolly–Seber models using N-prior data augmentation
 
 ## Overview
 
-This repository contains efficient MCMC samplers for Jolly–Seber models using **$N$-prior data augmentation**. Poisson priors are placed directly on population entry counts: the initial population size and the number of recruits entering before each subsequent primary occasion. Recruitment is per capita as a function of realized abundance in the previous primary occasion. This provides an exact Poisson recruitment specification for the per-capita recruitment model of Chandler and Clark (2014), without relying on a finite data-augmentation limit.
+This repository contains efficient MCMC samplers for Jolly–Seber models using **$N$-prior data augmentation**. Poisson priors are placed directly on population entry counts: the initial population size and the number of recruits entering before each subsequent primary occasion. Recruitment is per capita as a function of realized abundance in the previous primary occasion. This provides an exact Poisson recruitment specification for the per-capita recruitment model of Chandler and Clark (2014).
 
-The repository also contains implementations of several existing Jolly–Seber data-augmentation formulations, most of which use custom whole-history block Gibbs samplers based on the Type I and Type II updates of Wu et al. (2021), which build on the blocked latent-history sampling approach of Dupuis and Schwarz (2007). The N-prior models use more generic Gibbs updates of the entry and exit components of each individual's latent history from their full conditional distributions. This approach is less computationally efficient than a highly tailored Wu et al.-type update, but was only moderately slower in the limited comparisons I made and is considerably easier to adapt when the model structure or observation process is changes.
+The repository also contains implementations of several existing Jolly–Seber data augmentation formulations. For each, one can add custom whole-history block Gibbs samplers based on the Type I and Type II updates of Wu et al. (2021), which build on the blocked latent-history sampling approach of Dupuis and Schwarz (2007). The N-prior models use more generic Gibbs updates of the entry and exit components of each individual's latent history from their full conditional distributions. This more general approach is less computationally efficient than a highly tailored Wu et al.-type update, but was only moderately slower in the limited comparisons I did and is considerably easier to adapt when the model structure or observation process is changes.
 
 ## Related repositories
 
@@ -17,6 +17,14 @@ N-prior data augmentation for closed-population models is explained and demonstr
 A multisession implementation is available here:
 
 - [Multisession SCR with density covariates](https://github.com/benaug/SCR_Dcov_Multisession)
+
+- [Spatial IPM with multiple observation models and telemetry informed survival](https://github.com/benaug/Spatial-IPM-Telemetry)
+
+- [Open population spatial mark resight, marginal version](https://github.com/benaug/Spatial-Mark-Resight-Open-Marginal)
+
+- [Open population spatial mark resight, conditional version](https://github.com/benaug/Spatial-Mark-Resight-Open-Conditional)
+
+- [Open population 2-flank spatial partial identity model](https://github.com/benaug/2-flank-SPIM_Jolly_Seber)
 
 ## Closed-population N-prior data augmentation
 
