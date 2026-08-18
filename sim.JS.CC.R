@@ -16,7 +16,7 @@ sim.JS.CC <- function(psi=NA,gamma=NA,beta0.phi=NA,beta1.phi=NA,
     A <- M - sum(a[,g-1])
     if(A <= 0)stop("Ran out of recruits, raise M")
     gamma.prime[g-1] <- ER/A
-    if(any(gamma.prime>0.1))warning("At least one recruitment probability >0.1; conditional recruitment variance is >10% below the corresponding Poisson variance. Consider raising M.")
+    if(any(gamma.prime>0.1,na.rm=TRUE))warning("At least one recruitment probability >0.1; conditional recruitment variance is >10% below the corresponding Poisson variance. Consider raising M.")
     Ez <- z[,g-1]*phi + (1 - a[,g-1])*gamma.prime[g-1]
     z[,g] <- rbinom(M, 1, Ez)
     a[,g] <- pmax(a[,g-1], z[,g])
