@@ -33,5 +33,5 @@ sim.JS.SA <- function(psi=NA,pi=NA,beta0.phi=NA,beta1.phi=NA,
   y <- y[keep.idx,]
   phi.cov <- phi.cov[keep.idx]
   z <- z[keep.idx,]
-  return(list(y=y,phi.cov=phi.cov,N=N,B=B,z=z,N.super=N.super))
+  return(list(y=y,phi.cov=phi.cov,N=N,B=B,z=z,N.super=N.super,n.primary=n.primary,K=K))
 }

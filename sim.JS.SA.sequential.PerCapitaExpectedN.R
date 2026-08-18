@@ -52,7 +52,7 @@ sim.JS.SA <- function(lambda1=NA,phi=NA,gamma=NA,
   y <- y[keep.idx,,drop=FALSE]
   z <- z[keep.idx,,drop=FALSE]
 
-  return(list(y=y,N=N,B=B,z=z,N.super=N.super,
+  return(list(y=y,N=N,B=B,z=z,N.super=N.super,n.primary=n.primary,K=K,
               EN=EN,lambda=lambda,lambda.super=lambda.super,
               phi.int=phi.int,psi=psi,pi=pi))
 }
