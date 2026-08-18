@@ -1,12 +1,11 @@
 #This is the Schwarz-Arnason model from Royle and Dorazio 2008 using conditional entry probabilities.
 #Recruitment is parameterized as per-capita expected recruitment as a function of expected abundance,
-#with linear scaling by interval length. The fitted model uses initial entry probability psi internally,
-#with a parameter-dependent upper bound that preserves a Uniform(0,1) prior on psi.super.
+#with linear scaling by interval length. The fitted model uses relative expected abundance internally.
 library(nimble)
 library(coda)
 source("sim.JS.SA.sequential.PerCapitaExpectedN.R")
-source("Nimble Model JS-SA-sequential-perCapitaExpectedN.R")
-source("Nimble Functions JS-SA-sequential-perCapitaExpectedN.R")
+source("Nimble Model JS-SA-sequential-perCapitaExpectedN V2.R")
+source("Nimble Functions JS-SA-sequential-perCapitaExpectedN V2.R")
 
 n.primary <- 4 #number of primary occasions
 M <- 200 #data augmentation size
@@ -27,8 +26,8 @@ data <- sim.JS.SA(lambda1=lambda1,phi=phi,gamma=gamma,
                   p=p,n.primary=n.primary,K=K,M=M,tau=tau)
 data$EN #expected abundance
 data$lambda #expected entries
-data$psi #expected N.super/M; corresponds to fitted psi.super
-data$pi #entry probabilities conditional on entering
+data$psi #expected N.super/M
+data$pi #entry probabilities
 data$N #realized abundances
 data$B #realized entries
 data$N.super #realized superpopulation size
@@ -36,12 +35,21 @@ data$N.super #realized superpopulation size
 
 ##### Initialize z using observed data #####
 z.init <- matrix(0,M,n.primary)
+z.super.init <- rep(0,M)
 n.det <- nrow(data$y)
 for(i in 1:n.det){
   det.idx <- which(data$y[i,] > 0)
   z.init[i,min(det.idx):max(det.idx)] <- 1
+  z.super.init[i] <- 1
 }
-#augmented individuals can remain all zero because never-entry is explicit
+
+#every potential trajectory must enter somewhere because eta[n.primary]==1.
+#For augmented individuals, spread initial entry occasions across primary occasions.
+aug.idx <- seq_len(M-n.det)+n.det
+for(j in seq_along(aug.idx)){
+  g <- ((j-1)%%n.primary)+1
+  z.init[aug.idx[j],g] <- 1
+}
 
 #augment data
 y <- rbind(data$y,matrix(0,M-n.det,n.primary))
@@ -49,30 +57,17 @@ y <- rbind(data$y,matrix(0,M-n.det,n.primary))
 #constants for Nimble
 constants <- list(n.primary=n.primary,K=K,M=M,tau=tau)
 
-#initial values
-gamma.init <- 0.1
-phi.init <- rep(0.8,n.primary-1)
-phi.int.init <- phi.init^tau
-entry.rel.init <- rep(0,n.primary)
-EN.rel.init <- rep(0,n.primary)
-entry.rel.init[1] <- 1
-EN.rel.init[1] <- 1
-for(g in 1:(n.primary-1)){
-  entry.rel.init[g+1] <- EN.rel.init[g]*gamma.init*tau[g]
-  EN.rel.init[g+1] <- EN.rel.init[g]*phi.int.init[g]+entry.rel.init[g+1]
-}
-entry.denom.init <- sum(entry.rel.init)
-psi.init <- min(max(n.det/M,0.01),0.9/entry.denom.init)
-
 #inits for Nimble
-Niminits <- list(z=z.init,psi=psi.init,
-                 phi=phi.init,gamma=gamma.init,p=rep(0.2,n.primary))
+Niminits <- list(z.super=z.super.init,z=z.init,
+                 psi=max(sum(z.super.init)/M,0.01),
+                 phi=rep(0.8,n.primary-1),
+                 gamma=0.1, p=rep(0.2,n.primary))
 
 #data for Nimble
 Nimdata <- list(y=y)
 
 #set parameters to monitor
-parameters <- c('psi','psi.super','N','phi','gamma',"EB",'p','B','N.super')
+parameters <- c('psi','N','phi','gamma',"EB",'p','B','N.super')
 nt <- 1 #thinning rate
 
 #Build the model, configure the mcmc, and compile
@@ -82,7 +77,9 @@ conf <- configureMCMC(Rmodel,monitors=parameters,thin=nt)
 
 #z sampler: remove sequential sampler, replace with gibbs
 z.nodes <- grep("^z\\[",Rmodel$getNodeNames(stochOnly=TRUE),value=TRUE)
+z.super.nodes <- grep("^z\\.super\\[",Rmodel$getNodeNames(stochOnly=TRUE),value=TRUE)
 conf$removeSamplers(z.nodes)
+conf$removeSamplers(z.super.nodes)
 
 #summarize data for custom update
 z.obs <- as.integer(rowSums(y)>0)
@@ -91,20 +88,15 @@ last.det <- ncol(y)+1-max.col((y[,ncol(y):1,drop=FALSE]>0),ties.method="first")
 first.det[z.obs==0] <- 0
 last.det[z.obs==0] <- 0
 
-#Since nimble does not recognize conjugate update for psi, remove assigned sampler here
-#and zSampler does psi.super Gibbs update (equivalant to psi update)
-conf$removeSampler("psi")
-conf$addSampler(target=z.nodes,type=zSampler,
+conf$addSampler(target=c(z.nodes,z.super.nodes),type=zSampler,
                 control=list(M=M,K=K,n.primary=n.primary,z.obs=z.obs,
                              first.det=first.det,last.det=last.det))
 
-#strong posterior correlation between psi and gamma in this parameterization
-#AF slice efficient with fixed gamma, may get too slow with occasion-specific
-#with many occasions. But posterior correlation may be weaker then.
-#psi sampler already removed above. zSampler will still do Gibbs for psi
-conf$removeSampler(target = c("gamma"))
-conf$addSampler(target = c("psi","gamma"),type = 'AF_slice',
-                control = list(adaptive=TRUE),silent = TRUE)
+#Correlated posteriors likely if you estimate one gamma per primary occasion,
+#AF_slice efficient with a few primary occasions. I'm sure this will become too slow with many occasions
+# gamma.nodes <- Rmodel$expandNodeNames("gamma")
+# conf$removeSampler(gamma.nodes)
+# conf$addSampler(target=gamma.nodes,type='AF_slice',control=list(adaptive=TRUE),silent=TRUE)
 
 #Build and compile
 Rmcmc <- buildMCMC(conf)

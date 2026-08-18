@@ -1,4 +1,6 @@
 NimModel <- nimbleCode({
+  psi ~ dbeta(1,1) #uniform, but get conjugate sampler
+
   #occasion-specific unit-time survival and per capita recruitment
   gamma ~ dunif(0,2) #fixed gamma
   for(g in 1:(n.primary-1)){
@@ -8,6 +10,7 @@ NimModel <- nimbleCode({
   }
   
   #relative expected entry and abundance
+  #the absolute scale is supplied separately by psi
   entry.rel[1] <- 1
   EN.rel[1] <- 1
   for(g in 1:(n.primary-1)){
@@ -16,31 +19,26 @@ NimModel <- nimbleCode({
     # entry.rel[g+1] <- EN.rel[g]*gamma[g]*tau[g] #gamma varies by primary occasion
     EN.rel[g+1] <- EN.rel[g]*phi.int[g] + entry.rel[g+1]
   }
-  
-  #initial entry probability. The upper bound preserves the original
-  #Schwarz-Arnason psi.super ~ Uniform(0,1) prior because
-  #psi.super = psi*entry.denom. Moving prior to psi improves dependency graph
+
+  #entry probabilities conditional on superpopulation membership
   entry.denom <- sum(entry.rel[1:n.primary])
-  psi ~ dunif(0,1/entry.denom)
-  
-  #unconditional entry probabilities and absolute expectations
   for(g in 1:n.primary){
-    beta[g] <- psi*entry.rel[g]
-    EN[g] <- M*psi*EN.rel[g]
-    EB[g] <- M*beta[g]
+    pi[g] <- entry.rel[g]/entry.denom
+    #absolute expected abundance and entries, derived from M*psi
+    EN[g] <- M*psi*EN.rel[g]/entry.denom
+    EB[g] <- M*psi*pi[g]
   }
-  
+
   #conditional entry probabilities
-  eta[1] <- beta[1]
-  cum.beta[1] <- beta[1]
-  for(g in 2:n.primary){
-    eta[g] <- beta[g]/(1-cum.beta[g-1])
-    cum.beta[g] <- cum.beta[g-1]+beta[g]
+  eta[1] <- pi[1]
+  for(g in 2:(n.primary-1)){
+    eta[g] <- pi[g]/(1-sum(pi[1:(g-1)]))
   }
-  psi.super <- cum.beta[n.primary] #probability of ever entering during the study
+  eta[n.primary] <- 1
 
   #population dynamics
   for(i in 1:M){
+    z.super[i] ~ dbern(psi)
     z[i,1] ~ dbern(eta[1])
     a[i,1] <- 1-z[i,1]
     for(g in 2:n.primary){
@@ -54,19 +52,19 @@ NimModel <- nimbleCode({
   for(g in 1:n.primary){
     p[g] ~ dbeta(1,1)
     for(i in 1:M){
-      y.size[i,g] <- K[g]*z[i,g]
+      y.size[i,g] <- K[g]*z[i,g]*z.super[i]
       y[i,g] ~ dbinom(p=p[g],size=y.size[i,g])
     }
   }
 
   #derived abundance and recruitment
   for(g in 1:n.primary){
-    N[g] <- sum(z[1:M,g])
-    Acum[g] <- sum(1-a[1:M,g])
+    N[g] <- sum(z[1:M,g]*z.super[1:M])
+    Acum[g] <- sum((1-a[1:M,g])*z.super[1:M])
   }
   B[1] <- Acum[1]
   for(g in 2:n.primary){
     B[g] <- Acum[g]-Acum[g-1]
   }
-  N.super <- Acum[n.primary]
+  N.super <- sum(z.super[1:M])
 })

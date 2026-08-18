@@ -1,6 +1,7 @@
 NimModel <- nimbleCode({
-  #probability of being present on primary occasion 1
-  psi ~ dbeta(1,1)
+  #probability of ever entering during the study
+  psi.super ~ dbeta(1,1) #uniform, but use custom conjugate sampler
+  
   #unit-time survival and per capita recruitment
   gamma ~ dunif(0,2) #fixed gamma
   for(g in 1:(n.primary-1)){
@@ -8,20 +9,29 @@ NimModel <- nimbleCode({
     phi.int[g] <- phi[g]^tau[g] #survival over actual interval
   }
   
-  #expected entry and abundance propagated forward from initial abundance
-  beta[1] <- psi #unconditional probability of first entry at occasion 1
-  cum.beta[1] <- beta[1]
-  EB[1] <- M*beta[1] #expected initial population/entries
-  EN[1] <- EB[1]
+  #relative expected entry and abundance
+  #the absolute scale is supplied separately by psi.super
+  entry.rel[1] <- 1
+  EN.rel[1] <- 1
   for(g in 1:(n.primary-1)){
-    ER[g] <- EN[g]*gamma*tau[g] #target expected recruits, fixed gamma
-    A.raw[g] <- M*(1-cum.beta[g]) #expected number still available to recruit
-    A[g] <- max(A.raw[g],0.01) #trick to prevent model from crashing, but can bias estimates if it happens
-    gamma.RO.raw[g] <- ER[g]/A[g] #restricted-occupancy conditional entry probability
-    gamma.RO[g] <- min(gamma.RO.raw[g],0.999) #trick to prevent model from crashing, but can bias estimates if it happens
-    beta[g+1] <- (1-cum.beta[g])*gamma.RO[g] #unconditional probability of first entry at g+1
-    EB[g+1] <- M*beta[g+1] #expected entries after applying finite-M restriction
-    EN[g+1] <- EN[g]*phi.int[g] + EB[g+1]
+    entry.rel[g+1] <- EN.rel[g]*gamma*tau[g] #expected entries, fixed gamma
+    EN.rel[g+1] <- EN.rel[g]*phi.int[g] + entry.rel[g+1]
+  }
+  
+  #unconditional entry probabilities and absolute expectations
+  entry.denom <- sum(entry.rel[1:n.primary])
+  for(g in 1:n.primary){
+    pi[g] <- entry.rel[g]/entry.denom
+    beta[g] <- psi.super*pi[g] #unconditional probability of first entry at g
+    EN[g] <- M*psi.super*EN.rel[g]/entry.denom
+    EB[g] <- M*psi.super*pi[g]
+  }
+  
+  #restricted-occupancy conditional entry probabilities
+  psi <- beta[1] #p(present on primary occasion 1)
+  cum.beta[1] <- beta[1]
+  for(g in 1:(n.primary-1)){
+    gamma.RO[g] <- beta[g+1]/(1-cum.beta[g])
     cum.beta[g+1] <- cum.beta[g]+beta[g+1]
   }
   
@@ -39,6 +49,7 @@ NimModel <- nimbleCode({
       a[i,g] <- max(a[i,g-1],z[i,g]) #not available to recruit if previously alive
     }
   }
+  
   #compute realized recruits
   for(g in 2:n.primary){
     B[g-1] <- Acum[g]-Acum[g-1]

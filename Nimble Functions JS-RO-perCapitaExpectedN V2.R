@@ -19,11 +19,10 @@ zSampler <- nimbleFunction(
     #unconditional probabilities of first entry in each primary occasion
     #and of never entering
     beta <- rep(0,n.primary)
-    beta.never <- 1
     for(g in 1:n.primary){
       beta[g] <- model$beta[g]
-      beta.never <- beta.never-beta[g]
     }
+    beta.never <- 1-model$psi.super[1]
     
     #Wu Type I recursion:
     #lam[g] = probability of having entered, still being alive,
@@ -134,6 +133,23 @@ zSampler <- nimbleFunction(
     }
     
     #recalculate z log probabilities and all downstream nodes
+    model$calculate(calcNodes)
+    copy(from=model,to=mvSaved,row=1,nodes=calcNodes,logProb=TRUE)
+  },
+  methods=list(reset=function(){})
+)
+
+
+psi.superSampler <- nimbleFunction(
+  contains=sampler_BASE,
+  setup=function(model,mvSaved,target,control){
+    M <- control$M
+    calcNodes <- model$getDependencies(target)
+  },
+  run=function(){
+    #with complete entry histories, psi.super is the probability of ever entering
+    N.super <- model$N.super[1]
+    model$psi.super[1] <<- rbeta(1,1+N.super,1+M-N.super)
     model$calculate(calcNodes)
     copy(from=model,to=mvSaved,row=1,nodes=calcNodes,logProb=TRUE)
   },

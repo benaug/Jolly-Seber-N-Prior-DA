@@ -1,8 +1,8 @@
 #This is the Restricted Occupancy model from Royle and Dorazio 2008,
 #but parameterized so expected recruitment is per capita as a function of *expected*
 #abundance, with linear scaling by interval length.
-#The fitted model uses psi for initial abundance and propagates expected abundance
-#and expected recruitment forward through time.
+#The fitted model uses relative expected abundance internally, with psi.super supplying
+#the absolute scale as the probability of ever entering during the study.
 #I removed the individual survival covariate here to avoid numerical integration.
 #The N-prior data augmentation models use per capita recruitment as a function of
 #*realized* abundance, which makes more sense to me.
@@ -10,8 +10,8 @@
 library(nimble)
 library(coda)
 source("sim.JS.RO.perCapitaExpectedN.R")
-source("Nimble Model JS-RO-perCapitaExpectedN.R")
-source("Nimble Functions JS-RO-perCapitaExpectedN.R")
+source("Nimble Model JS-RO-perCapitaExpectedN V2.R")
+source("Nimble Functions JS-RO-perCapitaExpectedN V2.R")
 
 n.primary <- 4 #number of primary occasions
 M <- 200 #data augmentation size
@@ -62,20 +62,20 @@ p.init <- pmin(pmax(p.init,0.01),0.99)
 constants <- list(n.primary=n.primary,K=K,M=M,tau=tau)
 
 #initial values
-psi.init <- max(sum(z.init[,1])/M,0.01)
+psi.super.init <- max(n.det/M,0.01)
 gamma.init <- 0.1
 phi.init <- rep(0.8,n.primary-1)
 
 #inits for Nimble
-Niminits <- list(z=z.init,psi=psi.init,gamma=gamma.init,
+Niminits <- list(z=z.init,psi.super=psi.super.init,gamma=gamma.init,
                  phi=phi.init,p=p.init)
 
 #data for Nimble
 Nimdata <- list(y=y)
 
 #set parameters to monitor
-parameters <- c('psi','gamma','phi','EN','EB','N','p',
-                'B','N.super','gamma.RO')
+parameters <- c('psi.super','gamma','phi','phi.int','pi','EN','EB','N','p',
+                'B','N.super','psi','gamma.RO')
 nt <- 1 #thinning rate
 
 #Build the model, configure the mcmc, and compile
@@ -98,12 +98,10 @@ conf$addSampler(target=z.nodes,type=zSampler,
                 control=list(M=M,K=K,n.primary=n.primary,z.obs=z.obs,
                              first.det=first.det,last.det=last.det))
 
-#strong posterior correlation between psi and gamma in this parameterization
-#AF slice efficient with fixed gamma, may get too slow with occasion-specific
-#with many occasions. But posterior correlation may be weaker then.
-conf$removeSampler(target = c("psi","gamma"))
-conf$addSampler(target = c("psi","gamma"),type = 'AF_slice',
-                control = list(adaptive=TRUE),silent = TRUE)
+#psi.super is conjugate conditional on the complete entry histories, but NIMBLE
+#does not recognize the conjugacy through the restricted-occupancy parameterization
+conf$removeSamplers("psi.super")
+conf$addSampler(target="psi.super",type=psi.superSampler,control=list(M=M))
 
 #Build and compile
 Rmcmc <- buildMCMC(conf)
@@ -119,7 +117,6 @@ time1 <- end.time-start.time  # total time for compilation, replacing samplers, 
 time2 <- end.time-start.time2 # post-compilation run time
 time2
 
-#If gamma.RO posteriors hit 1, you need to raise M
 mvSamples <- as.matrix(Cmcmc$mvSamples)
 plot(mcmc(mvSamples[-c(1:200),]))
 
@@ -128,6 +125,8 @@ data$lambda #expected recruits
 data$N #realized abundance
 data$B #realized recruits
 data$N.super #realized N.super
+gamma #per capita expected recruitment rates
+phi #unit-time survival probabilities
 
 #ESS per time (check time units)
 effectiveSize(mcmc(mvSamples[-c(1:200),]))/as.numeric(time2)

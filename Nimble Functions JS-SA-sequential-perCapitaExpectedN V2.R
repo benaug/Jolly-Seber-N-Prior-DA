@@ -15,81 +15,84 @@ zSampler <- nimbleFunction(
     for(g in 1:n.primary){
       q[g] <- (1-model$p[g])^K[g]
     }
-    
-    #unconditional probabilities of first entry in each primary occasion
-    #and of never entering
-    beta <- rep(0,n.primary)
-    beta.never <- 1
-    for(g in 1:n.primary){
-      beta[g] <- model$beta[g]
-      beta.never <- beta.never-beta[g]
-    }
-    
     #Wu Type I recursion:
     #lam[g] = probability of having entered, still being alive,
     #and having no detections before occasion g
     lam <- rep(0,n.primary)
-    lam[1] <- beta[1]
+    lam[1] <- model$pi[1]
     for(g in 1:(n.primary-1)){
-      lam[g+1] <- beta[g+1] + lam[g]*q[g]*model$phi.int[g]
+      lam[g+1] <- model$pi[g+1] + lam[g]*q[g]*model$phi.int[g]
     }
-    
     #Wu Type II recursion:
     #v[g] = probability of no future detections after occasion g,
     #allowing either death before g+1 or survival with no later detection
     v <- rep(0,n.primary)
     v[n.primary] <- 1
+    
     #nimble does not allow decreasing numbers in loops
     for(k in 1:(n.primary-1)){
       g <- n.primary-k
       v[g] <- (1-model$phi.int[g]) + model$phi.int[g]*q[g+1]*v[g+1]
     }
     
-    #trajectory probabilities for an undetected individual:
-    #first category is never entering, remaining categories are entry occasions
-    trajectory.probs <- rep(0,n.primary+1)
-    trajectory.probs[1] <- beta.never
-    rho <- beta.never
+    #entry probabilities for an undetected individual that is in
+    #the superpopulation:
+    #P(e=g | y=0,z.super=1) proportional to pi[g]*q[g]*v[g]
+    entry.zero.probs <- rep(0,n.primary)
+    rho <- 0
     for(g in 1:n.primary){
-      trajectory.probs[g+1] <- beta[g]*q[g]*v[g]
-      rho <- rho+trajectory.probs[g+1]
+      entry.zero.probs[g] <- model$pi[g]*q[g]*v[g]
+      rho <- rho+entry.zero.probs[g]
     }
-    for(g in 1:(n.primary+1)){
-      trajectory.probs[g] <- trajectory.probs[g]/rho
+    for(g in 1:n.primary){
+      entry.zero.probs[g] <- entry.zero.probs[g]/rho
     }
     
+    #probability an undetected individual is in the superpopulation,
+    #with its z trajectory marginalized
+    z.super.prob <- model$psi[1]*rho/((1-model$psi[1])+model$psi[1]*rho)
     entry.probs <- rep(0,n.primary)
     for(i in 1:M){
       #overwrite complete trajectory
       for(g in 1:n.primary){
         model$z[i,g] <<- 0
       }
-      
       #1) detected individuals
       if(z.obs[i]==1){
+        model$z.super[i] <<- 1
         f <- first.det[i]
         l <- last.det[i]
-        
         #1a) Wu Type I block:
-        #sample entry occasion conditional on first detection at f
+        #sample entry occasion conditional on first detection at f.
+        #Wu gives:
+        #xi[e] = pi[e]*prod(q[s]*phi.int[s],s=e:(f-1))/lam[f]
+        #The recursion below gives exactly the same categorical
+        #probabilities without evaluating long products.
         for(g in 1:n.primary){
           entry.probs[g] <- 0
         }
         remaining <- 1
         for(k in 1:f){
           g <- f-k+1
-          cond.entry <- beta[g]/lam[g]
+          #conditional probability that entry occurred exactly at g
+          #given alive and not previously detected at g
+          cond.entry <- model$pi[g]/lam[g]
           entry.probs[g] <- remaining*cond.entry
           remaining <- remaining*(1-cond.entry)
         }
-        entry.probs <- entry.probs/sum(entry.probs)
+        #normalize
+        prob.sum <- 0
+        for(g in 1:n.primary){
+          prob.sum <- prob.sum+entry.probs[g]
+        }
+        for(g in 1:n.primary){
+          entry.probs[g] <- entry.probs[g]/prob.sum
+        }
         e.curr <- rcat(1,entry.probs)
-        
         #known alive from sampled entry through last detection
         for(g in e.curr:l){
           model$z[i,g] <<- 1
         }
-        
         #1b) Wu Type II block:
         #sample exit after last detection conditional on
         #no subsequent detections
@@ -97,6 +100,8 @@ zSampler <- nimbleFunction(
         if(l < n.primary){
           for(g in (l+1):n.primary){
             if(alive==1){
+              #conditional probability of dying between g-1 and g
+              #given no detections after g-1
               death.prob <- (1-model$phi.int[g-1])/v[g-1]
               if(rbinom(1,1,death.prob)==1){
                 alive <- 0
@@ -107,15 +112,30 @@ zSampler <- nimbleFunction(
           }
         }
       }else{
-        #2) undetected individuals:
-        #sample either never entering or the complete entry/survival
-        #trajectory conditional on the all-zero capture history
-        trajectory.curr <- rcat(1,trajectory.probs)
-        if(trajectory.curr > 1){
-          e.curr <- trajectory.curr-1
+        #2) undetected individuals
+        model$z.super[i] <<- rbinom(1,1,z.super.prob)
+        if(model$z.super[i]==0){
+          #2a) not in superpopulation, draw from prior
+          e.curr <- rcat(1,model$pi[1:n.primary])
           model$z[i,e.curr] <<- 1
           alive <- 1
-          
+          if(e.curr < n.primary){
+            for(g in (e.curr+1):n.primary){
+              if(alive==1){
+                if(rbinom(1,1,model$phi.int[g-1])==1){
+                  model$z[i,g] <<- 1
+                }else{
+                  alive <- 0
+                }
+              }
+            }
+          }
+        }else{
+          #2b) in superpopulation but never detected
+          #Wu Type I block for an all-zero capture history
+          e.curr <- rcat(1,entry.zero.probs)
+          model$z[i,e.curr] <<- 1
+          alive <- 1
           #Wu Type II block conditional on no detections
           if(e.curr < n.primary){
             for(g in (e.curr+1):n.primary){
@@ -132,8 +152,7 @@ zSampler <- nimbleFunction(
         }
       }
     }
-    
-    #recalculate z log probabilities and all downstream nodes
+    #recalculate z.super and z log probabilities and all downstream nodes
     model$calculate(calcNodes)
     copy(from=model,to=mvSaved,row=1,nodes=calcNodes,logProb=TRUE)
   },
