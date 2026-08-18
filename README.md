@@ -18,13 +18,25 @@ A multisession implementation is available here:
 
 - [Multisession SCR with density covariates](https://github.com/benaug/SCR_Dcov_Multisession)
 
-- [Spatial IPM with multiple observation models and telemetry informed survival](https://github.com/benaug/Spatial-IPM-Telemetry)
+If you do not have individual covariates, you can fit the model without using data augmentation:
 
-- [Open population spatial mark resight (a spatial IPM), marginal version](https://github.com/benaug/Spatial-Mark-Resight-Open-Marginal)
+ - [Jolly-Seber-SS](https://github.com/benaug/Jolly-Seber-SS)
 
-- [Open population spatial mark resight (a spatial IPM), conditional version](https://github.com/benaug/Spatial-Mark-Resight-Open-Conditional)
+Here is a model that uses N-prior data augmentation as the backbone of a spatial integrated population model that allows telemetry-informed survival. You can mix and match two different SCR observation processes in each primary occasion, and/or have primary occasions with no observations.
 
-- [Open population 2-flank spatial partial identity model](https://github.com/benaug/2-flank-SPIM_Jolly_Seber)
+- [Spatial-IPM-Telemetry](https://github.com/benaug/Spatial-IPM-Telemetry)
+
+Here is open population spatial mark resight using the marginalized observation model. It is a spatial IPM where you can mix and match marking and sighting observation processes in each primary occasion and/or have primary occasions with no observations.
+
+- [Spatial-Mark-Resight-Open-Marginal](https://github.com/benaug/Spatial-Mark-Resight-Open-Marginal)
+
+Here is the conditional observation model version of the above. Mixes worse, but allows non-Poisson observation models for sighting data.
+
+- [Spatial-Mark-Resight-Open-Conditional](https://github.com/benaug/Spatial-Mark-Resight-Open-Conditional)
+
+Here is an open population version of the 2-flank spatial partial identity model
+
+- [2-flank-SPIM-Jolly-Seber](https://github.com/benaug/2-flank-SPIM_Jolly_Seber)
 
 ## Closed-population N-prior data augmentation
 
