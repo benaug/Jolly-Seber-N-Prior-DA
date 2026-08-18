@@ -52,7 +52,7 @@ sim.JS.RO.perCapitaExpectedN <- function(lambda1=NA,gamma=NA,phi=NA,
   keep.idx <- which(rowSums(y)>0)
   y <- y[keep.idx,,drop=FALSE]
   z <- z[keep.idx,,drop=FALSE]
-  return(list(y=y,N=N,B=B,z=z,N.super=N.super,EN=EN,n.primary=n.primary,K=K,
+  return(list(y=y,N=N,B=B,z=z,N.super=N.super,EN=EN,n.primary=n.primary,K=K,tau=tau,
               lambda=lambda,lambda.super=lambda.super,psi=psi,gamma.RO=gamma.RO,
               gamma=gamma,phi=phi,phi.int=phi.int))
 }
