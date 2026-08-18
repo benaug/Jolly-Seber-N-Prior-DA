@@ -24,22 +24,21 @@ zSampler <- nimbleFunction(
       #lam[g] = probability of having entered, still being alive,
       #and having no detections before occasion g
       lam[1] <- model$pi[1]
-      if(n.primary > 1){
-        for(g in 1:(n.primary-1)){
-          lam[g+1] <- model$pi[g+1] + lam[g]*q[g]*model$phi[i]
-        }
+      for(g in 1:(n.primary-1)){
+        lam[g+1] <- model$pi[g+1] + lam[g]*q[g]*model$phi[i]
       }
+      
       #Wu Type II recursion:
       #v[g] = probability of no future detections after occasion g,
       #allowing either death before g+1 or survival with no later detection
       v[n.primary] <- 1
-      if(n.primary > 1){
-        #nimble does not allow decreasing numbers in loops
-        for(k in 1:(n.primary-1)){
-          g <- n.primary-k
-          v[g] <- (1-model$phi[i]) + model$phi[i]*q[g+1]*v[g+1]
-        }
+      
+      #nimble does not allow decreasing numbers in loops
+      for(k in 1:(n.primary-1)){
+        g <- n.primary-k
+        v[g] <- (1-model$phi[i]) + model$phi[i]*q[g+1]*v[g+1]
       }
+      
       #overwrite complete trajectory
       for(g in 1:n.primary){
         model$z[i,g] <<- 0
@@ -68,7 +67,7 @@ zSampler <- nimbleFunction(
           model$z[i,g] <<- 1
         }
         #1b) Wu Type II block:
-        #sample departure after last detection conditional on
+        #sample exit after last detection conditional on
         #no subsequent detections
         alive <- 1
         if(l < n.primary){

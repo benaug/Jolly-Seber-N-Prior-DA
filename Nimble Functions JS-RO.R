@@ -20,11 +20,10 @@ zSampler <- nimbleFunction(
     beta <- rep(0,n.primary)
     beta[1] <- model$psi[1]
     remaining.entry <- 1-model$psi[1]
-    if(n.primary > 1){
-      for(g in 2:n.primary){
-        beta[g] <- remaining.entry*model$gamma[g-1]
-        remaining.entry <- remaining.entry*(1-model$gamma[g-1])
-      }
+    
+    for(g in 2:n.primary){
+      beta[g] <- remaining.entry*model$gamma[g-1]
+      remaining.entry <- remaining.entry*(1-model$gamma[g-1])
     }
     beta.never <- remaining.entry
     lam <- rep(0,n.primary)
@@ -36,21 +35,18 @@ zSampler <- nimbleFunction(
       #lam[g] = probability of having entered, still being alive,
       #and having no detections before occasion g
       lam[1] <- beta[1]
-      if(n.primary > 1){
-        for(g in 1:(n.primary-1)){
-          lam[g+1] <- beta[g+1] + lam[g]*q[g]*model$phi[i]
-        }
+      for(g in 1:(n.primary-1)){
+        lam[g+1] <- beta[g+1] + lam[g]*q[g]*model$phi[i]
       }
+      
       #Wu Type II recursion:
       #v[g] = probability of no future detections after occasion g,
       #allowing either death before g+1 or survival with no later detection
       v[n.primary] <- 1
-      if(n.primary > 1){
-        #nimble does not allow decreasing numbers in loops
-        for(k in 1:(n.primary-1)){
-          g <- n.primary-k
-          v[g] <- (1-model$phi[i]) + model$phi[i]*q[g+1]*v[g+1]
-        }
+      #nimble does not allow decreasing numbers in loops
+      for(k in 1:(n.primary-1)){
+        g <- n.primary-k
+        v[g] <- (1-model$phi[i]) + model$phi[i]*q[g+1]*v[g+1]
       }
       #overwrite complete trajectory
       for(g in 1:n.primary){
@@ -79,7 +75,7 @@ zSampler <- nimbleFunction(
           model$z[i,g] <<- 1
         }
         #1b) Wu Type II block:
-        #sample departure after last detection conditional on
+        #sample exit after last detection conditional on
         #no subsequent detections
         alive <- 1
         if(l < n.primary){

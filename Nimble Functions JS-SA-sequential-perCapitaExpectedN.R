@@ -20,22 +20,19 @@ zSampler <- nimbleFunction(
     #and having no detections before occasion g
     lam <- rep(0,n.primary)
     lam[1] <- model$pi[1]
-    if(n.primary > 1){
-      for(g in 1:(n.primary-1)){
-        lam[g+1] <- model$pi[g+1] + lam[g]*q[g]*model$phi.int[g]
-      }
+    for(g in 1:(n.primary-1)){
+      lam[g+1] <- model$pi[g+1] + lam[g]*q[g]*model$phi.int[g]
     }
     #Wu Type II recursion:
     #v[g] = probability of no future detections after occasion g,
     #allowing either death before g+1 or survival with no later detection
     v <- rep(0,n.primary)
     v[n.primary] <- 1
-    if(n.primary > 1){
-      #nimble does not allow decreasing numbers in loops
-      for(k in 1:(n.primary-1)){
-        g <- n.primary-k
-        v[g] <- (1-model$phi.int[g]) + model$phi.int[g]*q[g+1]*v[g+1]
-      }
+    
+    #nimble does not allow decreasing numbers in loops
+    for(k in 1:(n.primary-1)){
+      g <- n.primary-k
+      v[g] <- (1-model$phi.int[g]) + model$phi.int[g]*q[g+1]*v[g+1]
     }
     
     #entry probabilities for an undetected individual that is in
@@ -54,7 +51,6 @@ zSampler <- nimbleFunction(
     #probability an undetected individual is in the superpopulation,
     #with its z trajectory marginalized
     z.super.prob <- model$psi[1]*rho/((1-model$psi[1])+model$psi[1]*rho)
-    
     entry.probs <- rep(0,n.primary)
     for(i in 1:M){
       #overwrite complete trajectory
@@ -75,7 +71,6 @@ zSampler <- nimbleFunction(
         for(g in 1:n.primary){
           entry.probs[g] <- 0
         }
-        
         remaining <- 1
         for(k in 1:f){
           g <- f-k+1
@@ -99,7 +94,7 @@ zSampler <- nimbleFunction(
           model$z[i,g] <<- 1
         }
         #1b) Wu Type II block:
-        #sample departure after last detection conditional on
+        #sample exit after last detection conditional on
         #no subsequent detections
         alive <- 1
         if(l < n.primary){
