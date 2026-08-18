@@ -89,8 +89,7 @@ Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FAL
 config.nodes <- c('beta0.phi','beta1.phi','gamma','p','lambda.y1',paste('phi.cov[',cov.up,']'),
                'phi.cov.mu','phi.cov.sd')
 # config.nodes <- c()
-conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,
-                      nodes=config.nodes,useConjugacy = TRUE)
+conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,nodes=config.nodes)
 
 #Add N/z samplers
 z.super.ups <- round(M*0.25) #how many z.super update proposals per iteration? 

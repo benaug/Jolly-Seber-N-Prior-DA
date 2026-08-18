@@ -16,9 +16,9 @@ N-prior data augmentation for closed-population models is explained and demonstr
 
 A multisession implementation is available here:
 
-- [Multisession SCR with density covariates](https://github.com/benaug/SCR_Dcov_Multisession)
+- [SCR_Dcov_Multisession](https://github.com/benaug/SCR_Dcov_Multisession)
 
-If you do not have individual covariates, you can fit the model without using data augmentation:
+If you do not have individual covariates, you can fit Jolly-Seber models without using data augmentation:
 
  - [Jolly-Seber-SS](https://github.com/benaug/Jolly-Seber-SS)
 
