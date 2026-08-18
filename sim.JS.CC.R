@@ -39,5 +39,6 @@ sim.JS.CC <- function(psi=NA,gamma=NA,beta0.phi=NA,beta1.phi=NA,
   y <- y[keep.idx,]
   phi.cov <- phi.cov[keep.idx]
   z <- z[keep.idx,]
-  return(list(y=y,phi.cov=phi.cov,N=N,B=B,z=z,N.super=N.super,gamma.prime=gamma.prime))
+  return(list(y=y,phi.cov=phi.cov,N=N,B=B,z=z,N.super=N.super,gamma.prime=gamma.prime,
+              n.primary=n.primary,K=K))
 }
