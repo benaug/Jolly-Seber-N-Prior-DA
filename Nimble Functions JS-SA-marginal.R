@@ -57,7 +57,7 @@ dJS <- nimbleFunction(
     #log likelihood of the history given membership
     log.lik.member <- -Inf
     if(log.scale > -Inf){
-      log.lik.member <- log.scale + log(a1 + a2 + a3)
+      log.lik.member <- log.scale + log(a2 + a3)
     }
     all.zero <- 1
     for(g in 1:n.primary){
@@ -161,7 +161,7 @@ NBSampler <- nimbleFunction(
       #log likelihood of this history given membership.
       log.lik.member <- -Inf
       if(log.scale > -Inf){
-        log.lik.member <- log.scale
+        log.lik.member <- log.scale + log(alpha[n.primary,2] + alpha[n.primary,3])
       }
       all.zero <- 1
       for(g in 1:n.primary){
@@ -189,9 +189,9 @@ NBSampler <- nimbleFunction(
       if(rbinom(1,1,p.member) == 1){
         N.super.sim <- N.super.sim + 1
         #backward sample the trajectory
-        for(s in 1:3){
-          probs[s] <- alpha[n.primary,s]
-        }
+        probs[1] <- 0
+        probs[2] <- alpha[n.primary,2]
+        probs[3] <- alpha[n.primary,3]
         probs <- probs/sum(probs)
         state[n.primary] <- rcat(1,probs)
         if(n.primary > 1){

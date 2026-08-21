@@ -6,9 +6,10 @@ NimModel <- nimbleCode({
   pi[1:n.primary] ~ ddirch(alpha[1:n.primary]) #entry probabilities
   #conditional entry probabilities. eta[n.primary] is 1 by construction
   eta[1] <- pi[1]
-  for(g in 2:n.primary){
+  for(g in 2:(n.primary-1)){
     eta[g] <- pi[g]/(1 - sum(pi[1:(g-1)]))
   }
+  eta[n.primary] <- 1
   beta0.phi ~ dlogis(0,1)
   beta1.phi ~ dnorm(0,sd=10)
   phi.cov.mu ~ dunif(-10,10)
