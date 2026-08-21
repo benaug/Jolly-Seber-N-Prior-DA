@@ -130,3 +130,48 @@ zSampler <- nimbleFunction(
   },
   methods=list(reset=function(){})
 )
+
+gammaGibbsSampler <- nimbleFunction(
+  contains = sampler_BASE,
+  setup = function(model,mvSaved,target,control){
+    calcNodes <- model$getDependencies(target)
+    M <- control$M
+    n.primary <- control$n.primary
+    
+    #get Beta prior parameters directly from model
+    shape1 <- model$getParam(target,"shape1")
+    shape2 <- model$getParam(target,"shape2")
+    
+    if(target=="gamma"){
+      is.fixed.gamma <- TRUE
+      g <- 1
+    }else{
+      is.fixed.gamma <- FALSE
+      g <- as.integer(gsub("[^0-9]","",target))
+    }
+  },
+  run = function(){
+    if(is.fixed.gamma){
+      count <- 0
+      failures <- 0
+      for(j in 1:(n.primary-1)){
+        recruits <- model$B[j]
+        available <- M-model$Acum[j]
+        count <- count+recruits
+        failures <- failures+available-recruits
+      }
+    }else{
+      count <- model$B[g]
+      available <- M-model$Acum[g]
+      failures <- available-count
+    }
+    
+    model[[target]] <<- rbeta(1,
+                              shape1+count,
+                              shape2+failures)
+    
+    model$calculate(calcNodes)
+    copy(from=model,to=mvSaved,row=1,nodes=calcNodes,logProb=TRUE)
+  },
+  methods=list(reset=function(){})
+)

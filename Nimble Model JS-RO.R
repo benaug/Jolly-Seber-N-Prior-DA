@@ -1,19 +1,21 @@
 NimModel <- nimbleCode({
   #Royle and Dorazio 2008 priors
   #First year expected population size
-  # psi ~ dbeta(1,1) #uniform, but get conjugate sampler
-  # #entry priors
-  # for(g in 1:(n.primary-1)){
-  #   gamma[g] ~ dunif(0,1)
-  # }
+  psi ~ dbeta(1,1) #uniform, but get conjugate sampler
+  #entry priors
+  for(g in 1:(n.primary-1)){
+    gamma[g] ~ dunif(0,1)
+  }
   #Dorazio 2020 (Biometrics 76:1285) priors. Induce a flat (discrete-uniform) prior
   #on N.super and equal E[B[g]] across occasions. Uniform gamma priors above do neither:
   #they favor recruitment in earlier occasions and bias N.super upwards, worse with
   #more occasions and lower p.
-  psi ~ dbeta(a.psi,b.psi)
-  for(g in 1:(n.primary-1)){
-    gamma[g] ~ dbeta(a.gam[g],b.gam[g])
-  }
+  # psi ~ dbeta(a.psi,b.psi)
+  # #if gamma fixed, use this
+  # # gamma ~ dbeta(a.gam,b.gam)
+  # for(g in 1:(n.primary-1)){
+  #   gamma[g] ~ dbeta(a.gam[g],b.gam[g])
+  # }
   
   beta0.phi ~ dlogis(0,1)
   beta1.phi ~ dnorm(0,sd=10) #individual covariate effect
@@ -30,7 +32,8 @@ NimModel <- nimbleCode({
     a[i,1] <- z[i,1]
     logit(phi[i]) <- beta0.phi + phi.cov[i]*beta1.phi #individual survival prob
     for(g in 2:n.primary){
-      Ez[i,g-1] <- z[i,g-1]*phi[i] + (1-a[i,g-1])*gamma[g-1]
+      Ez[i,g-1] <- z[i,g-1]*phi[i] + (1-a[i,g-1])*gamma[g-1] #variable gamma
+      # Ez[i,g-1] <- z[i,g-1]*phi[i] + (1-a[i,g-1])*gamma #fixed gamma
       z[i,g] ~ dbern(Ez[i,g-1])
       a[i,g] <- max(a[i,g-1],z[i,g]) #not available to recruit if previously alive
     }

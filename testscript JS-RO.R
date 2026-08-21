@@ -49,8 +49,9 @@ phi.cov.data[1:n.det] <- data$phi.cov
 #they favor recruitment in earlier occasions and bias N.super upwards, worse with
 #more occasions and lower p.
 #Note: a.gam < 1 (=1/n.primary) puts a spike at gamma=0, so the chain can
-#occasionally stall with B[g]=0 (gamma[g] near 0 makes z flips
-#unlikely, which keeps gamma[g] near 0). Usually transient.
+#stall with B[g]=0 (gamma[g] near 0 makes z flips
+#I need to investigate this more. Original priors were much better in a simulation study.
+#test script currently set up with original priors
 constants <- list(n.primary=n.primary,K=K,M=M,
                   a.psi=1/n.primary,b.psi=2-1/n.primary,
                   a.gam=rep(1/n.primary,n.primary-1),b.gam=2-(2:n.primary)/n.primary)
