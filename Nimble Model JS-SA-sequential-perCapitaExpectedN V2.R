@@ -30,9 +30,9 @@ NimModel <- nimbleCode({
   }
 
   #conditional entry probabilities
-  eta[1] <- pi[1]
+  eta[1] <- entry.rel[1]/sum(entry.rel[1:n.primary])
   for(g in 2:(n.primary-1)){
-    eta[g] <- pi[g]/(1-sum(pi[1:(g-1)]))
+    eta[g] <- entry.rel[g]/sum(entry.rel[g:n.primary])
   }
   eta[n.primary] <- 1
 
