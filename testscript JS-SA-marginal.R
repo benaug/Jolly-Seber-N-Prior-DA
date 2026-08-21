@@ -1,10 +1,9 @@
-#This is the Schwarz-Arnason model from Royle and Dorazio 2008 but using direct entry probabilities
-#requires custom samplers to update latent variables e and surv
+#This is the Schwarz-Arnason model from Royle and Dorazio 2008 marginalized
 library(nimble)
 library(coda)
 source("sim.JS.SA.R")
 source("Nimble Model JS-SA-marginal.R")
-source("Nimble Functions JS-SA-marginal.R")
+source("Nimble Functions JS-SA-marginal.R") #marginal distribution lives here
 
 n.primary <- 4 #number of primary occasions
 M <- 200 #data simulator simulates from Chandler-Clark model with M as a parameter
