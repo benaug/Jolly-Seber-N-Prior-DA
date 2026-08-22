@@ -1,9 +1,17 @@
-#This is the Restricted Occupancy from Royle and Dorazio 2008 with their original priors
+#This is the Restricted Occupancy from Royle and Dorazio 2008 with Dorazio (2020 priors)
+#Dorazio 2020 (Biometrics 76:1285) priors. Induce a flat (discrete-uniform) prior
+#on N.super and equal E[B[g]] across occasions. Uniform gamma priors above do neither:
+#they favor recruitment in earlier occasions and bias N.super upwards, worse with
+#more occasions and lower p.
+#Note: a.gam < 1 (=1/n.primary) puts a spike at gamma=0, so the chain can
+# get stuck at B[g]=0 
+#this version didn't do well in a simulation study. I need to look into it more.
+
 library(nimble)
 library(coda)
 source("sim.JS.RO.R")
-source("Nimble Model JS-RO.R")
-source("Nimble Functions JS-RO.R")
+source("Nimble Model JS-RO-Dorazio.R")
+source("Nimble Functions JS-RO-Dorazio.R")
 
 n.primary <- 4 #number of primary occasions
 M <- 200 #data simulator simulates from Chandler-Clark model with M as a parameter
@@ -42,7 +50,9 @@ phi.cov.data <- rep(NA,M)
 phi.cov.data[1:n.det] <- data$phi.cov
 
 #constants for Nimble
-constants <- list(n.primary=n.primary,K=K,M=M)
+constants <- list(n.primary=n.primary,K=K,M=M,
+                  a.psi=1/n.primary,b.psi=2-1/n.primary,
+                  a.gam=rep(1/n.primary,n.primary-1),b.gam=2-(2:n.primary)/n.primary)
 
 #inits for Nimble
 Niminits <- list(z=z.init,psi=sum(z.init[,1])/M,beta0.phi=0,beta1.phi=0,
@@ -80,16 +90,15 @@ conf$addSampler(target=z.nodes,type=zSampler,
 for(g in 1:(n.primary-1)){
   target <- paste0("gamma[",g,"]")
   conf$removeSamplers(target)
-  conf$addSampler(target=target,type=gammaUniformGibbsSampler,
+  conf$addSampler(target=target,type=gammaGibbsSampler,
                   control=list(M=M,n.primary=n.primary))
 }
-
-# #if gamma is fixed across primary intervals
+#if gamma fixed
 # conf$removeSamplers("gamma")
-# conf$addSampler(target="gamma",type=gammaUniformGibbsSampler,
+# conf$addSampler(target="gamma",type=gammaGibbsSampler,
 #                 control=list(M=M,n.primary=n.primary))
 
-# Build and compile
+#Build and compile
 Rmcmc <- buildMCMC(conf)
 Cmodel <- compileNimble(Rmodel)
 Cmcmc <- compileNimble(Rmcmc, project = Rmodel)

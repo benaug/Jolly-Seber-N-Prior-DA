@@ -1,12 +1,15 @@
 NimModel <- nimbleCode({
-  #Royle and Dorazio 2008 priors
-  #First year expected population size
-  psi ~ dbeta(1,1) #uniform, but get conjugate sampler
-  #entry priors
+  #Dorazio 2020 (Biometrics 76:1285) priors. Induce a flat (discrete-uniform) prior
+  #on N.super and equal E[B[g]] across occasions. Uniform gamma priors above do neither:
+  #they favor recruitment in earlier occasions and bias N.super upwards, worse with
+  #more occasions and lower p.
+  psi ~ dbeta(a.psi,b.psi)
+  #if gamma fixed, use this
+  # gamma ~ dbeta(a.gam,b.gam)
   for(g in 1:(n.primary-1)){
-    gamma[g] ~ dunif(0,1)
+    gamma[g] ~ dbeta(a.gam[g],b.gam[g])
   }
- 
+  
   beta0.phi ~ dlogis(0,1)
   beta1.phi ~ dnorm(0,sd=10) #individual covariate effect
   #population dynamics
