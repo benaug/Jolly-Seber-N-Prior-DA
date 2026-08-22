@@ -175,6 +175,7 @@ for(i in 1:M){
 #can replace RW update with slice. nearly as fast as RW in data sets I've tried
 #may be smarter when individual s trajectories move in/out of likelihood with z.super updates
 #may handle funnel behavior better for smaller values
+#make sure movement model starting likelihood is finite or slice sampler will go haywire
 conf$removeSampler('sigma.move')
 conf$addSampler(target='sigma.move',type='slice')
 
