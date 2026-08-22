@@ -24,11 +24,13 @@ data$N.super #realized superpopulation size
 
 
 ##### Initialize z using observed data #####
+z.data <- matrix(NA,M,n.primary)
 z.init <- matrix(0,M,n.primary)
 z.super.init <- rep(0,M)
 n.det <- nrow(data$y)
 for(i in 1:n.det){
-  det.idx <- which(data$y[i,] > 0)
+  det.idx <- which(data$y[i,]>0)
+  z.data[i,min(det.idx):max(det.idx)] <- 1
   z.init[i,min(det.idx):max(det.idx)] <- 1
   z.super.init[i] <- 1
 }
@@ -57,7 +59,7 @@ Niminits <- list(z.super=z.super.init,z=z.init,psi=sum(z.super.init)/M,
                  phi.cov.mu=mean(data$phi.cov),phi.cov.sd=sd(data$phi.cov))
 
 #data for Nimble
-Nimdata <- list(y=y,phi.cov=phi.cov.data)
+Nimdata <- list(y=y,phi.cov=phi.cov.data,z=z.data)
 
 # set parameters to monitor
 parameters <- c('psi','N','beta0.phi','beta1.phi','pi','p','phi.cov.mu','phi.cov.sd',"B","N.super")

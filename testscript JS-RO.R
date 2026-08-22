@@ -25,10 +25,12 @@ data$B #realized entries
 data$N.super #realized superpopulation size
 
 ##### Initialize z using observed data #####
+z.data <- matrix(NA,M,n.primary)
 z.init <- matrix(0,M,n.primary)
 n.det <- nrow(data$y)
 for(i in 1:n.det){
   det.idx <- which(data$y[i,]>0)
+  z.data[i,min(det.idx):max(det.idx)] <- 1
   z.init[i,min(det.idx):max(det.idx)] <- 1
 }
 
@@ -52,16 +54,14 @@ phi.cov.data[1:n.det] <- data$phi.cov
 #stall with B[g]=0 (gamma[g] near 0 makes z flips
 #I need to investigate this more. Original priors were much better in a simulation study.
 #test script currently set up with original priors
-constants <- list(n.primary=n.primary,K=K,M=M,
-                  a.psi=1/n.primary,b.psi=2-1/n.primary,
-                  a.gam=rep(1/n.primary,n.primary-1),b.gam=2-(2:n.primary)/n.primary)
+constants <- list(n.primary=n.primary,K=K,M=M)
 
 #inits for Nimble
 Niminits <- list(z=z.init,psi=sum(z.init[,1])/M,beta0.phi=0,beta1.phi=0,
                  phi.cov.mu=mean(data$phi.cov),phi.cov.sd=sd(data$phi.cov))
 
 #data for Nimble
-Nimdata <- list(y=y,phi.cov=phi.cov.data)
+Nimdata <- list(y=y,phi.cov=phi.cov.data,z=z.data)
 
 # set parameters to monitor
 parameters <- c('psi','N','beta0.phi','beta1.phi','gamma','p','phi.cov.mu','phi.cov.sd',"B")
