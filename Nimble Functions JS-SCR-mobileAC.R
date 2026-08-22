@@ -70,6 +70,19 @@ initialize.s <- function(sigma.move.init=NA,z.super.init=NA,y=NA,X=NA,xlim=NA,yl
       }
     }
   }
+  logProb <- matrix(0,M,n.primary-1)
+  for(i in 1:M){
+    if(z.super.init[i]==1){
+      for(g in 2:n.primary){
+        logProb[i,g-1] <- dTruncNorm(s.init[i,g,1:2],s.prev=s.init[i,g-1,1:2],sigma.move=sigma.move.init, 
+                                     xlim=xlim[1:2],ylim=ylim[1:2],
+                                     z.super=z.super.init[i],log=TRUE)
+      }
+    }
+  }
+  if(!all(is.finite(logProb))){ #can inspect LogProb object to identify problem individual-primary occasions
+    stop("Starting logProb for activity centers is not finite, raise sigma.move.init. If that doesnt work, you may need to modify model or initialization algorithm.")
+  }
   return(s.init)
 }
 
