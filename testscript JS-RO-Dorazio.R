@@ -1,11 +1,8 @@
 #This is the Restricted Occupancy from Royle and Dorazio 2008 with Dorazio (2020 priors)
-#Dorazio 2020 (Biometrics 76:1285) priors. Induce a flat (discrete-uniform) prior
-#on N.super and equal E[B[g]] across occasions. Uniform gamma priors above do neither:
-#they favor recruitment in earlier occasions and bias N.super upwards, worse with
-#more occasions and lower p.
-#Note: a.gam < 1 (=1/n.primary) puts a spike at gamma=0, so the chain can
-# get stuck at B[g]=0 
-#this version didn't do well in a simulation study. I need to look into it more.
+#Dorazio 2020 (Biometrics 76:1285) Objective 1 priors. These induce a flat (discrete-uniform) prior
+#on N.super and an equal prior for the expected number of entries on each occasion. Original gamma priors
+#favor recruitment in earlier occasions and can bias N.super upwards, moreso with more occasions and lower p.
+#In a simulation scenario I ran, original priors estimated the realized entries with less bias.
 
 library(nimble)
 library(coda)

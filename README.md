@@ -370,7 +370,7 @@ Here are several other data augmentation approaches for Jolly-Seber models. This
 
 11. **JS-RO**
 
-    Nonspatial implementation of the Restricted Occupancy Jolly–Seber approach of Royle and Dorazio (2008). Can choose original priors or priors from Dorazio 2020. There are two sets of files, one with "Dorazio" in file names. I encountered mixing problems with the Dorazio priors, with realized recruits becoming stuck at 0. The corresponding Beta priors on recruitment probabilities have infinite density at 0 and induce substantial prior probability for zero realized recruitment.
+    Nonspatial implementation of the Restricted Occupancy Jolly–Seber approach of Royle and Dorazio (2008). Can choose original priors or priors from Dorazio 2020, Objective 1 that induce a discrete uniform on N.super and an equal prior on expected entries. There are two sets of files, one with "Dorazio" in file names. For a simulation scenario I ran with few recruits, the original priors were actually better overall, particluarly they were less biased for the realized entries.
 
 12. **JS-CC**
 

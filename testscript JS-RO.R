@@ -1,4 +1,6 @@
 #This is the Restricted Occupancy from Royle and Dorazio 2008 with their original priors
+# The gamma priors favor recruitment in earlier occasions and can bias N.super upwards, moreso with more occasions and lower p.
+#In a simulation scenario I ran, these original priors estimated the realized entries with less bias than Dorazio Obj 1 priors.
 library(nimble)
 library(coda)
 source("sim.JS.RO.R")
