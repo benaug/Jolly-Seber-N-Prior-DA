@@ -101,7 +101,7 @@ for(g in 1:n.primary){
 }
 
 sigma.move.init <- sigma.move
-#initialize s consistent with sigma.move.init
+#initialize s consistent with sigma.move.init. will throw an error if starting logProb for s is not finite
 s.init <- initialize.s(sigma.move.init,z.super.init,y=y.nim,X=X.nim,xlim=xlim,ylim=ylim)
 
 #constants for Nimble
