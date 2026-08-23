@@ -76,21 +76,28 @@ z.nodes <- grep("^z\\[",Rmodel$getNodeNames(stochOnly=TRUE),value=TRUE)
 z.super.nodes <- grep("^z\\.super\\[",Rmodel$getNodeNames(stochOnly=TRUE),value=TRUE)
 conf$removeSamplers(z.nodes)
 conf$removeSamplers(z.super.nodes)
-
 #summarize data for custom update
 z.obs <- as.integer(rowSums(y)>0)
 first.det <- max.col(y>0,ties.method="first")
 last.det <- ncol(y)+1-max.col((y[,ncol(y):1,drop=FALSE]>0),ties.method="first")
 first.det[z.obs==0] <- 0
 last.det[z.obs==0] <- 0
-
 conf$addSampler(target=c(z.nodes,z.super.nodes),type=zSampler,
                 control=list(M=M,K=K,n.primary=n.primary,z.obs=z.obs,
                              first.det=first.det,last.det=last.det))
+
+#add conjugate updates for eta that nimble does not recognize
+for(g in 2:(n.primary-1)){
+  target <- paste0("eta[",g,"]")
+  conf$removeSamplers(target)
+  conf$addSampler(target=target,type=etaGibbsSampler,control=list(g=g,M=M,n.primary=n.primary)
+  )
+}
+
 # Build and compile
 Rmcmc <- buildMCMC(conf)
 Cmodel <- compileNimble(Rmodel)
-Cmcmc <- compileNimble(Rmcmc, project = Rmodel)
+Cmcmc <- compileNimble(Rmcmc,project=Rmodel)
 
 # Run the model.
 start.time2 <- Sys.time()

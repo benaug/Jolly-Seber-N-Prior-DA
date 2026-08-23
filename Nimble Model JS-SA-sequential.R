@@ -3,14 +3,6 @@ NimModel <- nimbleCode({
   for(g in 1:n.primary){
     alpha[g] <- 1
   }
-  # #1) can put prior directly on pi, but breaks conjugacy
-  # pi[1:n.primary] ~ ddirch(alpha[1:n.primary]) #entry probabilities
-  # #conditional entry probabilities
-  # eta[1] <- pi[1]
-  # for(g in 2:n.primary){
-  #   eta[g] <- pi[g]/(1 - sum(pi[1:(g-1)]))
-  # }
-  #2) put priors on eta to retain conjugacy
   for(g in 1:(n.primary-1)){
     eta[g] ~ dbeta(alpha[g], sum(alpha[(g+1):n.primary]))
   }

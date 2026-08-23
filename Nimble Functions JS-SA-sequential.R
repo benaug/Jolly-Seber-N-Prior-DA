@@ -142,3 +142,38 @@ zSampler <- nimbleFunction(
   },
   methods=list(reset=function(){})
 )
+
+etaGibbsSampler <- nimbleFunction(
+  contains = sampler_BASE,
+  setup = function(model,mvSaved,target,control){
+    g <- as.integer(control$g)
+    M <- control$M
+    n.primary <- control$n.primary
+    calcNodes <- model$getDependencies(target)
+  },
+  run = function(){
+    success <- 0
+    failure <- 0
+    if(g==1){
+      for(i in 1:M){
+        success <- success+model$z[i,1]
+        failure <- failure+1-model$z[i,1]
+      }
+    }else{
+      for(i in 1:M){
+        if(model$a[i,g-1]==1){
+          success <- success+model$z[i,g]
+          failure <- failure+1-model$z[i,g]
+        }
+      }
+    }
+    prior.a <- model$alpha[g]
+    prior.b <- 0
+    for(j in (g+1):n.primary){
+      prior.b <- prior.b+model$alpha[j]
+    }
+    model[[target]] <<- rbeta(1,prior.a+success,prior.b+failure)
+    model$calculate(calcNodes)
+  },
+  methods=list(reset=function(){})
+)
