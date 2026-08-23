@@ -881,7 +881,6 @@ truncGammaPoisSampler <- nimbleFunction(
   setup = function(model,mvSaved,target,control){
     calcNodes <- model$getDependencies(target)
     upper <- model$getBound(target,"upper")
-    
     if(target=="lambda.y1"){
       is.lambda <- TRUE
       is.fixed.gamma <- FALSE
@@ -922,6 +921,51 @@ truncGammaPoisSampler <- nimbleFunction(
     }else{
       model[[target]] <<- runif(1,0,upper)
     }
+    model$calculate(calcNodes)
+    copy(from=model,to=mvSaved,row=1,nodes=calcNodes,logProb=TRUE)
+  },
+  methods=list(reset=function(){})
+)
+
+pGibbsSampler <- nimbleFunction(
+  contains = sampler_BASE,
+  setup = function(model,mvSaved,target,control){
+    calcNodes <- model$getDependencies(target)
+    M <- control$M
+    n.primary <- control$n.primary
+    K <- control$K
+    #get Beta prior parameters directly from model
+    shape1 <- model$getParam(target,"shape1")
+    shape2 <- model$getParam(target,"shape2")
+    if(target=="p"){
+      is.fixed.p <- TRUE
+      g <- 1
+    }else{
+      is.fixed.p <- FALSE
+      g <- as.integer(gsub("[^0-9]","",target))
+    }
+  },
+  run = function(){
+    success <- 0
+    failure <- 0
+    if(is.fixed.p){
+      for(j in 1:n.primary){
+        for(i in 1:M){
+          if(model$z.super[i]==1&model$z[i,j]==1){
+            success <- success+model$y[i,j]
+            failure <- failure+K[j]-model$y[i,j]
+          }
+        }
+      }
+    }else{
+      for(i in 1:M){
+        if(model$z.super[i]==1&model$z[i,g]==1){
+          success <- success+model$y[i,g]
+          failure <- failure+K[g]-model$y[i,g]
+        }
+      }
+    }
+    model[[target]] <<- rbeta(1,shape1+success,shape2+failure)
     model$calculate(calcNodes)
     copy(from=model,to=mvSaved,row=1,nodes=calcNodes,logProb=TRUE)
   },

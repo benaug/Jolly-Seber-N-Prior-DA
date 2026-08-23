@@ -124,6 +124,18 @@ for(g in 1:(n.primary-1)){
 # conf$removeSamplers("gamma")
 # conf$addSampler(target="gamma",type=truncGammaPoisSampler)
 
+#optional but recommended, can add full conditionals for p that nimble does not recognize due to custom distribution
+#must keep beta prior for p
+#if p is occasion-specific
+for(g in 1:n.primary){
+  target <- paste0("p[",g,"]")
+  conf$removeSamplers(target)
+  conf$addSampler(target=target,type=pGibbsSampler, control=list(M=M,n.primary=n.primary,K=K)
+  )
+}
+#if p is fixed
+# conf$removeSamplers("p")
+# conf$addSampler(target="p",type=pGibbsSampler,control=list(M=M,n.primary=n.primary,K=K))
 
 #optional (but recommended!) blocking 
 # conf$removeSampler(c("beta0.phi"))

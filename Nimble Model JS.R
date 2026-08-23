@@ -19,8 +19,8 @@ NimModel <- nimbleCode({
   }
   
   #Individual covariates
-  phi.cov.mu ~ dunif(-10, 10) #phi individual covariate mean prior
-  phi.cov.sd ~ T(dt(mu=0, sigma=1, df=7), 0, Inf) #phi individual covariate sd prior
+  phi.cov.mu ~ dunif(-10,10) #phi individual covariate mean prior
+  phi.cov.sd ~ T(dt(mu=0,sigma=1,df=7), 0, Inf) #phi individual covariate sd prior
   for(i in 1:M){
     phi.cov[i] ~ dnorm(phi.cov.mu, sd = phi.cov.sd)
   }
@@ -28,7 +28,7 @@ NimModel <- nimbleCode({
   #Survival (phi must have M x n.primary - 1 dimension for custom updates to work)
   #without individual or primary occasion effects, use for loop to plug into phi[i,g]
   beta0.phi ~ dlogis(0,1)
-  beta1.phi ~ dnorm(0, sd=10) #individual covariate effect on survival
+  beta1.phi ~ dnorm(0,sd=10) #individual covariate effect on survival
   for(i in 1:M){
     for(g in 1:(n.primary-1)){#plugging same individual phi's into each primary occasion for custom update
       logit(phi[i,g]) <- beta0.phi + beta1.phi*phi.cov[i] #individual by primary occasion survival
@@ -39,7 +39,7 @@ NimModel <- nimbleCode({
   
   ##Detection##
   for(g in 1:n.primary){
-    p[g] ~ dunif(0,1) #p varies by primary occasion
+    p[g] ~ dbeta(1,1) #p varies by primary occasion, keep beta prior if adding full conditional p updates
     for(i in 1:M){
       #must use this custom distribution for custom updates
       y[i,g] ~ dbinomial2(p=p[g],K=K[g],z=z[i,g],z.super=z.super[i])
