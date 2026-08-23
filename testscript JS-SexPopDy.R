@@ -101,10 +101,8 @@ Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
 Nimdata <- list(y=y.nim,sex=sex.data)
 
 # set parameters to monitor
-parameters <- c('N','N.M',"N.F",'N.super',
-                'N.recruit','N.recruit.M','N.recruit.F',
-                'N.survive','N.survive.M','N.survive.F',
-                'lambda.y1.M','lambda.y1.F','gamma.sex','phi.sex',
+parameters <- c('N','N.M',"N.F",'N.super','N.recruit','N.recruit.M','N.recruit.F',
+                'N.survive','N.survive.M','N.survive.F','lambda.y1.M','lambda.y1.F','gamma.sex','phi.sex',
                 'p.sex')
 parameters2 <- c('sex') #might want to monitor sex if interested in unobserved sex guy posteriors
 
@@ -114,8 +112,7 @@ nt <- 1 #thinning rate
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
 #if you add/remove parameters in model file, do so in config.nodes
-config.nodes <- c('phi.sex','gamma.sex','lambda.y1.M',
-               'lambda.y1.F','p.sex')
+config.nodes <- c('gamma.sex','lambda.y1.M','lambda.y1.F') #assign p and phi samplers below if using one of the 4 options in model file
 conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,monitors2=parameters2,nodes=config.nodes)
 
 #add N/z samplers
@@ -136,20 +133,15 @@ ER.F.nodes <- Rmodel$expandNodeNames(paste0("ER.F[1:",n.primary-1,"]"))
 z.nodes <- Rmodel$expandNodeNames(paste0("z[1:",M,",1]"))
 phi.nodes <-  Rmodel$expandNodeNames(paste0("phi"))
 
-calcNodes <- c(N.nodes,
-               ER.M.nodes,ER.F.nodes,
-               N.M.nodes,N.recruit.M.nodes,
-               N.F.nodes,N.recruit.F.nodes,
-               N.survive.M.nodes,N.survive.F.nodes,
-               N.survive.nodes,N.recruit.nodes,
-               y.nodes,z.nodes,phi.nodes)
+calcNodes <- c(N.nodes,ER.M.nodes,ER.F.nodes,N.M.nodes,N.recruit.M.nodes,
+               N.F.nodes,N.recruit.F.nodes,N.survive.M.nodes,N.survive.F.nodes,
+               N.survive.nodes,N.recruit.nodes,y.nodes,z.nodes,phi.nodes)
 conf$addSampler(target = c("z"),
                 type = 'zSampler',control = list(M=M,n.primary=n.primary,
                                                  z.obs=z.obs,z.super.ups=z.super.ups,
                                                  y.nodes=y.nodes,
                                                  z.nodes=z.nodes,phi.nodes=phi.nodes,
-                                                 ER.M.nodes=ER.M.nodes,
-                                                 ER.F.nodes=ER.F.nodes,
+                                                 ER.M.nodes=ER.M.nodes, ER.F.nodes=ER.F.nodes,
                                                  N.nodes=N.nodes,N.M.nodes=N.M.nodes,N.F.nodes=N.F.nodes,
                                                  N.recruit.M.nodes=N.recruit.M.nodes,
                                                  N.recruit.F.nodes=N.recruit.F.nodes,
@@ -169,6 +161,83 @@ targets <- c("lambda.y1.M","lambda.y1.F","gamma.sex[1]","gamma.sex[2]")
 for(target in targets){
   conf$removeSamplers(target)
   conf$addSampler(target=target,type=truncGammaPoisSampler)
+}
+
+#add full conditional updates for phi. if not using any of the 4 options in model file or change the prior, 
+#let nimble configure, these will not be correct.
+#phi specification: "shared", "occasion", "sex", or "sex.occasion"
+#phi specification: "shared", "occasion", "sex", or "sex.occasion"
+phi.spec <- "sex.occasion"
+
+if(phi.spec=="shared"){
+  target <- "phi.sex[1,1]"
+  conf$removeSamplers(target)
+  conf$addSampler(target=target,type=phiGibbsSampler,
+                  control=list(M=M,n.primary=n.primary,sex.specific=FALSE,occasion.specific=FALSE,s=1,g=1))
+}
+if(phi.spec=="occasion"){
+  for(g in 1:(n.primary-1)){
+    target <- paste0("phi.sex[1,",g,"]")
+    conf$removeSamplers(target)
+    conf$addSampler(target=target,type=phiGibbsSampler,
+                    control=list(M=M,n.primary=n.primary,sex.specific=FALSE,occasion.specific=TRUE,s=1,g=g))
+  }
+}
+if(phi.spec=="sex"){
+  for(s in 1:2){
+    target <- paste0("phi.sex[",s,",1]")
+    conf$removeSamplers(target)
+    conf$addSampler(target=target,type=phiGibbsSampler,
+                    control=list(M=M,n.primary=n.primary,sex.specific=TRUE,occasion.specific=FALSE,s=s,g=1))
+  }
+}
+if(phi.spec=="sex.occasion"){
+  for(s in 1:2){
+    for(g in 1:(n.primary-1)){
+      target <- paste0("phi.sex[",s,",",g,"]")
+      conf$removeSamplers(target)
+      conf$addSampler(target=target,type=phiGibbsSampler,
+                      control=list(M=M,n.primary=n.primary,sex.specific=TRUE,occasion.specific=TRUE,s=s,g=g))
+    }
+  }
+}
+
+#add full conditional updates for detection probability. If not using any of the 4 options in model file
+#or change the prior, let nimble configure, these will not be correct.
+#p specification: "shared", "occasion", "sex", or "sex.occasion"
+p.spec <- "sex.occasion"
+
+if(p.spec=="shared"){
+  target <- "p.sex[1,1]"
+  conf$removeSamplers(target)
+  conf$addSampler(target=target,type=pGibbsSampler,
+                  control=list(M=M,n.primary=n.primary,K=K,sex.specific=FALSE,occasion.specific=FALSE))
+}
+if(p.spec=="occasion"){
+  for(g in 1:n.primary){
+    target <- paste0("p.sex[1,",g,"]")
+    conf$removeSamplers(target)
+    conf$addSampler(target=target,type=pGibbsSampler,
+                    control=list(M=M,n.primary=n.primary,K=K,sex.specific=FALSE,occasion.specific=TRUE))
+  }
+}
+if(p.spec=="sex"){
+  for(s in 1:2){
+    target <- paste0("p.sex[",s,",1]")
+    conf$removeSamplers(target)
+    conf$addSampler(target=target,type=pGibbsSampler,
+                    control=list(M=M,n.primary=n.primary,K=K,sex.specific=TRUE,occasion.specific=FALSE))
+  }
+}
+if(p.spec=="sex.occasion"){
+  for(s in 1:2){
+    for(g in 1:n.primary){
+      target <- paste0("p.sex[",s,",",g,"]")
+      conf$removeSamplers(target)
+      conf$addSampler(target=target,type=pGibbsSampler,
+                      control=list(M=M,n.primary=n.primary,K=K,sex.specific=TRUE,occasion.specific=TRUE))
+    }
+  }
 }
 
 # Build and compile
