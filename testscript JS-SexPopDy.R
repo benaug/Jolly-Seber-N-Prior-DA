@@ -166,7 +166,6 @@ for(target in targets){
 #add full conditional updates for phi. if not using any of the 4 options in model file or change the prior, 
 #let nimble configure, these will not be correct.
 #phi specification: "shared", "occasion", "sex", or "sex.occasion"
-#phi specification: "shared", "occasion", "sex", or "sex.occasion"
 phi.spec <- "sex.occasion"
 
 if(phi.spec=="shared"){
