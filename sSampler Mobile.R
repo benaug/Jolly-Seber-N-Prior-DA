@@ -327,7 +327,7 @@ sSampler3 <- nimbleFunction(
       s.prop[1,1:2] <- c(runif(1, xlim[1], xlim[2]), runif(1, ylim[1], ylim[2]))
       #propose subsequent years from movement prior (truncated Normal here)
       for(g in 2:n.primary){
-        s.prop[g,1:2] <- rTruncNorm(1,xlim = xlim, ylim = ylim, s.prev=s.prop[g-1,1:2],sigma.move=model$sigma.move[1])
+        s.prop[g,1:2] <- rTruncNorm(1,xlim = xlim, ylim = ylim, s.prev=s.prop[g-1,1:2],sigma.move=model$sigma.move[1],z.super=1)
       }
       model$s[i,1:n.primary,1:2] <<- s.prop
       model$calculate(calcNodes)
