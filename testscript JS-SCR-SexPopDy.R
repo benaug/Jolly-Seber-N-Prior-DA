@@ -148,10 +148,8 @@ Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
 Nimdata <- list(y=y.nim,sex=sex.data,X=X.nim)
 
 # set parameters to monitor
-parameters <- c('N','N.M',"N.F",'N.super',
-                'N.recruit','N.recruit.M','N.recruit.F',
-                'N.survive','N.survive.M','N.survive.F',
-                'lambda.y1.M','lambda.y1.F','gamma.sex','phi.sex',
+parameters <- c('N','N.M',"N.F",'N.super','N.recruit','N.recruit.M','N.recruit.F',
+                'N.survive','N.survive.M','N.survive.F','lambda.y1.M','lambda.y1.F','gamma.sex','phi.sex',
                 'p0.sex','sigma.sex')
 parameters2 <- c('sex') #might want to monitor sex if interested in unobserved sex guy posteriors
 
@@ -161,8 +159,8 @@ nt <- 1 #thinning rate
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
 #if you add/remove parameters in model file, do so in config.nodes
-config.nodes <- c('phi.sex','gamma.sex','lambda.y1.M', #sex not included here, in custom N/z update
-               'lambda.y1.F','p0.sex','sigma.sex')
+#assign phi samplers below if using one of the 4 options in model file
+config.nodes <- c('gamma.sex','lambda.y1.M','lambda.y1.F','p0.sex','sigma.sex')
 conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,monitors2=parameters2,
                       nodes=config.nodes,useConjugacy = TRUE)
 
@@ -215,6 +213,44 @@ for(i in 1:M){
   conf$addSampler(target = paste0("s[",i,", 1:2]"),
                   type = 'sSampler',control=list(i=i,xlim=xlim,ylim=ylim,scale=1),silent = TRUE)
   #scale parameter here is just the starting scale. It will be tuned.
+}
+
+#add full conditional updates for phi. if not using any of the 4 options in model file or change the prior, 
+#let nimble configure, these will not be correct.
+#phi specification: "shared", "occasion", "sex", or "sex.occasion"
+phi.spec <- "sex"
+
+if(phi.spec=="shared"){
+  target <- "phi.sex[1,1]"
+  conf$removeSamplers(target)
+  conf$addSampler(target=target,type=phiGibbsSampler,
+                  control=list(M=M,n.primary=n.primary,sex.specific=FALSE,occasion.specific=FALSE,s=1,g=1))
+}
+if(phi.spec=="occasion"){
+  for(g in 1:(n.primary-1)){
+    target <- paste0("phi.sex[1,",g,"]")
+    conf$removeSamplers(target)
+    conf$addSampler(target=target,type=phiGibbsSampler,
+                    control=list(M=M,n.primary=n.primary,sex.specific=FALSE,occasion.specific=TRUE,s=1,g=g))
+  }
+}
+if(phi.spec=="sex"){
+  for(s in 1:2){
+    target <- paste0("phi.sex[",s,",1]")
+    conf$removeSamplers(target)
+    conf$addSampler(target=target,type=phiGibbsSampler,
+                    control=list(M=M,n.primary=n.primary,sex.specific=TRUE,occasion.specific=FALSE,s=s,g=1))
+  }
+}
+if(phi.spec=="sex.occasion"){
+  for(s in 1:2){
+    for(g in 1:(n.primary-1)){
+      target <- paste0("phi.sex[",s,",",g,"]")
+      conf$removeSamplers(target)
+      conf$addSampler(target=target,type=phiGibbsSampler,
+                      control=list(M=M,n.primary=n.primary,sex.specific=TRUE,occasion.specific=TRUE,s=s,g=g))
+    }
+  }
 }
 
 ##optional truncated gamma poisson conjugate samplers. 

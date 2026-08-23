@@ -270,12 +270,9 @@ Nimdata <- list(y=y.nim,sex=sex.data,X=X.nim,
                 dummy.data=dummy.data,cells=cells,InSS=InSS)
 
 # set parameters to monitor
-parameters <- c('N','N.M',"N.F",'N.super',
-                'N.recruit','N.recruit.M','N.recruit.F',
-                'N.survive','N.survive.M','N.survive.F',
-                'lambda.y1.M','lambda.y1.F','D0','D.beta1',
-                'gamma.sex','phi.sex',
-                'p0.sex','sigma.sex')
+parameters <- c('N','N.M',"N.F",'N.super','N.recruit','N.recruit.M','N.recruit.F',
+                'N.survive','N.survive.M','N.survive.F','lambda.y1.M','lambda.y1.F','D0','D.beta1',
+                'gamma.sex','phi.sex','p0.sex','sigma.sex')
 parameters2 <- c('sex') #might want to monitor sex if interested in unobserved sex guy posteriors
 
 nt <- 1 #thinning rate
@@ -284,8 +281,8 @@ nt <- 1 #thinning rate
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
 #if you add/remove parameters in model file, do so in config.nodes
-config.nodes <- c('phi.sex','gamma.sex', #sex not included here, in custom N/z update, D0, D.beta1 added below
-               'p.sex','p0.sex','sigma.sex')
+#assign phi samplers below if using one of the 4 options in model file,  D0, D.beta1 added below
+config.nodes <- c('gamma.sex','p.sex','p0.sex','sigma.sex')
 conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,monitors2=parameters2,
                       nodes=config.nodes,useConjugacy = TRUE)
 
@@ -353,6 +350,44 @@ targets <- c("gamma.sex[1]","gamma.sex[2]")
 for(target in targets){
   conf$removeSamplers(target)
   conf$addSampler(target=target,type=truncGammaPoisSampler)
+}
+
+#add full conditional updates for phi. if not using any of the 4 options in model file or change the prior, 
+#let nimble configure, these will not be correct.
+#phi specification: "shared", "occasion", "sex", or "sex.occasion"
+phi.spec <- "sex"
+
+if(phi.spec=="shared"){
+  target <- "phi.sex[1,1]"
+  conf$removeSamplers(target)
+  conf$addSampler(target=target,type=phiGibbsSampler,
+                  control=list(M=M,n.primary=n.primary,sex.specific=FALSE,occasion.specific=FALSE,s=1,g=1))
+}
+if(phi.spec=="occasion"){
+  for(g in 1:(n.primary-1)){
+    target <- paste0("phi.sex[1,",g,"]")
+    conf$removeSamplers(target)
+    conf$addSampler(target=target,type=phiGibbsSampler,
+                    control=list(M=M,n.primary=n.primary,sex.specific=FALSE,occasion.specific=TRUE,s=1,g=g))
+  }
+}
+if(phi.spec=="sex"){
+  for(s in 1:2){
+    target <- paste0("phi.sex[",s,",1]")
+    conf$removeSamplers(target)
+    conf$addSampler(target=target,type=phiGibbsSampler,
+                    control=list(M=M,n.primary=n.primary,sex.specific=TRUE,occasion.specific=FALSE,s=s,g=1))
+  }
+}
+if(phi.spec=="sex.occasion"){
+  for(s in 1:2){
+    for(g in 1:(n.primary-1)){
+      target <- paste0("phi.sex[",s,",",g,"]")
+      conf$removeSamplers(target)
+      conf$addSampler(target=target,type=phiGibbsSampler,
+                      control=list(M=M,n.primary=n.primary,sex.specific=TRUE,occasion.specific=TRUE,s=s,g=g))
+    }
+  }
 }
 
 #AF slice pretty efficient here. maybe not with too many cells?
