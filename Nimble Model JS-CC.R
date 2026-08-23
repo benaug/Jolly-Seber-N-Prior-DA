@@ -9,7 +9,7 @@ NimModel <- nimbleCode({
     N[g] <- sum(z[1:M,g])
     Acum[g] <- sum(a[1:M,g])
   }
-  gamma.fixed ~ dunif(0,1) #fixed gamma
+  gamma.fixed ~ dunif(0,1) #fixed gamma, must keep individual gamma[g] nodes for custom z updates to work
   for(g in 1:(n.primary-1)){
     gamma[g] <- gamma.fixed #fixed gamma
     # gamma[g] ~ dunif(0,2) #gamma varies by primary occasion
@@ -39,9 +39,9 @@ NimModel <- nimbleCode({
   }
   #observation model
   for(g in 1:n.primary){
-    p[g] ~ dunif(0,1)
+    p[g] ~ dbeta(1,1) #uniform
     for(i in 1:M){
-      y[i,g] ~ dbinom(p=p[g]*z[i,g],size=K[g])
+      y[i,g] ~ dbinom(p=p[g],size=K[g]*z[i,g])
     }
   }
 })

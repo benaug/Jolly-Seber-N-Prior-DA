@@ -95,6 +95,15 @@ conf$removeSamplers(z.nodes)
 conf$addSampler(target=z.nodes,type=zSampler,
                 control=list(M=M,K=K,n.primary=n.primary))
 
+#if gamma varies by occasion, can remove nimble-assigned RW samplers (nimble model currently has gamma fixed)
+#and replace with full conditionals. If gamma is fixed, this requires rejection sampling
+#which may not be more efficient. Didn't create one.
+# for(g in 1:(n.primary-1)){
+#   target <- paste0("gamma[",g,"]")
+#   conf$removeSamplers(target)
+#   conf$addSampler(target=target,type=gammaCCSampler,control=list(M=M,n.primary=n.primary,qcap=0.999))
+# }
+
 # Build and compile
 Rmcmc <- buildMCMC(conf)
 Cmodel <- compileNimble(Rmodel)

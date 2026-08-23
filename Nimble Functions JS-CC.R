@@ -32,7 +32,6 @@ zSampler <- nimbleFunction(
     for(g in 1:(n.primary-1)){
       B.curr[g] <- Acum.curr[g+1] - Acum.curr[g]
     }
-    
     for(i in 1:M){
       z.curr <- rep(0,n.primary)
       a.curr <- rep(0,n.primary)
@@ -52,7 +51,6 @@ zSampler <- nimbleFunction(
       logAliveToFirst <- rep(0,n.primary)
       logw <- rep(-Inf,n.primary+1)
       probs <- rep(0,n.primary+1)
-      
       #current focal history and leave-one-out population counts
       entered <- 0
       detected <- 0
@@ -78,7 +76,6 @@ zSampler <- nimbleFunction(
         }
         log.y.alive[g] <- dbinom(model$y[i,g],size=K[g],p=model$p[g],log=TRUE)
       }
-      
       #For each interval, calculate the recruitment probability implied by the
       #focal individual being not yet entered, and the recruitment likelihood
       #of all OTHER individuals under each possible focal state at occasion g:
@@ -88,7 +85,6 @@ zSampler <- nimbleFunction(
         R.minus <- B.curr[g] - recruit.curr
         U.minus <- (M-1) - Acum.minus[g]
         stayU.minus <- U.minus - R.minus
-        
         #U: focal individual has not yet entered
         A.raw.cand <- M - Acum.minus[g]
         if(A.raw.cand < 0.01){
@@ -113,7 +109,6 @@ zSampler <- nimbleFunction(
           lp <- lp + stayU.minus*log(1-r.cand)
         }
         logH.U[g] <- lp
-        
         #A: focal individual has entered and is alive
         A.raw.cand <- M - (Acum.minus[g]+1)
         if(A.raw.cand < 0.01){
@@ -137,7 +132,6 @@ zSampler <- nimbleFunction(
           lp <- lp + stayU.minus*log(1-r.cand)
         }
         logH.A[g] <- lp
-        
         #D: focal individual has entered previously and is dead
         r.cand <- N.minus[g]*model$gamma[g]/A.cand
         if(r.cand > 0.999){
@@ -156,7 +150,6 @@ zSampler <- nimbleFunction(
         }
         logH.D[g] <- lp
       }
-      
       #Type II backward quantities. These integrate over future exit when
       #sampling entry for an undetected individual, and are then reused to draw
       #exit conditional on the sampled entry occasion.
@@ -178,13 +171,11 @@ zSampler <- nimbleFunction(
           logV.A[g] <- logH.A[g] + maxlp + log(exp(x1-maxlp)+exp(x2-maxlp))
         }
       }
-      
       #probability of reaching each occasion without having entered
       logUreach[1] <- log(1-model$psi[1]) + log.y.abs[1]
       for(g in 1:(n.primary-1)){
         logUreach[g+1] <- logUreach[g] + logH.U[g] + log(1-r.U[g]) + log.y.abs[g+1]
       }
-      
       if(detected == 1){
         #Type I: sample entry occasion conditional on being alive at first detection.
         logAliveToFirst[first.det] <- 0
@@ -222,7 +213,6 @@ zSampler <- nimbleFunction(
         for(g in entry.new:last.det){
           z.new[g] <- 1
         }
-        
         #Type II: sample exit after the last detection, conditional on entry.
         alive <- 1
         if(last.det < n.primary){
@@ -265,20 +255,17 @@ zSampler <- nimbleFunction(
           }
         }
         logw[n.primary+1] <- logUreach[n.primary] #never enters
-      
         maxlp <- max(logw)
         for(e in 1:(n.primary+1)){
           probs[e] <- exp(logw[e]-maxlp)
         }
         probs <- probs/sum(probs)
         entry.new <- rcat(1,probs)
-        
         for(g in 1:n.primary){
           z.new[g] <- 0
         }
         if(entry.new <= n.primary){
           z.new[entry.new] <- 1
-          
           #Type II: sample exit conditional on the new entry occasion.
           alive <- 1
           if(entry.new < n.primary){
@@ -310,7 +297,6 @@ zSampler <- nimbleFunction(
           }
         }
       }
-      
       #replace focal history and update aggregate counts for next individual
       entered <- 0
       for(g in 1:n.primary){
@@ -328,6 +314,55 @@ zSampler <- nimbleFunction(
     }
     
     #update deterministic nodes and log probabilities once after the full sweep
+    model$calculate(calcNodes)
+    copy(from=model,to=mvSaved,row=1,nodes=calcNodes,logProb=TRUE)
+  },
+  methods=list(reset=function(){})
+)
+
+gammaCCSampler <- nimbleFunction(
+  contains = sampler_BASE,
+  setup = function(model,mvSaved,target,control){
+    M <- control$M
+    g <- as.integer(gsub("[^0-9]","",target))
+    calcNodes <- model$getDependencies(target)
+    upper <- model$getBound(target,"upper")
+    qcap <- control$qcap
+  },
+  run = function(){
+    trials <- M-model$Acum[g]
+    if(trials>0){
+      B <- model$B[g]
+      F <- trials-B
+      c <- model$N[g]/trials
+      if(c>0){
+        shape1 <- B+1
+        shape2 <- F+1
+        threshold <- qcap/c
+        if(threshold>=upper){
+          qmax <- c*upper
+          pmax <- pbeta(qmax,shape1=shape1,shape2=shape2)
+          q <- qbeta(runif(1,0,pmax),shape1=shape1,shape2=shape2)
+          model[[target]] <<- q/c
+        }else{
+          pcap <- pbeta(qcap,shape1=shape1,shape2=shape2)
+          logw1 <- lgamma(shape1)+lgamma(shape2)-lgamma(shape1+shape2)+log(pcap)-log(c)
+          logw2 <- log(upper-threshold)+B*log(qcap)+F*log(1-qcap)
+          m <- max(logw1,logw2)
+          prob1 <- exp(logw1-m)/(exp(logw1-m)+exp(logw2-m))
+          if(runif(1)<prob1){
+            q <- qbeta(runif(1,0,pcap),shape1=shape1,shape2=shape2)
+            model[[target]] <<- q/c
+          }else{
+            model[[target]] <<- runif(1,threshold,upper)
+          }
+        }
+      }else{
+        model[[target]] <<- runif(1,0,upper)
+      }
+    }else{
+      model[[target]] <<- runif(1,0,upper)
+    }
     model$calculate(calcNodes)
     copy(from=model,to=mvSaved,row=1,nodes=calcNodes,logProb=TRUE)
   },
