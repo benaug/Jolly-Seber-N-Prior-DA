@@ -52,21 +52,37 @@ NimModel <- nimbleCode({
     }
   }
 
-  #Survival (phi must have M x n.primary - 1 dimension for custom updates to work)
-  #fixed sex-specific survival
-  phi.sex[1] ~ dunif(0,1)
-  phi.sex[2] ~ dunif(0,1)
-  #sex-specific survival by primary occasion
+  ##Survival##
+  #phi must have M x (n.primary-1) dimension for custom updates to work
+  
+  #OPTION 1: one phi shared by sexes and primary occasions
+  #phi.sex[1,1] ~ dbeta(1,1)
+  #phi.sex[2,1] <- phi.sex[1,1]
+  #for(g in 2:(n.primary-1)){
+  #  phi.sex[1,g] <- phi.sex[1,1]
+  #  phi.sex[2,g] <- phi.sex[1,1]
+  #}
+  #OPTION 2: occasion-specific phi shared by sexes
+  #for(g in 1:(n.primary-1)){
+  #  phi.sex[1,g] ~ dbeta(1,1)
+  #  phi.sex[2,g] <- phi.sex[1,g]
+  #}
+  #OPTION 3: fixed sex-specific phi
+  phi.sex[1,1] ~ dbeta(1,1) #male survival
+  phi.sex[2,1] ~ dbeta(1,1) #female survival
+  for(g in 2:(n.primary-1)){
+    phi.sex[1,g] <- phi.sex[1,1]
+    phi.sex[2,g] <- phi.sex[2,1]
+  }
+  #OPTION 4: sex-specific phi varies by primary occasion
   # for(g in 1:(n.primary-1)){
-  #   phi.sex[1,g] ~ dunif(0,1)
-  #   phi.sex[2,g] ~ dunif(0,1)
+  #   phi.sex[1,g] ~ dbeta(1,1) #male survival
+  #   phi.sex[2,g] ~ dbeta(1,1) #female survival
   # }
   for(i in 1:M){
-    for(g in 1:(n.primary-1)){ #plugging same individual phi's into each primary occasion (phi: M x n.primary-1 expected by custom update)
-      phi[i,g] <- phi.sex[sex[i]+1] #if fixed
-      # phi[i,g] <- phi.sex[sex[i]+1,g] #if occasion-specific
+    for(g in 1:(n.primary-1)){
+      phi[i,g] <- phi.sex[sex[i]+1,g]
     }
-    #survival likelihood (bernoulli) that only sums from z.start to z.stop
     z[i,1:n.primary] ~ dSurvival(phi=phi[i,1:(n.primary-1)],z.start=z.start[i],z.stop=z.stop[i],z.super=z.super[i])
   }
 
