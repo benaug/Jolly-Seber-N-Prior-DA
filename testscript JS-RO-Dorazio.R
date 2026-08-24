@@ -83,6 +83,7 @@ conf$addSampler(target=z.nodes,type=zSampler,
                              first.det=first.det,last.det=last.det))
 
 #beta-Bernoulli Gibbs samplers for gamma
+#Note: if you add time scaling to model file, need to include that in custom update
 #if occasion-specific
 for(g in 1:(n.primary-1)){
   target <- paste0("gamma[",g,"]")

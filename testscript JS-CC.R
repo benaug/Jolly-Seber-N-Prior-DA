@@ -98,6 +98,7 @@ conf$addSampler(target=z.nodes,type=zSampler,
 #if gamma varies by occasion, can remove nimble-assigned RW samplers (nimble model currently has gamma fixed)
 #and replace with full conditionals. If gamma is fixed, this requires rejection sampling
 #which may not be more efficient. Didn't create one.
+#Note: if you add time scaling to model file, need to include that in custom update
 # for(g in 1:(n.primary-1)){
 #   target <- paste0("gamma[",g,"]")
 #   conf$removeSamplers(target)
