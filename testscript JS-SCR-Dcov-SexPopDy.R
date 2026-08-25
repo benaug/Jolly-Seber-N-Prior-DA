@@ -30,6 +30,7 @@ cols1 <- brewer.pal(9,"Greens")
 n.primary <- 4 #number of primary occasions
 #per-capita recruitment
 gamma.sex <- c(0.1,0.1) #male, then female, fixed across primary occasions
+tau <- rep(1,n.primary-1) #duration of each primary-occasion interval
 #sex-specific survival
 phi.sex <- c(0.75,0.95) #male, then female, fixed across primary occasions
 #sex-specific p0
@@ -117,7 +118,7 @@ sum(lambda.cell) #expected N in state space, total
 sum(lambda.cell)*c(1-p.sex,p.sex) #sex-specific
 
 data <- sim.JS.SCR.Dcov.SexPopDy(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,InSS=InSS,
-                                 res=res,xlim=xlim,ylim=ylim,n.primary=n.primary,
+                                 res=res,xlim=xlim,ylim=ylim,n.primary=n.primary,tau=tau,
                             p.sex=p.sex,gamma.sex=gamma.sex,phi.sex=phi.sex,
                             p0.sex=p0.sex,sigma.sex=sigma.sex,X=X,K=K,p.obs.sex=p.obs.sex)
 
@@ -251,7 +252,7 @@ for(i in 1:M){
 }
 
 #constants for Nimble
-constants <- list(n.primary=n.primary,M=M,J=J,xlim=xlim,ylim=ylim,K1D=K1D,
+constants <- list(n.primary=n.primary,tau=data$tau,M=M,J=J,xlim=xlim,ylim=ylim,K1D=K1D,
                   D.cov=D.cov,cellArea=cellArea,n.cells=n.cells,
                   res=res)
 #inits for Nimble
@@ -349,46 +350,7 @@ targets <- c("gamma.sex[1]","gamma.sex[2]")
 #              paste0("gamma.sex[2,",1:(n.primary-1),"]"))
 for(target in targets){
   conf$removeSamplers(target)
-  conf$addSampler(target=target,type=truncGammaPoisSampler)
-}
-
-#add full conditional updates for phi. if not using any of the 4 options in model file or change the prior, 
-#let nimble configure, these will not be correct.
-#Note: if you add time scaling to model file, need to include that in custom update
-#phi specification: "shared", "occasion", "sex", or "sex.occasion"
-phi.spec <- "sex"
-
-if(phi.spec=="shared"){
-  target <- "phi.sex[1,1]"
-  conf$removeSamplers(target)
-  conf$addSampler(target=target,type=phiGibbsSampler,
-                  control=list(M=M,n.primary=n.primary,sex.specific=FALSE,occasion.specific=FALSE,s=1,g=1))
-}
-if(phi.spec=="occasion"){
-  for(g in 1:(n.primary-1)){
-    target <- paste0("phi.sex[1,",g,"]")
-    conf$removeSamplers(target)
-    conf$addSampler(target=target,type=phiGibbsSampler,
-                    control=list(M=M,n.primary=n.primary,sex.specific=FALSE,occasion.specific=TRUE,s=1,g=g))
-  }
-}
-if(phi.spec=="sex"){
-  for(s in 1:2){
-    target <- paste0("phi.sex[",s,",1]")
-    conf$removeSamplers(target)
-    conf$addSampler(target=target,type=phiGibbsSampler,
-                    control=list(M=M,n.primary=n.primary,sex.specific=TRUE,occasion.specific=FALSE,s=s,g=1))
-  }
-}
-if(phi.spec=="sex.occasion"){
-  for(s in 1:2){
-    for(g in 1:(n.primary-1)){
-      target <- paste0("phi.sex[",s,",",g,"]")
-      conf$removeSamplers(target)
-      conf$addSampler(target=target,type=phiGibbsSampler,
-                      control=list(M=M,n.primary=n.primary,sex.specific=TRUE,occasion.specific=TRUE,s=s,g=g))
-    }
-  }
+  conf$addSampler(target=target,type=truncGammaPoisSampler,control=list(tau=tau))
 }
 
 #AF slice pretty efficient here. maybe not with too many cells?

@@ -1,12 +1,14 @@
 initialize.s.hab <- function(sigma.move.init=NA,rsf.beta.init=0,z.super.init=NA,
                              D.beta1.init=NA,y=NA,X=NA,xlim=NA,ylim=NA,dSS=NA,
-                             cells=NA,res=NA,D.cov=NA,InSS=NA,x.vals=NA,y.vals=NA){
+                             cells=NA,res=NA,D.cov=NA,InSS=NA,x.vals=NA,y.vals=NA,tau=NA){
   M <- nrow(y)
   n.primary <- dim(y)[2]
   n.cells <- nrow(dSS)
   n.cells.x <- length(x.vals)
   n.cells.y <- length(y.vals)
   s.init <- array(0, dim=c(M, n.primary, 2))
+  #time-scaled movement sigma
+  sigma.move.int <- sigma.move.init*sqrt(tau)
   #compute pi.cell from D.beta1.init
   lambda.cell <- InSS*exp(D.beta1.init*D.cov)
   pi.cell <- lambda.cell / sum(lambda.cell)
@@ -40,7 +42,7 @@ initialize.s.hab <- function(sigma.move.init=NA,rsf.beta.init=0,z.super.init=NA,
       #simulate backwards from first detection
       if(first.det > 1){
         for(g in (first.det-1):1){
-          avail <- getAvail(s=s.init[i,g+1,],sigma=sigma.move.init,res=res,
+          avail <- getAvail(s=s.init[i,g+1,],sigma=sigma.move.int[g],res=res,
                             x.vals=x.vals,y.vals=y.vals,
                             n.cells.x=n.cells.x,n.cells.y=n.cells.y, z.super=1)
           use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
@@ -52,7 +54,7 @@ initialize.s.hab <- function(sigma.move.init=NA,rsf.beta.init=0,z.super.init=NA,
       #simulate forwards from last detection
       if(last.det < n.primary){
         for(g in (last.det+1):n.primary){
-          avail <- getAvail(s=s.init[i,g-1,],sigma=sigma.move.init,res=res,
+          avail <- getAvail(s=s.init[i,g-1,],sigma=sigma.move.int[g-1],res=res,
                             x.vals=x.vals,y.vals=y.vals,
                             n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
           use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
@@ -66,7 +68,7 @@ initialize.s.hab <- function(sigma.move.init=NA,rsf.beta.init=0,z.super.init=NA,
       if(last.det > first.det){
         for(g in first.det:(last.det-1)){
           if(!(g+1) %in% dets){
-            avail <- getAvail(s=s.init[i,g,],sigma=sigma.move.init,res=res,
+            avail <- getAvail(s=s.init[i,g,],sigma=sigma.move.int[g],res=res,
                               x.vals=x.vals,y.vals=y.vals,
                               n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
             use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
@@ -82,7 +84,7 @@ initialize.s.hab <- function(sigma.move.init=NA,rsf.beta.init=0,z.super.init=NA,
       s.init[i,1,1] <- runif(1,dSS[s.cell,1] - res/2,dSS[s.cell,1] + res/2)
       s.init[i,1,2] <- runif(1,dSS[s.cell,2] - res/2,dSS[s.cell,2] + res/2)
       for(g in 2:n.primary){
-        avail <- getAvail(s=s.init[i,g-1,],sigma=sigma.move.init,res=res,
+        avail <- getAvail(s=s.init[i,g-1,],sigma=sigma.move.int[g-1],res=res,
                           x.vals=x.vals,y.vals=y.vals,
                           n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
         use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
@@ -98,13 +100,13 @@ initialize.s.hab <- function(sigma.move.init=NA,rsf.beta.init=0,z.super.init=NA,
   for(i in 1:M){
     if(z.super.init[i]==1){
       for(g in 2:n.primary){
-        avail.dist.prev <- getAvail(s=s.init[i,g-1,1:2],sigma=sigma.move.init,res=res,
+        avail.dist.prev <- getAvail(s=s.init[i,g-1,1:2],sigma=sigma.move.int[g-1],res=res,
                                     x.vals=x.vals[1:n.cells.x],y.vals=y.vals[1:n.cells.y],
                                     n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=z.super.init[i])
         use.dist.prev <- getUse(rsf=rsf[1:n.cells],avail.dist=avail.dist.prev,z.super=1)
         logProb[i,g-1] <- dHabMove(x=s.init[i,g,1:2],s.prev=s.init[i,g-1,1:2],use.dist=use.dist.prev,
                                    dSS=dSS[1:n.cells,1:2],cells=cells[1:n.cells.x,1:n.cells.y],
-                                   res=res,sigma.move=sigma.move.init,z.super=z.super.init[i],log=TRUE)
+                                   res=res,sigma.move=sigma.move.int[g-1],z.super=z.super.init[i],log=TRUE)
       }
     }
   }
@@ -1344,7 +1346,7 @@ zSampler <- nimbleFunction(
             #propose subsequent primary occasions from the RSF movement prior
             for(g in 2:n.primary){
               model$avail.dist[pick,g-1,1:n.cells] <<- getAvail(s=model$s[pick,g-1,1:2],
-                                                                sigma=model$sigma.move[1],res=res,
+                                                                sigma=model$sigma.move.int[g-1],res=res,
                                                                 x.vals=x.vals,y.vals=y.vals,
                                                                 n.cells.x=n.cells.x,n.cells.y=n.cells.y,
                                                                 z.super=1)
@@ -1355,7 +1357,7 @@ zSampler <- nimbleFunction(
                                                use.dist=model$use.dist[pick,g-1,1:n.cells],
                                                dSS=dSS[1:n.cells,1:2],
                                                cells=cells[1:n.cells.x,1:n.cells.y],
-                                               res=res,sigma.move=model$sigma.move[1],z.super=1)
+                                               res=res,sigma.move=model$sigma.move.int[g-1],z.super=1)
             }
             model$calculate(pd.nodes[pick.idx]) #update pd nodes when z and s change
             #get proposed logprobs for N, y, s, and survival
@@ -1477,28 +1479,39 @@ truncGammaPoisSampler <- nimbleFunction(
   setup = function(model,mvSaved,target,control){
     calcNodes <- model$getDependencies(target)
     upper <- model$getBound(target,"upper")
-    if(target=="gamma"){
+    tau <- control$tau
+    if(target=="lambda.y1"){
+      is.lambda <- TRUE
+      is.fixed.gamma <- FALSE
+      g <- 1
+      n.recruit <- 1
+    }else if(target=="gamma"){
+      is.lambda <- FALSE
       is.fixed.gamma <- TRUE
       g <- 1
       recruitNodes <- grep("^N.recruit\\[",model$getNodeNames(stochOnly=TRUE),value=TRUE)
       n.recruit <- length(recruitNodes)
     }else{
+      is.lambda <- FALSE
       is.fixed.gamma <- FALSE
       g <- as.integer(gsub("[^0-9]","",target))
       n.recruit <- 1
     }
   },
   run = function(){
-    if(is.fixed.gamma){
+    if(is.lambda){
+      count <- model$N[1]
+      rate <- 1
+    }else if(is.fixed.gamma){
       count <- 0
       rate <- 0
       for(j in 1:n.recruit){
         count <- count+model$N.recruit[j]
-        rate <- rate+model$N[j]
+        rate <- rate+model$N[j]*tau[j]
       }
     }else{
       count <- model$N.recruit[g]
-      rate <- model$N[g]
+      rate <- model$N[g]*tau[g]
     }
     if(rate>0){
       shape <- count+1

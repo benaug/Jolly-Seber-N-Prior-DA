@@ -6,7 +6,7 @@ e2dist  <-  function (x, y){
 
 sim.JS.SCR.SexPopDy <- function(lambda.y1.M=NA,lambda.y1.F=NA,n.primary=NA,
                                 gamma.sex=NA,phi.sex=NA,
-                   p0.sex=NA,sigma.sex=NA,X=NA,buff=buff,K=NA,
+                   p0.sex=NA,sigma.sex=NA,X=NA,buff=buff,K=NA,tau=NA,
                    p.obs.sex=NA,sigma.move.sex=NULL){
   #Population dynamics
   N <- N.M <- N.F <- rep(NA,n.primary)
@@ -25,8 +25,8 @@ sim.JS.SCR.SexPopDy <- function(lambda.y1.M=NA,lambda.y1.F=NA,n.primary=NA,
   phi <- matrix(NA,N[1],n.primary-1)
   for(g in 2:n.primary){
     #Simulate recruits
-    ER.M[g-1] <- N[g-1]*gamma.sex[1]
-    ER.F[g-1] <- N[g-1]*gamma.sex[2]
+    ER.M[g-1] <- N[g-1]*gamma.sex[1]*tau[g-1]
+    ER.F[g-1] <- N[g-1]*gamma.sex[2]*tau[g-1]
     N.recruit.M[g-1] <- rpois(1,ER.M[g-1])
     N.recruit.F[g-1] <- rpois(1,ER.F[g-1])
     if((N.recruit.M[g-1]+N.recruit.F[g-1])>0){
@@ -36,14 +36,13 @@ sim.JS.SCR.SexPopDy <- function(lambda.y1.M=NA,lambda.y1.F=NA,n.primary=NA,
       z[(z.dim.old+1):(z.dim.old+N.recruit.M[g-1]+N.recruit.F[g-1]),g] <- 1
       #record sexes
       sex <- c(sex,rep(1,N.recruit.M[g-1]),rep(2,N.recruit.F[g-1]))
-      
       #Simulate survival
       phi <- rbind(phi,matrix(NA,nrow=N.recruit.M[g-1]+N.recruit.F[g-1],ncol=n.primary-1))
     }
     phi[,g-1] <- phi.sex[sex]
-    
+    phi.int <- phi[,g-1]^tau[g-1]
     idx <- which(z[,g-1]==1)
-    z[idx,g] <- rbinom(length(idx),1,phi[idx,g-1])
+    z[idx,g] <- rbinom(length(idx),1,phi.int[idx])
     N.survive.M[g-1] <- sum(z[,g-1]==1&z[,g]==1&sex==1)
     N.survive.F[g-1] <- sum(z[,g-1]==1&z[,g]==1&sex==2)
     N.M[g] <- N.recruit.M[g-1]+N.survive.M[g-1]
@@ -75,8 +74,9 @@ sim.JS.SCR.SexPopDy <- function(lambda.y1.M=NA,lambda.y1.F=NA,n.primary=NA,
     s[,1,] <- cbind(runif(N.super, xlim[1],xlim[2]), runif(N.super,ylim[1],ylim[2]))
     for(g in 2:n.primary){
       for(i in 1:N.super){
-        s[i,g,1] <- rtruncnorm(1,s[i,g-1,1],sd=sigma.move.sex[sex[i]],a=xlim[1],b=xlim[2])
-        s[i,g,2] <- rtruncnorm(1,s[i,g-1,2],sd=sigma.move.sex[sex[i]],a=ylim[1],b=ylim[2])
+        sigma.move.sex.int <- sigma.move.sex*sqrt(tau[g-1])
+        s[i,g,1] <- rtruncnorm(1,mean=s[i,g-1,1],sd=sigma.move.sex.int[sex[i]],a=xlim[1],b=xlim[2])
+        s[i,g,2] <- rtruncnorm(1,mean=s[i,g-1,2],sd=sigma.move.sex.int[sex[i]],a=ylim[1],b=ylim[2])
       }
     }
   }else{
@@ -124,6 +124,6 @@ sim.JS.SCR.SexPopDy <- function(lambda.y1.M=NA,lambda.y1.F=NA,n.primary=NA,
               N=N,N.recruit=N.recruit,N.survive=N.survive,
               N.M=N.M,N.recruit.M=N.recruit.M,N.survive.M=N.survive.M,
               N.F=N.F,N.recruit.F=N.recruit.F,N.survive.F=N.survive.F,
-              X=X,K=K,n.primary=n.primary,
+              X=X,K=K,n.primary=n.primary,tau=tau,
               xlim=xlim,ylim=ylim,truth=truth))
 }

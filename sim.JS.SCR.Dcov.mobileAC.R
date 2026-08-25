@@ -7,7 +7,7 @@ e2dist <- function (x, y){
 sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
                             gamma=NA,n.primary=NA,beta0.phi=NA,beta1.phi=NA,
                    p0=NA,sigma=NA,sigma.move=NA,rsf.beta=NA,
-                   X=NA,buff=buff,K=NA,xlim=NA,ylim=NA,res=NA){
+                   X=NA,buff=buff,tau=NA,K=NA,xlim=NA,ylim=NA,res=NA){
   #Population dynamics
   N <- rep(NA,n.primary)
   N.recruit <- N.survive <- ER <- rep(NA,n.primary-1)
@@ -16,7 +16,8 @@ sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   lambda.cell <- InSS*exp(D.beta0 + D.beta1*D.cov)*cellArea
   lambda.y1 <- sum(lambda.cell)
   N[1] <- rpois(1,lambda.y1)
-
+  if(N[1]==0)stop("Simulated starting population size of 0")
+  
   #recreate some Dcov things so we can pass fewer arguments into this function
   x.vals <- seq(xlim[1]+res/2,xlim[2]-res/2,res)
   y.vals <- seq(ylim[1]+res/2,ylim[2]-res/2,res)
@@ -33,25 +34,26 @@ sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   phi <- matrix(NA,N[1],n.primary-1)
   for(g in 2:n.primary){
     #Simulate recruits
-    ER[g-1] <- N[g-1]*gamma[g-1]
+    ER[g-1] <- N[g-1]*gamma[g-1]*tau[g-1]
     N.recruit[g-1] <- rpois(1,ER[g-1])
-    #add recruits to z
-    z.dim.old <- length(cov)
-    z <- rbind(z,matrix(0,nrow=N.recruit[g-1],ncol=n.primary))
-    z[(z.dim.old+1):(z.dim.old+N.recruit[g-1]),g] <- 1
-    cov <- c(cov,rep(NA,N.recruit[g-1]))
-    cov[(z.dim.old+1):(z.dim.old+N.recruit[g-1])] <- rnorm(N.recruit[g-1],0,1) #simulate survival cov values for new recruits
-
-    #Simulate survival
-    phi <- rbind(phi,matrix(NA,nrow=N.recruit[g-1],ncol=n.primary-1))
+    if(N.recruit[g-1]>0){
+      #add recruits to z
+      z.dim.old <- length(cov)
+      z <- rbind(z,matrix(0,nrow=N.recruit[g-1],ncol=n.primary))
+      z[(z.dim.old+1):(z.dim.old+N.recruit[g-1]),g] <- 1
+      cov <- c(cov,rep(NA,N.recruit[g-1]))
+      cov[(z.dim.old+1):(z.dim.old+N.recruit[g-1])] <- rnorm(N.recruit[g-1],0,1) #simulate survival cov values for new recruits
+      #Simulate survival
+      phi <- rbind(phi,matrix(NA,nrow=N.recruit[g-1],ncol=n.primary-1))
+    }
     phi[,g-1] <- plogis(beta0.phi+cov*beta1.phi)
-
+    phi.int <- phi[,g-1]^tau[g-1]
     idx <- which(z[,g-1]==1)
-    z[idx,g] <- rbinom(length(idx),1,phi[idx,g-1])
+    z[idx,g] <- rbinom(length(idx),1,phi.int[idx])
     N.survive[g-1] <- sum(z[,g-1]==1&z[,g]==1)
     N[g] <- N.recruit[g-1]+N.survive[g-1]
   }
-
+  
   if(any(N.recruit+N.survive!=N[2:n.primary]))stop("Simulation bug")
   if(any(colSums(z)!=N))stop("Simulation bug")
 
@@ -81,8 +83,9 @@ sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   rsf <- exp(rsf.beta*D.cov)
   rsf[InSS==0] <- 0 #disallow individuals moving into nonhabitat
   for(g in 2:n.primary){
+    sigma.move.int <- sigma.move*sqrt(tau[g-1])
     for(i in 1:N.super){
-      avail.dist[i,g-1,] <- getAvail(s=s[i,g-1,1:2],sigma=sigma.move,res=res,x.vals=x.vals,
+      avail.dist[i,g-1,] <- getAvail(s=s[i,g-1,1:2],sigma=sigma.move.int,res=res,x.vals=x.vals,
                                      y.vals=y.vals,n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
       use.dist[i,g-1,] <- rsf*avail.dist[i,g-1,]
       use.dist[i,g-1,] <- use.dist[i,g-1,]/sum(use.dist[i,g-1,])
@@ -92,8 +95,8 @@ sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
       s.xlim <- dSS[s.cell[i,g],1] + c(-res,res)/2
       s.ylim <- dSS[s.cell[i,g],2] + c(-res,res)/2
       #choose new location inside cell
-      s[i,g,1] <- rtruncnorm(1,a=s.xlim[1],b=s.xlim[2],mean=s[i,g-1,1],sd=sigma.move)
-      s[i,g,2] <- rtruncnorm(1,a=s.ylim[1],b=s.ylim[2],mean=s[i,g-1,2],sd=sigma.move)
+      s[i,g,1] <- rtruncnorm(1,a=s.xlim[1],b=s.xlim[2],mean=s[i,g-1,1],sd=sigma.move.int)
+      s[i,g,2] <- rtruncnorm(1,a=s.ylim[1],b=s.ylim[2],mean=s[i,g-1,2],sd=sigma.move.int)
     }
   }
   pd <- y <- array(0,dim=c(N.super,n.primary,J.max))
@@ -126,7 +129,7 @@ sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   cov <- cov[keep.idx]
   s <- s[keep.idx,,]
   s.cell <- s.cell[keep.idx,]
-  return(list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,X=X,K=K,n.primary=n.primary,
+  return(list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,X=X,K=K,n.primary=n.primary,tau=tau,
               xlim=xlim,ylim=ylim,x.vals=x.vals,y.vals=y.vals,dSS=dSS,cells=cells,
               n.cells=n.cells,n.cells.x=n.cells.x,n.cells.y=n.cells.y,s.cell=s.cell,s=s,
               D.cov=D.cov,InSS=InSS,res=res,cellArea=cellArea,lambda.y1=lambda.y1,

@@ -1,5 +1,5 @@
 sim.JS <- function(lambda.y1=NA,gamma=NA,beta0.phi=NA,beta1.phi=NA,
-                   p=NA,n.primary=NA,K=NA){
+                   p=NA,n.primary=NA,tau=NA,K=NA){
   #Population dynamics
   N <- rep(NA,n.primary)
   N.recruit <- N.survive <- ER <- rep(NA,n.primary-1)
@@ -13,7 +13,7 @@ sim.JS <- function(lambda.y1=NA,gamma=NA,beta0.phi=NA,beta1.phi=NA,
   phi <- matrix(NA,N[1],n.primary-1)
   for(g in 2:n.primary){
     #Simulate recruits
-    ER[g-1] <- N[g-1]*gamma[g-1]
+    ER[g-1] <- N[g-1]*gamma[g-1]*tau[g-1]
     N.recruit[g-1] <- rpois(1,ER[g-1])
     if(N.recruit[g-1]>0){
       #add recruits to z
@@ -26,8 +26,9 @@ sim.JS <- function(lambda.y1=NA,gamma=NA,beta0.phi=NA,beta1.phi=NA,
       phi <- rbind(phi,matrix(NA,nrow=N.recruit[g-1],ncol=n.primary-1))
     }
     phi[,g-1] <- plogis(beta0.phi+cov*beta1.phi)
+    phi.int <- phi[,g-1]^tau[g-1]
     idx <- which(z[,g-1]==1)
-    z[idx,g] <- rbinom(length(idx),1,phi[idx,g-1])
+    z[idx,g] <- rbinom(length(idx),1,phi.int[idx])
     N.survive[g-1] <- sum(z[,g-1]==1&z[,g]==1)
     N[g] <- N.recruit[g-1]+N.survive[g-1]
   }
@@ -36,7 +37,7 @@ sim.JS <- function(lambda.y1=NA,gamma=NA,beta0.phi=NA,beta1.phi=NA,
   if(any(colSums(z)!=N))stop("Simulation bug")
   
   #plot to see if sim values realistic
-  hist(phi,main="Distribution of Individual Phi")
+  hist(phi,main="Distribution of Individual Phi (before time interval correction)")
   
   #detection
   y <- z*0
@@ -51,5 +52,6 @@ sim.JS <- function(lambda.y1=NA,gamma=NA,beta0.phi=NA,beta1.phi=NA,
   keep.idx <- which(rowSums(y)>0)
   y <- y[keep.idx,]
   cov <- cov[keep.idx]
-  return(list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,truth=truth,n.primary=n.primary,K=K))
+  return(list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,truth=truth,
+              n.primary=n.primary,tau=tau,K=K))
 }

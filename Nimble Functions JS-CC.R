@@ -11,6 +11,7 @@ zSampler <- nimbleFunction(
   setup = function(model,mvSaved,target,control){
     M <- control$M
     K <- control$K
+    tau <- control$tau
     n.primary <- control$n.primary
     calcNodes <- model$getDependencies(target)
   },
@@ -92,7 +93,7 @@ zSampler <- nimbleFunction(
         }else{
           A.cand <- A.raw.cand
         }
-        r.cand <- N.minus[g]*model$gamma[g]/A.cand
+        r.cand <- N.minus[g]*model$gamma[g]*tau[g]/A.cand
         if(r.cand > 0.999){
           r.cand <- 0.999
         }
@@ -116,7 +117,7 @@ zSampler <- nimbleFunction(
         }else{
           A.cand <- A.raw.cand
         }
-        r.cand <- (N.minus[g]+1)*model$gamma[g]/A.cand
+        r.cand <- (N.minus[g]+1)*model$gamma[g]*tau[g]/A.cand
         if(r.cand > 0.999){
           r.cand <- 0.999
         }
@@ -133,7 +134,7 @@ zSampler <- nimbleFunction(
         }
         logH.A[g] <- lp
         #D: focal individual has entered previously and is dead
-        r.cand <- N.minus[g]*model$gamma[g]/A.cand
+        r.cand <- N.minus[g]*model$gamma[g]*tau[g]/A.cand
         if(r.cand > 0.999){
           r.cand <- 0.999
         }
@@ -158,8 +159,8 @@ zSampler <- nimbleFunction(
       for(k in 1:(n.primary-1)){
         g <- n.primary-k
         logV.D[g] <- logH.D[g] + log.y.abs[g+1] + logV.D[g+1]
-        x1 <- log(model$phi[i]) + log.y.alive[g+1] + logV.A[g+1]
-        x2 <- log(1-model$phi[i]) + log.y.abs[g+1] + logV.D[g+1]
+        x1 <- log(model$phi[i]^tau[g]) + log.y.alive[g+1] + logV.A[g+1]
+        x2 <- log(1-model$phi[i]^tau[g]) + log.y.abs[g+1] + logV.D[g+1]
         if(x1 > x2){
           maxlp <- x1
         }else{
@@ -182,7 +183,7 @@ zSampler <- nimbleFunction(
         if(first.det > 1){
           for(k in 1:(first.det-1)){
             g <- first.det-k
-            logAliveToFirst[g] <- logH.A[g] + log(model$phi[i]) +
+            logAliveToFirst[g] <- logH.A[g] + log(model$phi[i]^tau[g]) +
               log.y.alive[g+1] + logAliveToFirst[g+1]
           }
         }
@@ -218,8 +219,8 @@ zSampler <- nimbleFunction(
         if(last.det < n.primary){
           for(g in last.det:(n.primary-1)){
             if(alive == 1){
-              x1 <- log(model$phi[i]) + log.y.alive[g+1] + logV.A[g+1]
-              x2 <- log(1-model$phi[i]) + log.y.abs[g+1] + logV.D[g+1]
+              x1 <- log(model$phi[i]^tau[g]) + log.y.alive[g+1] + logV.A[g+1]
+              x2 <- log(1-model$phi[i]^tau[g]) + log.y.abs[g+1] + logV.D[g+1]
               if(x1 > x2){
                 maxlp <- x1
               }else{
@@ -271,8 +272,8 @@ zSampler <- nimbleFunction(
           if(entry.new < n.primary){
             for(g in entry.new:(n.primary-1)){
               if(alive == 1){
-                x1 <- log(model$phi[i]) + log.y.alive[g+1] + logV.A[g+1]
-                x2 <- log(1-model$phi[i]) + log.y.abs[g+1] + logV.D[g+1]
+                x1 <- log(model$phi[i]^tau[g]) + log.y.alive[g+1] + logV.A[g+1]
+                x2 <- log(1-model$phi[i]^tau[g]) + log.y.abs[g+1] + logV.D[g+1]
                 if(x1 > x2){
                   maxlp <- x1
                 }else{
@@ -324,6 +325,7 @@ gammaCCSampler <- nimbleFunction(
   contains = sampler_BASE,
   setup = function(model,mvSaved,target,control){
     M <- control$M
+    tau <- control$tau
     g <- as.integer(gsub("[^0-9]","",target))
     calcNodes <- model$getDependencies(target)
     upper <- model$getBound(target,"upper")
@@ -334,7 +336,8 @@ gammaCCSampler <- nimbleFunction(
     if(trials>0){
       B <- model$B[g]
       F <- trials-B
-      c <- model$N[g]/trials
+      # gamma.prime = gamma[g] * N[g] * tau[g] / trials
+      c <- model$N[g]*tau[g]/trials
       if(c>0){
         shape1 <- B+1
         shape2 <- F+1
@@ -346,7 +349,8 @@ gammaCCSampler <- nimbleFunction(
           model[[target]] <<- q/c
         }else{
           pcap <- pbeta(qcap,shape1=shape1,shape2=shape2)
-          logw1 <- lgamma(shape1)+lgamma(shape2)-lgamma(shape1+shape2)+log(pcap)-log(c)
+          logw1 <- lgamma(shape1)+lgamma(shape2)-lgamma(shape1+shape2)+
+            log(pcap)-log(c)
           logw2 <- log(upper-threshold)+B*log(qcap)+F*log(1-qcap)
           m <- max(logw1,logw2)
           prob1 <- exp(logw1-m)/(exp(logw1-m)+exp(logw2-m))

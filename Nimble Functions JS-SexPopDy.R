@@ -1124,6 +1124,7 @@ truncGammaPoisSampler <- nimbleFunction(
   setup = function(model,mvSaved,target,control){
     calcNodes <- model$getDependencies(target)
     upper <- model$getBound(target,"upper")
+    tau <- control$tau
     n.recruit <- length(model$N.recruit.M)
     sex.ind <- 1
     g <- 1
@@ -1157,7 +1158,7 @@ truncGammaPoisSampler <- nimbleFunction(
         }else{
           count <- count+model$N.recruit.F[j]
         }
-        rate <- rate+model$N[j]
+        rate <- rate+model$N[j]*tau[j]
       }
     }else{
       if(sex.ind==1){
@@ -1165,7 +1166,7 @@ truncGammaPoisSampler <- nimbleFunction(
       }else{
         count <- model$N.recruit.F[g]
       }
-      rate <- model$N[g]
+      rate <- model$N[g]*tau[g]
     }
     if(rate>0){
       shape <- count+1
@@ -1205,41 +1206,6 @@ pGibbsSampler <- nimbleFunction(
             if(!sex.specific | model$sex[i]+1==s){
               success <- success+model$y[i,j]
               failure <- failure+K[j]-model$y[i,j]
-            }
-          }
-        }
-      }
-    }
-    model[[target]] <<- rbeta(1,shape1+success,shape2+failure)
-    model$calculate(calcNodes)
-    copy(from=model,to=mvSaved,row=1,nodes=calcNodes,logProb=TRUE)
-  },
-  methods=list(reset=function(){})
-)
-
-phiGibbsSampler <- nimbleFunction(
-  contains=sampler_BASE,
-  setup=function(model,mvSaved,target,control){
-    calcNodes <- model$getDependencies(target)
-    M <- control$M
-    n.primary <- control$n.primary
-    sex.specific <- control$sex.specific
-    occasion.specific <- control$occasion.specific
-    shape1 <- model$getParam(target,"shape1")
-    shape2 <- model$getParam(target,"shape2")
-    s <- control$s
-    g <- control$g
-  },
-  run=function(){
-    success <- 0
-    failure <- 0
-    for(j in 1:(n.primary-1)){
-      if(!occasion.specific | j==g){
-        for(i in 1:M){
-          if(model$z.super[i]==1 & (!sex.specific | model$sex[i]+1==s)){
-            if(model$z.start[i]<=j & model$z.stop[i]>=j){
-              success <- success+model$z[i,j+1]
-              failure <- failure+1-model$z[i,j+1]
             }
           }
         }

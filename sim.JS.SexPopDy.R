@@ -6,7 +6,7 @@ e2dist = function (x, y){
 
 sim.JS.SexPopDy <- function(lambda.y1.M=NA,lambda.y1.F=NA,
                             n.primary=NA,gamma.sex=NA,phi.sex=NA,
-                   p.sex=NA,K=NA,p.obs.sex=NA){
+                   p.sex=NA,K=NA,tau=NA,p.obs.sex=NA){
   
   #Population dynamics
   N <- N.M <- N.F <- rep(NA,n.primary)
@@ -25,8 +25,8 @@ sim.JS.SexPopDy <- function(lambda.y1.M=NA,lambda.y1.F=NA,
   phi <- matrix(NA,N[1],n.primary-1)
   for(g in 2:n.primary){
     #Simulate recruits
-    ER.M[g-1] <- N[g-1]*gamma.sex[1]
-    ER.F[g-1] <- N[g-1]*gamma.sex[2]
+    ER.M[g-1] <- N[g-1]*gamma.sex[1]*tau[g-1]
+    ER.F[g-1] <- N[g-1]*gamma.sex[2]*tau[g-1]
     N.recruit.M[g-1] <- rpois(1,ER.M[g-1])
     N.recruit.F[g-1] <- rpois(1,ER.F[g-1])
     if((N.recruit.M[g-1]+N.recruit.F[g-1])>0){
@@ -36,14 +36,13 @@ sim.JS.SexPopDy <- function(lambda.y1.M=NA,lambda.y1.F=NA,
       z[(z.dim.old+1):(z.dim.old+N.recruit.M[g-1]+N.recruit.F[g-1]),g] <- 1
       #record sexes
       sex <- c(sex,rep(1,N.recruit.M[g-1]),rep(2,N.recruit.F[g-1]))
-      
       #Simulate survival
       phi <- rbind(phi,matrix(NA,nrow=N.recruit.M[g-1]+N.recruit.F[g-1],ncol=n.primary-1))
     }
     phi[,g-1] <- phi.sex[sex]
-    
+    phi.int <- phi[,g-1]^tau[g-1]
     idx <- which(z[,g-1]==1)
-    z[idx,g] <- rbinom(length(idx),1,phi[idx,g-1])
+    z[idx,g] <- rbinom(length(idx),1,phi.int[idx])
     N.survive.M[g-1] <- sum(z[,g-1]==1&z[,g]==1&sex==1)
     N.survive.F[g-1] <- sum(z[,g-1]==1&z[,g]==1&sex==2)
     N.M[g] <- N.recruit.M[g-1]+N.survive.M[g-1]
@@ -87,5 +86,5 @@ sim.JS.SexPopDy <- function(lambda.y1.M=NA,lambda.y1.F=NA,
               N=N,N.recruit=N.recruit,N.survive=N.survive,
               N.M=N.M,N.recruit.M=N.recruit.M,N.survive.M=N.survive.M,
               N.F=N.F,N.recruit.F=N.recruit.F,N.survive.F=N.survive.F,
-              n.primary=n.primary,K=K,truth=truth))
+              n.primary=n.primary,tau=tau,K=K,truth=truth))
 }

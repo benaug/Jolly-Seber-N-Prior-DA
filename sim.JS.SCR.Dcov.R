@@ -6,7 +6,7 @@ e2dist <- function (x, y){
 
 sim.JS.SCR.Dcov <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
                             gamma=NA,n.primary=NA,beta0.phi=NA,beta1.phi=NA,
-                   p0=NA,sigma=NA,X=NA,buff=buff,K=NA,xlim=NA,ylim=NA,res=NA){
+                   p0=NA,sigma=NA,X=NA,buff=buff,tau=NA,K=NA,xlim=NA,ylim=NA,res=NA){
   #Population dynamics
   N <- rep(NA,n.primary)
   N.recruit <- N.survive <- ER <- rep(NA,n.primary-1)
@@ -33,7 +33,7 @@ sim.JS.SCR.Dcov <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   phi <- matrix(NA,N[1],n.primary-1)
   for(g in 2:n.primary){
     #Simulate recruits
-    ER[g-1] <- N[g-1]*gamma[g-1]
+    ER[g-1] <- N[g-1]*gamma[g-1]*tau[g-1]
     N.recruit[g-1] <- rpois(1,ER[g-1])
     if(N.recruit[g-1]>0){
       #add recruits to z
@@ -46,9 +46,9 @@ sim.JS.SCR.Dcov <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
       phi <- rbind(phi,matrix(NA,nrow=N.recruit[g-1],ncol=n.primary-1))
     }
     phi[,g-1] <- plogis(beta0.phi+cov*beta1.phi)
-
+    phi.int <- phi[,g-1]^tau[g-1]
     idx <- which(z[,g-1]==1)
-    z[idx,g] <- rbinom(length(idx),1,phi[idx,g-1])
+    z[idx,g] <- rbinom(length(idx),1,phi.int[idx])
     N.survive[g-1] <- sum(z[,g-1]==1&z[,g]==1)
     N[g] <- N.recruit[g-1]+N.survive[g-1]
   }
@@ -98,7 +98,7 @@ sim.JS.SCR.Dcov <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   cov <- cov[keep.idx]
   s <- s[keep.idx,]
   s.cell <- s.cell[keep.idx]
-  return(list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,X=X,K=K,n.primary=n.primary,
+  return(list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,X=X,K=K,n.primary=n.primary,tau=tau,
               xlim=xlim,ylim=ylim,x.vals=x.vals,y.vals=y.vals,dSS=dSS,cells=cells,
               n.cells=n.cells,n.cells.x=n.cells.x,n.cells.y=n.cells.y,s.cell=s.cell,s=s,
               D.cov=D.cov,InSS=InSS,res=res,cellArea=cellArea,N=N,lambda.y1=lambda.y1,

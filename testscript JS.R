@@ -17,13 +17,14 @@ source("Nimble Functions JS.R") #contains custom distributions and updates
 n.primary <- 6 #number of primary occasions
 lambda.y1 <- 100 #expected N in primary occasion 1
 gamma <- rep(0.2,n.primary-1) #per-capita recruitment by primary occasion
+tau <- rep(1,n.primary-1) #duration of each primary-occasion interval
 beta0.phi <- qlogis(0.85) #survival intercept
 beta1.phi <- 0.5 #phi response to individual covariate
 p <- rep(0.15,n.primary) #detection probabilities by primary occasion
 K <- rep(10,n.primary) #sampling occasions by primary occasion
 
 set.seed(239023)
-data <- sim.JS(lambda.y1=lambda.y1,gamma=gamma,
+data <- sim.JS(lambda.y1=lambda.y1,gamma=gamma,tau=tau,
             beta0.phi=beta0.phi,beta1.phi=beta1.phi,
             p=p,n.primary=n.primary,K=K)
 
@@ -66,7 +67,7 @@ for(g in 2:n.primary){
 phi.cov.data <- c(data$cov,rep(NA,M-length(data$cov)))
 cov.up <- which(is.na(phi.cov.data)) #which individuals have missing cov values, used below to help nimble assign samplers
 #constants for Nimble
-constants <- list(n.primary=n.primary, K=K, M=M)
+constants <- list(n.primary=n.primary,tau=data$tau,K=K,M=M)
 
 #inits for Nimble
 Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
@@ -113,16 +114,16 @@ conf$addSampler(target = c("z"),
 #Typically gives you much greater ESS that propagates to N/N.recruit
 #Note: if you add time scaling to model file, need to include that in custom update
 conf$removeSamplers("lambda.y1")
-conf$addSampler(target="lambda.y1",type=truncGammaPoisSampler)
+conf$addSampler(target="lambda.y1",type=truncGammaPoisSampler,control=list(tau=data$tau))#add tau here to make nimble happy
 #if one gamma per primary occasion
 for(g in 1:(n.primary-1)){
   target <- paste0("gamma[",g,"]")
   conf$removeSamplers(target)
-  conf$addSampler(target=target,type=truncGammaPoisSampler)
+  conf$addSampler(target=target,type=truncGammaPoisSampler,control=list(tau=data$tau))
 }
 # #if gamma is fixed
 # conf$removeSamplers("gamma")
-# conf$addSampler(target="gamma",type=truncGammaPoisSampler)
+# conf$addSampler(target="gamma",type=truncGammaPoisSampler,control=list(tau = tau))
 
 #optional but recommended, can add full conditionals for p that nimble does not recognize due to custom distribution
 #must keep beta prior for p

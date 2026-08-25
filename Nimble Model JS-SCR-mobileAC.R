@@ -9,12 +9,11 @@ NimModel <- nimbleCode({
   }
   N.super <- N[1] + sum(N.recruit[1:(n.primary-1)]) #size of superpopulation
   
-  #Recruitment
   gamma ~ dunif(0,2) #fixed recruitment parameter
   for(g in 1:(n.primary-1)){
-    ER[g] <- N[g]*gamma #expected recruits, if gamma fixed
     # gamma[g] ~ dunif(0,2) #recruitment priors by primary occasion
-    # ER[g] <- N[g]*gamma[g] #expected recruits, if gamma 
+    # ER[g] <- N[g]*gamma[g]*tau[g] #expected recruits, variable gamma
+    ER[g] <- N[g]*gamma*tau[g] #expected recruits, if gamma fixed
     N.recruit[g] ~ dpois(ER[g]) #realized recruits
   }
   
@@ -22,6 +21,9 @@ NimModel <- nimbleCode({
   phi.cov.mu ~ dunif(-10, 10) #phi individual covariate mean prior
   phi.cov.sd ~ T(dt(mu=0, sigma=1, df=7), 0, Inf) #phi individual covariate sd prior
   sigma.move ~ dunif(0,2)
+  for(g in 1:(n.primary-1)){#time scaled sigma move
+    sigma.move.int[g] <- sigma.move*sqrt(tau[g])
+  }
   for(i in 1:M){
     phi.cov[i] ~ dnorm(phi.cov.mu,sd=phi.cov.sd)
     #1st primary occasion ACs
@@ -31,10 +33,10 @@ NimModel <- nimbleCode({
     #all s set to 0 if not in population, z.super[i]=0
     s[i,1,1:2] ~ dunif2D(xlim=xlim[1:2],ylim=ylim[1:2],z.super=z.super[i])
     for(g in 2:n.primary){
-      # s[i,g,1] ~ T(dnorm(s[i,g-1,1],sd=sigma.move),xlim[1],xlim[2])
-      # s[i,g,2] ~ T(dnorm(s[i,g-1,2],sd=sigma.move),ylim[1],ylim[2])
+      # s[i,g,1] ~ T(dnorm(s[i,g-1,1],sd=sigma.move.int[g-1]),xlim[1],xlim[2])
+      # s[i,g,2] ~ T(dnorm(s[i,g-1,2],sd=sigma.move.int[g-1]),ylim[1],ylim[2])
       #same as above, but vectorized and gated by z.super
-      s[i,g,1:2] ~ dTruncNorm(s.prev=s[i,g-1,1:2],sigma.move=sigma.move, 
+      s[i,g,1:2] ~ dTruncNorm(s.prev=s[i,g-1,1:2],sigma.move=sigma.move.int[g-1], 
                                        xlim=xlim[1:2],ylim=ylim[1:2],
                                        z.super=z.super[i])
     }
@@ -45,8 +47,11 @@ NimModel <- nimbleCode({
   beta0.phi ~ dlogis(0,1)
   beta1.phi ~ dnorm(0, sd=10) #individual covariate effect on survival
   for(i in 1:M){
+    #unit-time individual survival probability
+    logit(phi.unit[i]) <- beta0.phi + beta1.phi*phi.cov[i]
+    #survival over each actual interval
     for(g in 1:(n.primary-1)){#plugging same individual phi's into each primary occasion for custom update
-      logit(phi[i,g]) <- beta0.phi + beta1.phi*phi.cov[i] #individual by primary occasion survival
+      phi[i,g] <- phi.unit[i]^tau[g]
     }
     #survival likelihood (bernoulli) that only sums from z.start to z.stop
     z[i,1:n.primary] ~ dSurvival(phi=phi[i,1:(n.primary-1)],z.start=z.start[i],z.stop=z.stop[i],z.super=z.super[i])

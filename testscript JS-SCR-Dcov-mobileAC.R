@@ -16,6 +16,7 @@ nimbleOptions(determinePredictiveNodesInModel = FALSE)
 
 n.primary <- 5 #number of primary occasions
 gamma <- rep(0.2,n.primary-1) #per-capita recruitment by primary occasion
+tau <- rep(1,n.primary-1) #duration of each primary-occasion interval
 beta0.phi <- qlogis(0.85) #survival intercept
 beta1.phi <- 0.5 #phi response to individual covariate
 p0 <- rep(0.1,n.primary) #detection probabilities at activity center by primary occasion
@@ -99,7 +100,7 @@ sum(lambda.cell) #expected N in state space
 
 #simulate some data
 data <- sim.JS.SCR.Dcov.mobileAC(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,InSS=InSS,
-            gamma=gamma,n.primary=n.primary,beta0.phi=beta0.phi,beta1.phi=beta1.phi,
+            gamma=gamma,n.primary=n.primary,tau=tau,beta0.phi=beta0.phi,beta1.phi=beta1.phi,
             p0=p0,sigma=sigma,sigma.move=sigma.move,rsf.beta=rsf.beta,
             X=X,K=K,xlim=xlim,ylim=ylim,res=res)
 
@@ -252,7 +253,7 @@ rsf.beta.init <- 0
 D.beta1.init <- 0
 s.init <- initialize.s.hab(sigma.move.init=sigma.move.init,rsf.beta.init=rsf.beta.init,
                             z.super.init=z.super.init,D.beta1.init=D.beta1.init,
-                            y=y.nim,X=X.nim,xlim=xlim,ylim=ylim,dSS=dSS,
+                            y=y.nim,X=X.nim,xlim=xlim,ylim=ylim,dSS=dSS,tau=data$tau,
                             cells=cells,res=res,D.cov=D.cov,InSS=InSS,x.vals=x.vals,y.vals=y.vals)
 
 #can verify all s start inside habitat mask
@@ -262,7 +263,7 @@ points(s.init[,,1],s.init[,,2],pch=16)
 
 #constants for Nimble
 #might want to center D.cov here. Simulated D.cov in this testscript is already effectively centered.
-constants <- list(n.primary=n.primary,M=M,J=J,K1D=K1D,D.cov=D.cov,
+constants <- list(n.primary=n.primary,tau=data$tau,M=M,J=J,K1D=K1D,D.cov=D.cov,
                   n.cells=n.cells,n.cells.x=n.cells.x,
                   n.cells.y=n.cells.y,res=res,
                   x.vals=x.vals,y.vals=y.vals,
@@ -351,11 +352,11 @@ for(i in 1:M){
 # for(g in 1:(n.primary-1)){
 #   target <- paste0("gamma[",g,"]")
 #   conf$removeSamplers(target)
-#   conf$addSampler(target=target,type=truncGammaPoisSampler)
+#   conf$addSampler(target=target,type=truncGammaPoisSampler,control=list(tau=data$tau))
 # }
-# #if gamma is fixed
+#if gamma is fixed
 conf$removeSamplers("gamma")
-conf$addSampler(target="gamma",type=truncGammaPoisSampler)
+conf$addSampler(target="gamma",type=truncGammaPoisSampler,control=list(tau = tau))
 
 #optional (but recommended!) blocking 
 conf$addSampler(target = c("beta0.phi","beta1.phi"),type = 'RW_block',

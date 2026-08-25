@@ -7,13 +7,14 @@ source("Nimble Model JS-CC.R")
 source("Nimble Functions JS-CC.R")
 
 n.primary <- 4 #number of primary occasions
-M <- 200 #data simulator simulates from Chandler-Clark model with M as a parameter
-psi <- 0.4 #expected N in primary occasion 1 is M*psi
+M <- 300 #data simulator simulates from Chandler-Clark model with M as a parameter
+psi <- 0.25 #expected N in primary occasion 1 is M*psi
 #model file currently set up with fixed gamma, so don't vary them in simulation 
 #without updating model file and inits bel0ow
 gamma <- rep(0.2,n.primary-1) #per-capita recruitment by primary occasion
 beta0.phi <- qlogis(0.85) #survival intercept
 beta1.phi <- 0.5
+tau <- rep(1,n.primary-1) #duration of each primary-occasion interval
 p <- rep(0.2,n.primary) #detection probability by primary occasion
 K <- rep(10,n.primary) #sampling occasions by primary occasion
 
@@ -32,7 +33,7 @@ M*psi #expected N[1]
 #posterior variance of recruitment when gamma and abundance are estimated.
 #Larger M reduces gamma.prime and makes the conditional recruitment distribution
 #closer to Poisson, but may reduce computational efficiency.
-data <- sim.JS.CC(psi=psi,gamma=gamma,
+data <- sim.JS.CC(psi=psi,gamma=gamma,tau=tau,
             beta0.phi=beta0.phi,beta1.phi=beta1.phi,
             p=p,n.primary=n.primary,K=K,M=M)
 
@@ -68,7 +69,7 @@ phi.cov.data <- rep(NA,M)
 phi.cov.data[1:n.det] <- data$phi.cov
 
 #constants for Nimble
-constants <- list(n.primary=n.primary,K=K,M=M)
+constants <- list(n.primary=n.primary,K=K,M=M,tau=data$tau)
 
 #inits for Nimble
 Niminits <- list(z=z.init,psi=sum(z.init[,1])/M,beta0.phi=0,beta1.phi=0,
@@ -93,16 +94,17 @@ conf <- configureMCMC(Rmodel,monitors=parameters,thin=nt,
 z.nodes <- grep("^z\\[",Rmodel$getNodeNames(stochOnly=TRUE),value=TRUE)
 conf$removeSamplers(z.nodes)
 conf$addSampler(target=z.nodes,type=zSampler,
-                control=list(M=M,K=K,n.primary=n.primary))
+                control=list(M=M,K=K,n.primary=n.primary,tau=tau))
 
 #if gamma varies by occasion, can remove nimble-assigned RW samplers (nimble model currently has gamma fixed)
 #and replace with full conditionals. If gamma is fixed, this requires rejection sampling
-#which may not be more efficient. Didn't create one.
-#Note: if you add time scaling to model file, need to include that in custom update
+# which may not be more efficient. Didn't create one.
+# Note: if you add time scaling to model file, need to include that in custom update
 # for(g in 1:(n.primary-1)){
 #   target <- paste0("gamma[",g,"]")
 #   conf$removeSamplers(target)
-#   conf$addSampler(target=target,type=gammaCCSampler,control=list(M=M,n.primary=n.primary,qcap=0.999))
+#   conf$addSampler(target=target,type=gammaCCSampler,control=list(M=M,n.primary=n.primary,
+#                                                                  tau=data$tau,qcap=0.999))
 # }
 
 # Build and compile

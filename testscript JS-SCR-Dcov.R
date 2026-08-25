@@ -29,6 +29,7 @@ nimbleOptions(determinePredictiveNodesInModel = FALSE)
 
 n.primary <- 4 #number of primary occasions
 gamma <- rep(0.2,n.primary-1) #per-capita recruitment by primary occasion
+tau <- rep(1,n.primary-1) #duration of each primary-occasion interval
 beta0.phi <- qlogis(0.85) #survival intercept
 beta1.phi <- 0.5 #phi response to individual covariate
 p0 <- rep(0.1,n.primary) #detection probabilities at activity center by primary occasion
@@ -108,7 +109,7 @@ sum(lambda.cell) #expected N in state space
 
 #simulate some data
 data <- sim.JS.SCR.Dcov(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,InSS=InSS,
-            gamma=gamma,n.primary=n.primary,beta0.phi=beta0.phi,beta1.phi=beta1.phi,
+            gamma=gamma,n.primary=n.primary,tau=tau,beta0.phi=beta0.phi,beta1.phi=beta1.phi,
             p0=p0,sigma=sigma,X=X,K=K,xlim=xlim,ylim=ylim,res=res)
 
 #visualize realized activity centers
@@ -230,7 +231,7 @@ for(i in 1:M){
 
 #constants for Nimble
 #might want to center D.cov here. Simulated D.cov in this testscript is already effectively centered.
-constants <- list(n.primary=n.primary, M=M, J=J, xlim=xlim, ylim=ylim, K1D=K1D,
+constants <- list(n.primary=n.primary,tau=data$tau,M=M,J=J,xlim=xlim,ylim=ylim,K1D=K1D,
                   D.cov=D.cov,cellArea=cellArea,n.cells=n.cells,
                   res=res)
 #inits for Nimble
@@ -302,11 +303,11 @@ for(i in 1:M){
 for(g in 1:(n.primary-1)){
   target <- paste0("gamma[",g,"]")
   conf$removeSamplers(target)
-  conf$addSampler(target=target,type=truncGammaPoisSampler)
+  conf$addSampler(target=target,type=truncGammaPoisSampler,control=list(tau=data$tau))
 }
 # #if gamma is fixed
 # conf$removeSamplers("gamma")
-# conf$addSampler(target="gamma",type=truncGammaPoisSampler)
+# conf$addSampler(target="gamma",type=truncGammaPoisSampler,control=list(tau=data$tau))
 
 #optional (but recommended!) blocking 
 # conf$removeSampler(c("beta0.phi"))

@@ -6,12 +6,12 @@ e2dist <- function (x, y){
 
 sim.JS.SCR <- function(lambda.y1=NA,gamma=NA,n.primary=NA,
                        beta0.phi=NA,beta1.phi=NA,
-                   p0=NA,sigma=NA,X=NA,buff=buff,K=NA,sigma.move=NULL){
+                   p0=NA,sigma=NA,X=NA,buff=buff,tau=NA,K=NA,sigma.move=NULL){
   #Population dynamics
   N <- rep(NA,n.primary)
   N.recruit <- N.survive <- ER <- rep(NA,n.primary-1)
   N[1] <- rpois(1,lambda.y1)
-  if(N[1]==0)stop("Simulated starting male population size of 0")
+  if(N[1]==0)stop("Simulated starting population size of 0")
   
   #Easiest to increase dimension of z as we simulate bc size not known in advance.
   z <- matrix(0,N[1],n.primary)
@@ -20,7 +20,7 @@ sim.JS.SCR <- function(lambda.y1=NA,gamma=NA,n.primary=NA,
   phi <- matrix(NA,N[1],n.primary-1)
   for(g in 2:n.primary){
     #Simulate recruits
-    ER[g-1] <- N[g-1]*gamma[g-1]
+    ER[g-1] <- N[g-1]*gamma[g-1]*tau[g-1]
     N.recruit[g-1] <- rpois(1,ER[g-1])
     if(N.recruit[g-1]>0){
       #add recruits to z
@@ -29,14 +29,13 @@ sim.JS.SCR <- function(lambda.y1=NA,gamma=NA,n.primary=NA,
       z[(z.dim.old+1):(z.dim.old+N.recruit[g-1]),g]=1
       cov <- c(cov,rep(NA,N.recruit[g-1]))
       cov[(z.dim.old+1):(z.dim.old+N.recruit[g-1])] <- rnorm(N.recruit[g-1],0,1) #simulate survival cov values for new recruits
-      
       #Simulate survival
       phi <- rbind(phi,matrix(NA,nrow=N.recruit[g-1],ncol=n.primary-1))
     }
     phi[,g-1] <- plogis(beta0.phi+cov*beta1.phi)
-    
+    phi.int <- phi[,g-1]^tau[g-1]
     idx <- which(z[,g-1]==1)
-    z[idx,g] <- rbinom(length(idx),1,phi[idx,g-1])
+    z[idx,g] <- rbinom(length(idx),1,phi.int[idx])
     N.survive[g-1] <- sum(z[,g-1]==1&z[,g]==1)
     N[g] <- N.recruit[g-1]+N.survive[g-1]
   }
@@ -56,7 +55,7 @@ sim.JS.SCR <- function(lambda.y1=NA,gamma=NA,n.primary=NA,
   J  <-  unlist(lapply(X,nrow)) #extract number of traps per primary session
   J.max <- max(J)
   
-  #simulate activity centers - fixed through time
+  #simulate activity centers
   N.super <- nrow(z)
   library(truncnorm)
   if(!is.null(sigma.move)){
@@ -64,8 +63,9 @@ sim.JS.SCR <- function(lambda.y1=NA,gamma=NA,n.primary=NA,
     s <- array(NA,dim=c(N.super,n.primary,2))
     s[,1,] <- cbind(runif(N.super, xlim[1],xlim[2]), runif(N.super,ylim[1],ylim[2]))
     for(g in 2:n.primary){
-      s[,g,1] <- rtruncnorm(N.super,s[,g-1,1],sd=sigma.move,a=xlim[1],b=xlim[2])
-      s[,g,2] <- rtruncnorm(N.super,s[,g-1,2],sd=sigma.move,a=ylim[1],b=ylim[2])
+      sigma.move.int <- sigma.move*sqrt(tau[g-1])
+      s[,g,1] <- rtruncnorm(N.super,mean=s[,g-1,1],sd=sigma.move.int,a=xlim[1],b=xlim[2])
+      s[,g,2] <- rtruncnorm(N.super,mean=s[,g-1,2],sd=sigma.move.int,a=ylim[1],b=ylim[2])
     }
   }else{
     print("simulating fixed ACs (provide sigma.move for mobile)")
@@ -99,6 +99,7 @@ sim.JS.SCR <- function(lambda.y1=NA,gamma=NA,n.primary=NA,
   }else{
     s <- s[keep.idx,]
   }
-  return(list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,X=X,K=K,n.primary=n.primary,s=s,
+  return(list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,X=X,K=K,
+              n.primary=n.primary,tau=tau,s=s,
               xlim=xlim,ylim=ylim,truth=truth))
 }

@@ -21,12 +21,11 @@ NimModel <- nimbleCode({
   }
   N.super <- N[1] + sum(N.recruit[1:(n.primary-1)]) #size of superpopulation
   
-  #Recruitment
   gamma ~ dunif(0,2) #fixed recruitment parameter
   for(g in 1:(n.primary-1)){
-    ER[g] <- N[g]*gamma #expected recruits, if gamma fixed
     # gamma[g] ~ dunif(0,2) #recruitment priors by primary occasion
-    # ER[g] <- N[g]*gamma[g] #expected recruits, if gamma 
+    # ER[g] <- N[g]*gamma[g]*tau[g] #expected recruits, variable gamma
+    ER[g] <- N[g]*gamma*tau[g] #expected recruits, if gamma fixed
     N.recruit[g] ~ dpois(ER[g]) #realized recruits
   }
   
@@ -36,6 +35,9 @@ NimModel <- nimbleCode({
   #RSF coefficient for activity center relocation
   rsf.beta ~ dnorm(0,sd=10)
   sigma.move ~ dunif(0,100) #activity center relocation spatial scale parameter (BVN sd)
+  for(g in 1:(n.primary-1)){#time scaled sigma move
+    sigma.move.int[g] <- sigma.move*sqrt(tau[g])
+  }
   #Resource selection function evaluated across all cells for activity center relocation
   rsf[1:n.cells] <- InSS[1:n.cells]*exp(rsf.beta*D.cov[1:n.cells])
   for(i in 1:M){
@@ -46,13 +48,13 @@ NimModel <- nimbleCode({
     #subsequent primary occasion activity center - movement with resource selection
     for(g in 2:n.primary){
       #all avail.dist, use.dist, and s set to 0 if not in population, z.super[i]=0
-      avail.dist[i,g-1,1:n.cells] <- getAvail(s=s[i,g-1,1:2],sigma=sigma.move,res=res,
+      avail.dist[i,g-1,1:n.cells] <- getAvail(s=s[i,g-1,1:2],sigma=sigma.move.int[g-1],res=res,
                                               x.vals=x.vals[1:n.cells.x],y.vals=y.vals[1:n.cells.y],
                                               n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=z.super[i])
       use.dist[i,g-1,1:n.cells] <- getUse(rsf=rsf[1:n.cells], avail.dist=avail.dist[i,g-1,1:n.cells],z.super=z.super[i])
       s[i,g,1:2] ~ dHabMove(s.prev=s[i,g-1,1:2],use.dist=use.dist[i,g-1,1:n.cells],
                             dSS=dSS[1:n.cells,1:2],cells=cells[1:n.cells.x,1:n.cells.y],
-                            res=res,sigma.move=sigma.move,z.super=z.super[i])
+                            res=res,sigma.move=sigma.move.int[g-1],z.super=z.super[i])
     }
   }
   
@@ -61,8 +63,11 @@ NimModel <- nimbleCode({
   beta0.phi ~ dlogis(0,1)
   beta1.phi ~ dnorm(0, sd=10) #individual covariate effect on survival
   for(i in 1:M){
+    #unit-time individual survival probability
+    logit(phi.unit[i]) <- beta0.phi + beta1.phi*phi.cov[i]
+    #survival over each actual interval
     for(g in 1:(n.primary-1)){#plugging same individual phi's into each primary occasion for custom update
-      logit(phi[i,g]) <- beta0.phi + beta1.phi*phi.cov[i] #individual by primary occasion survival
+      phi[i,g] <- phi.unit[i]^tau[g]
     }
     #survival likelihood (bernoulli) that only sums from z.start to z.stop
     z[i,1:n.primary] ~ dSurvival(phi=phi[i,1:(n.primary-1)],z.start=z.start[i],z.stop=z.stop[i],z.super=z.super[i])

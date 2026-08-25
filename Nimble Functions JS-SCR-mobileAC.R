@@ -1,8 +1,9 @@
 #function to initialize s consistent with s.move.init
-initialize.s <- function(sigma.move.init=NA,z.super.init=NA,y=NA,X=NA,xlim=NA,ylim=NA){
+initialize.s <- function(sigma.move.init=NA,z.super.init=NA,y=NA,X=NA,xlim=NA,ylim=NA,tau=NA){
   M <- nrow(y)
   n.primary <- dim(y)[2]
   s.init <- array(0, dim=c(M, n.primary, 2))  # initialize all to 0, keep 0 if z.super[i]=0
+  sigma.move.int <- sigma.move.init*sqrt(tau)
   on.inds <- which(z.super.init == 1)
   for(i in on.inds){
     dets <- which(rowSums(matrix(y[i,,],nrow=n.primary))>0)
@@ -18,26 +19,26 @@ initialize.s <- function(sigma.move.init=NA,z.super.init=NA,y=NA,X=NA,xlim=NA,yl
       if(first.det > 1){
         for(g in (first.det-1):1){
           # x coordinate
-          F.a <- pnorm(xlim[1], s.init[i,g+1,1], sigma.move.init)
-          F.b <- pnorm(xlim[2], s.init[i,g+1,1], sigma.move.init)
-          s.init[i,g,1] <- qnorm(runif(1, F.a, F.b), s.init[i,g+1,1], sigma.move.init)
+          F.a <- pnorm(xlim[1], s.init[i,g+1,1], sigma.move.int[g])
+          F.b <- pnorm(xlim[2], s.init[i,g+1,1], sigma.move.int[g])
+          s.init[i,g,1] <- qnorm(runif(1, F.a, F.b), s.init[i,g+1,1], sigma.move.int[g])
           # y coordinate
-          F.a <- pnorm(ylim[1], s.init[i,g+1,2], sigma.move.init)
-          F.b <- pnorm(ylim[2], s.init[i,g+1,2], sigma.move.init)
-          s.init[i,g,2] <- qnorm(runif(1, F.a, F.b), s.init[i,g+1,2], sigma.move.init)
+          F.a <- pnorm(ylim[1], s.init[i,g+1,2], sigma.move.int[g])
+          F.b <- pnorm(ylim[2], s.init[i,g+1,2], sigma.move.int[g])
+          s.init[i,g,2] <- qnorm(runif(1, F.a, F.b), s.init[i,g+1,2], sigma.move.int[g])
         }
       }
       #Simulate forwards from last detection primary occasion
       if(last.det < n.primary){
         for(g in (last.det+1):n.primary){
           # x coordinate
-          F.a <- pnorm(xlim[1], s.init[i,g-1,1], sigma.move.init)
-          F.b <- pnorm(xlim[2], s.init[i,g-1,1], sigma.move.init)
-          s.init[i,g,1] <- qnorm(runif(1, F.a, F.b), s.init[i,g-1,1], sigma.move.init)
+          F.a <- pnorm(xlim[1], s.init[i,g-1,1], sigma.move.int[g-1])
+          F.b <- pnorm(xlim[2], s.init[i,g-1,1], sigma.move.int[g-1])
+          s.init[i,g,1] <- qnorm(runif(1, F.a, F.b), s.init[i,g-1,1], sigma.move.int[g-1])
           # y coordinate
-          F.a <- pnorm(ylim[1], s.init[i,g-1,2], sigma.move.init)
-          F.b <- pnorm(ylim[2], s.init[i,g-1,2], sigma.move.init)
-          s.init[i,g,2] <- qnorm(runif(1, F.a, F.b), s.init[i,g-1,2], sigma.move.init)
+          F.a <- pnorm(ylim[1], s.init[i,g-1,2], sigma.move.int[g-1])
+          F.b <- pnorm(ylim[2], s.init[i,g-1,2], sigma.move.int[g-1])
+          s.init[i,g,2] <- qnorm(runif(1, F.a, F.b), s.init[i,g-1,2], sigma.move.int[g-1])
         }
       }
       #fill in gaps between detections with linear interpolation
@@ -60,13 +61,13 @@ initialize.s <- function(sigma.move.init=NA,z.super.init=NA,y=NA,X=NA,xlim=NA,yl
       s.init[i,1,] <- c(runif(1, xlim[1], xlim[2]), runif(1, ylim[1], ylim[2]))
       for(g in 2:n.primary){
         # x coordinate
-        F.a <- pnorm(xlim[1], s.init[i,g-1,1], sigma.move.init)
-        F.b <- pnorm(xlim[2], s.init[i,g-1,1], sigma.move.init)
-        s.init[i,g,1] <- qnorm(runif(1, F.a, F.b), s.init[i,g-1,1], sigma.move.init)
+        F.a <- pnorm(xlim[1], s.init[i,g-1,1], sigma.move.int[g-1])
+        F.b <- pnorm(xlim[2], s.init[i,g-1,1], sigma.move.int[g-1])
+        s.init[i,g,1] <- qnorm(runif(1, F.a, F.b), s.init[i,g-1,1], sigma.move.int[g-1])
         # y coordinate
-        F.a <- pnorm(ylim[1], s.init[i,g-1,2], sigma.move.init)
-        F.b <- pnorm(ylim[2], s.init[i,g-1,2], sigma.move.init)
-        s.init[i,g,2] <- qnorm(runif(1, F.a, F.b), s.init[i,g-1,2], sigma.move.init)
+        F.a <- pnorm(ylim[1], s.init[i,g-1,2], sigma.move.int[g-1])
+        F.b <- pnorm(ylim[2], s.init[i,g-1,2], sigma.move.int[g-1])
+        s.init[i,g,2] <- qnorm(runif(1, F.a, F.b), s.init[i,g-1,2], sigma.move.int[g-1])
       }
     }
   }
@@ -74,7 +75,7 @@ initialize.s <- function(sigma.move.init=NA,z.super.init=NA,y=NA,X=NA,xlim=NA,yl
   for(i in 1:M){
     if(z.super.init[i]==1){
       for(g in 2:n.primary){
-        logProb[i,g-1] <- dTruncNorm(s.init[i,g,1:2],s.prev=s.init[i,g-1,1:2],sigma.move=sigma.move.init, 
+        logProb[i,g-1] <- dTruncNorm(s.init[i,g,1:2],s.prev=s.init[i,g-1,1:2],sigma.move=sigma.move.int[g-1], 
                                      xlim=xlim[1:2],ylim=ylim[1:2],
                                      z.super=z.super.init[i],log=TRUE)
       }
@@ -1004,7 +1005,7 @@ zSampler <- nimbleFunction(
           ##get subsequent primary occasion logProbs from movement distribution (truncated Normal here)
           #for(g in 2:n.primary){
           #log.prop.back.s <- log.prop.back.s + dTruncNorm(s.curr[g,1:2],s.prev=s.curr[g-1,1:2],
-          #sigma.move=model$sigma.move[1],
+          #sigma.move=model$sigma.move.int[g-1],
           #xlim=xlim, ylim=ylim,z.super=1,log=TRUE)
           #}
           
@@ -1176,10 +1177,10 @@ zSampler <- nimbleFunction(
             #propose subsequent primary occasions from movement prior (truncated Normal here)
             for(g in 2:n.primary){
               model$s[pick,g,1:2] <<- rTruncNorm(1,s.prev=model$s[pick,g-1,1:2],
-                                                 sigma.move=model$sigma.move[1],
+                                                 sigma.move=model$sigma.move.int[g-1],
                                                  xlim=xlim, ylim=ylim,z.super=1)
               #log.prop.for.s <- log.prop.for.s + dTruncNorm(model$s[pick,g,1:2],s.prev=model$s[pick,g-1,1:2],
-              #sigma.move=model$sigma.move[1],
+              #sigma.move=model$sigma.move.int[g-1],
               #xlim=xlim, ylim=ylim,z.super=1,log=TRUE)
             }
             model$calculate(pd.nodes[pick.idx]) #update pd nodes when z and s change
@@ -1294,7 +1295,7 @@ truncGammaPoisSampler <- nimbleFunction(
   setup = function(model,mvSaved,target,control){
     calcNodes <- model$getDependencies(target)
     upper <- model$getBound(target,"upper")
-    
+    tau <- control$tau
     if(target=="lambda.y1"){
       is.lambda <- TRUE
       is.fixed.gamma <- FALSE
@@ -1322,11 +1323,11 @@ truncGammaPoisSampler <- nimbleFunction(
       rate <- 0
       for(j in 1:n.recruit){
         count <- count+model$N.recruit[j]
-        rate <- rate+model$N[j]
+        rate <- rate+model$N[j]*tau[j]
       }
     }else{
       count <- model$N.recruit[g]
-      rate <- model$N[g]
+      rate <- model$N[g]*tau[g]
     }
     if(rate>0){
       shape <- count+1

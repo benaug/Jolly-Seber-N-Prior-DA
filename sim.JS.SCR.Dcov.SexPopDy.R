@@ -8,7 +8,7 @@ sim.JS.SCR.Dcov.SexPopDy <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
                                 xlim=NA,ylim=NA,res=NA,n.primary=NA,
                                 gamma.sex=NA,phi.sex=NA,p.sex=NA,
                                 p0.sex=NA,sigma.sex=NA,X=NA,K=NA,
-                                p.obs.sex=NA){
+                                tau=NA,p.obs.sex=NA){
   #Population dynamics
   N <- N.M <- N.F <- rep(NA,n.primary)
   N.recruit.M <- N.survive.M <- ER.M <- rep(NA,n.primary-1)
@@ -41,8 +41,8 @@ sim.JS.SCR.Dcov.SexPopDy <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   phi <- matrix(NA,N[1],n.primary-1)
   for(g in 2:n.primary){
     #Simulate recruits
-    ER.M[g-1] <- N[g-1]*gamma.sex[1]
-    ER.F[g-1] <- N[g-1]*gamma.sex[2]
+    ER.M[g-1] <- N[g-1]*gamma.sex[1]*tau[g-1]
+    ER.F[g-1] <- N[g-1]*gamma.sex[2]*tau[g-1]
     N.recruit.M[g-1] <- rpois(1,ER.M[g-1])
     N.recruit.F[g-1] <- rpois(1,ER.F[g-1])
     #add recruits to z
@@ -56,9 +56,9 @@ sim.JS.SCR.Dcov.SexPopDy <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
       phi <- rbind(phi,matrix(NA,nrow=N.recruit.M[g-1]+N.recruit.F[g-1],ncol=n.primary-1))
     }
     phi[,g-1] <- phi.sex[sex]
-    
+    phi.int <- phi[,g-1]^tau[g-1]
     idx <- which(z[,g-1]==1)
-    z[idx,g] <- rbinom(length(idx),1,phi[idx,g-1])
+    z[idx,g] <- rbinom(length(idx),1,phi.int[idx])
     N.survive.M[g-1] <- sum(z[,g-1]==1&z[,g]==1&sex==1)
     N.survive.F[g-1] <- sum(z[,g-1]==1&z[,g]==1&sex==2)
     N.M[g] <- N.recruit.M[g-1]+N.survive.M[g-1]
@@ -123,7 +123,7 @@ sim.JS.SCR.Dcov.SexPopDy <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
               N=N,N.recruit=N.recruit,N.survive=N.survive,
               N.M=N.M,N.recruit.M=N.recruit.M,N.survive.M=N.survive.M,
               N.F=N.F,N.recruit.F=N.recruit.F,N.survive.F=N.survive.F,
-              X=X,K=K,n.primary=n.primary,truth=truth,
+              X=X,K=K,n.primary=n.primary,tau=tau,truth=truth,
               xlim=xlim,ylim=ylim,x.vals=x.vals,y.vals=y.vals,dSS=dSS,cells=cells,
               n.cells=n.cells,n.cells.x=n.cells.x,n.cells.y=n.cells.y,s.cell=s.cell,s=s,
               D.cov=D.cov,InSS=InSS,res=res,cellArea=cellArea,lambda.y1.M=lambda.y1.M,

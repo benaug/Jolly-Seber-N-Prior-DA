@@ -25,6 +25,7 @@ lambda.y1.M <- 75 #expected male N in primary occasion 1
 lambda.y1.F <- 75 #expected female N in primary occasion 1
 #per-capita recruitment
 gamma.sex <- c(0.15,0.1) #male, then female, fixed across primary occasions
+tau <- rep(1,n.primary-1) #duration of each primary-occasion interval
 #sex-specific survival
 phi.sex <- c(0.75,0.95) #male, then female, fixed across primary occasions
 #sex-specific p0
@@ -47,9 +48,9 @@ for(g in 1:n.primary){ #using same trapping array every primary occasion here
 }
 
 data <- sim.JS.SCR.SexPopDy(lambda.y1.M=lambda.y1.M,lambda.y1.F=lambda.y1.F,
-                            n.primary=n.primary,gamma.sex=gamma.sex,phi.sex=phi.sex,
-                   p0.sex=p0.sex,sigma.sex=sigma.sex,X=X,buff=buff,K=K,p.obs.sex=p.obs.sex,
-                   sigma.move.sex=sigma.move.sex)
+                            n.primary=n.primary,tau=tau,gamma.sex=gamma.sex,phi.sex=phi.sex,
+                            p0.sex=p0.sex,sigma.sex=sigma.sex,X=X,buff=buff,K=K,p.obs.sex=p.obs.sex,
+                            sigma.move.sex=sigma.move.sex)
 
 data$truth$N.super #N.super
 
@@ -133,11 +134,11 @@ for(g in 1:n.primary){
 
 sigma.move.sex.init <- sigma.move.sex
 #initialize s consistent with sigma.move.sex.init and sex.init
-s.init <- initialize.s(sigma.move.sex.init,sex.init,z.super.init,y=y.nim,X=X.nim,xlim=xlim,ylim=ylim)
+s.init <- initialize.s(sigma.move.sex.init,sex.init,z.super.init,y=y.nim,X=X.nim,xlim=xlim,ylim=ylim,tau=tau)
 
 
 #constants for Nimble
-constants <- list(n.primary=n.primary, M=M, J=J, xlim=xlim, ylim=ylim, K1D=K1D)
+constants <- list(n.primary=n.primary,tau=data$tau,M=M,J=J,xlim=xlim,ylim=ylim,K1D=K1D)
 #inits for Nimble
 Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
                  N.M=N.M.init,N.survive.M=N.survive.M.init,N.recruit.M=N.recruit.M.init,
@@ -165,7 +166,7 @@ start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
 #if you add/remove parameters in model file, do so in config.nodes
 #assign phi samplers below if using one of the 4 options in model file, D0, D.beta1 added below
-config.nodes <- c('gamma.sex','lambda.y1.M','lambda.y1.F','p0.sex','sigma.sex','sigma.move.sex')
+config.nodes <- c('gamma.sex','phi.sex','lambda.y1.M','lambda.y1.F','p0.sex','sigma.sex','sigma.move.sex')
 conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,monitors2=parameters2,
                       nodes=config.nodes,useConjugacy = FALSE)
 
@@ -229,45 +230,6 @@ for(i in 1:M){
   }
 }
 
-#add full conditional updates for phi. if not using any of the 4 options in model file or change the prior, 
-#let nimble configure, these will not be correct.
-#Note: if you add time scaling to model file, need to include that in custom update
-#phi specification: "shared", "occasion", "sex", or "sex.occasion"
-phi.spec <- "sex"
-
-if(phi.spec=="shared"){
-  target <- "phi.sex[1,1]"
-  conf$removeSamplers(target)
-  conf$addSampler(target=target,type=phiGibbsSampler,
-                  control=list(M=M,n.primary=n.primary,sex.specific=FALSE,occasion.specific=FALSE,s=1,g=1))
-}
-if(phi.spec=="occasion"){
-  for(g in 1:(n.primary-1)){
-    target <- paste0("phi.sex[1,",g,"]")
-    conf$removeSamplers(target)
-    conf$addSampler(target=target,type=phiGibbsSampler,
-                    control=list(M=M,n.primary=n.primary,sex.specific=FALSE,occasion.specific=TRUE,s=1,g=g))
-  }
-}
-if(phi.spec=="sex"){
-  for(s in 1:2){
-    target <- paste0("phi.sex[",s,",1]")
-    conf$removeSamplers(target)
-    conf$addSampler(target=target,type=phiGibbsSampler,
-                    control=list(M=M,n.primary=n.primary,sex.specific=TRUE,occasion.specific=FALSE,s=s,g=1))
-  }
-}
-if(phi.spec=="sex.occasion"){
-  for(s in 1:2){
-    for(g in 1:(n.primary-1)){
-      target <- paste0("phi.sex[",s,",",g,"]")
-      conf$removeSamplers(target)
-      conf$addSampler(target=target,type=phiGibbsSampler,
-                      control=list(M=M,n.primary=n.primary,sex.specific=TRUE,occasion.specific=TRUE,s=s,g=g))
-    }
-  }
-}
-
 ##optional truncated gamma poisson conjugate samplers. 
 #I would always use these as long as you keep uniform priors on lambda.y1 and gamma[g]
 #Typically gives you much greater ESS that propagates to N/N.recruit
@@ -280,7 +242,7 @@ targets <- c("lambda.y1.M","lambda.y1.F","gamma.sex[1]","gamma.sex[2]")
 #              paste0("gamma.sex[2,",1:(n.primary-1),"]"))
 for(target in targets){
   conf$removeSamplers(target)
-  conf$addSampler(target=target,type=truncGammaPoisSampler)
+  conf$addSampler(target=target,type=truncGammaPoisSampler,control=list(tau=tau))
 }
 
 

@@ -20,6 +20,7 @@ lambda.y1.M <- 50 #expected male N in primary occasion 1
 lambda.y1.F <- 50 #expected female N in primary occasion 1
 #per-capita recruitment  by primary occasion
 gamma.sex <- c(0.15,0.10) #male, then female, fixed across primary occasions
+tau <- rep(1,n.primary-1) #duration of each primary-occasion interval
 #sex-specific survival
 phi.sex <- c(0.75,0.95) #male, then female, fixed across primary occasions
 #sex-specific p
@@ -32,7 +33,7 @@ K <- rep(10,n.primary) #sampling occasions by primary occasion
 p.obs.sex <- 1
 
 data <- sim.JS.SexPopDy(lambda.y1.M=lambda.y1.M,lambda.y1.F=lambda.y1.F,
-                        n.primary=n.primary,gamma.sex=gamma.sex,phi.sex=phi.sex,
+                        n.primary=n.primary,tau=tau,gamma.sex=gamma.sex,phi.sex=phi.sex,
                         p.sex=p.sex,K=K,p.obs.sex=p.obs.sex)
 
 data$truth$N.super #N.super
@@ -86,7 +87,7 @@ N.survive.init <- N.survive.M.init + N.survive.F.init
 N.recruit.init <- N.recruit.M.init + N.recruit.F.init
 
 #constants for Nimble
-constants <- list(n.primary=n.primary, M=M, K=K)
+constants <- list(n.primary=n.primary,tau=data$tau,M=M,K=K)
 #inits for Nimble
 Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
                  N.M=N.M.init,N.survive.M=N.survive.M.init,N.recruit.M=N.recruit.M.init,
@@ -112,7 +113,7 @@ nt <- 1 #thinning rate
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
 #if you add/remove parameters in model file, do so in config.nodes
-config.nodes <- c('gamma.sex','lambda.y1.M','lambda.y1.F') #assign p and phi samplers below if using one of the 4 options in model file
+config.nodes <- c('gamma.sex','phi.sex','lambda.y1.M','lambda.y1.F') #assign p and phi samplers below if using one of the 4 options in model file
 conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,monitors2=parameters2,nodes=config.nodes)
 
 #add N/z samplers
@@ -160,46 +161,7 @@ targets <- c("lambda.y1.M","lambda.y1.F","gamma.sex[1]","gamma.sex[2]")
 #              paste0("gamma.sex[2,",1:(n.primary-1),"]"))
 for(target in targets){
   conf$removeSamplers(target)
-  conf$addSampler(target=target,type=truncGammaPoisSampler)
-}
-
-#add full conditional updates for phi. if not using any of the 4 options in model file or change the prior, 
-#let nimble configure, these will not be correct.
-#Note: if you add time scaling to model file, need to include that in custom update
-#phi specification: "shared", "occasion", "sex", or "sex.occasion"
-phi.spec <- "sex.occasion"
-
-if(phi.spec=="shared"){
-  target <- "phi.sex[1,1]"
-  conf$removeSamplers(target)
-  conf$addSampler(target=target,type=phiGibbsSampler,
-                  control=list(M=M,n.primary=n.primary,sex.specific=FALSE,occasion.specific=FALSE,s=1,g=1))
-}
-if(phi.spec=="occasion"){
-  for(g in 1:(n.primary-1)){
-    target <- paste0("phi.sex[1,",g,"]")
-    conf$removeSamplers(target)
-    conf$addSampler(target=target,type=phiGibbsSampler,
-                    control=list(M=M,n.primary=n.primary,sex.specific=FALSE,occasion.specific=TRUE,s=1,g=g))
-  }
-}
-if(phi.spec=="sex"){
-  for(s in 1:2){
-    target <- paste0("phi.sex[",s,",1]")
-    conf$removeSamplers(target)
-    conf$addSampler(target=target,type=phiGibbsSampler,
-                    control=list(M=M,n.primary=n.primary,sex.specific=TRUE,occasion.specific=FALSE,s=s,g=1))
-  }
-}
-if(phi.spec=="sex.occasion"){
-  for(s in 1:2){
-    for(g in 1:(n.primary-1)){
-      target <- paste0("phi.sex[",s,",",g,"]")
-      conf$removeSamplers(target)
-      conf$addSampler(target=target,type=phiGibbsSampler,
-                      control=list(M=M,n.primary=n.primary,sex.specific=TRUE,occasion.specific=TRUE,s=s,g=g))
-    }
-  }
+  conf$addSampler(target=target,type=truncGammaPoisSampler,control=list(tau=tau))
 }
 
 #add full conditional updates for detection probability. If not using any of the 4 options in model file

@@ -1,11 +1,12 @@
 #function to initialize s consistent with sex-specific movement sigma
-initialize.s <- function(sigma.move.sex.init=NA,sex.init=NA,z.super.init=NA,y=NA,X=NA,xlim=NA,ylim=NA){
+initialize.s <- function(sigma.move.sex.init=NA,sex.init=NA,z.super.init=NA,y=NA,X=NA,xlim=NA,ylim=NA,tau=NA){
   M <- nrow(y)
   n.primary <- dim(y)[2]
   s.init <- array(0, dim=c(M,n.primary,2)) #initialize all to 0, keep 0 if z.super[i]=0
   on.inds <- which(z.super.init==1)
   for(i in on.inds){
     sigma.move.init <- sigma.move.sex.init[sex.init[i]+1]
+    sigma.move.int <- sigma.move.init*sqrt(tau)
     dets <- which(rowSums(matrix(y[i,,],nrow=n.primary))>0)
     if(length(dets)>0){
       first.det <- min(dets)
@@ -18,23 +19,23 @@ initialize.s <- function(sigma.move.sex.init=NA,sex.init=NA,z.super.init=NA,y=NA
       #Simulate backwards from first detection primary occasion
       if(first.det > 1){
         for(g in (first.det-1):1){
-          F.a <- pnorm(xlim[1],s.init[i,g+1,1],sigma.move.init)
-          F.b <- pnorm(xlim[2],s.init[i,g+1,1],sigma.move.init)
-          s.init[i,g,1] <- qnorm(runif(1,F.a,F.b),s.init[i,g+1,1],sigma.move.init)
-          F.a <- pnorm(ylim[1],s.init[i,g+1,2],sigma.move.init)
-          F.b <- pnorm(ylim[2],s.init[i,g+1,2],sigma.move.init)
-          s.init[i,g,2] <- qnorm(runif(1,F.a,F.b),s.init[i,g+1,2],sigma.move.init)
+          F.a <- pnorm(xlim[1],s.init[i,g+1,1],sigma.move.int[g])
+          F.b <- pnorm(xlim[2],s.init[i,g+1,1],sigma.move.int[g])
+          s.init[i,g,1] <- qnorm(runif(1,F.a,F.b),s.init[i,g+1,1],sigma.move.int[g])
+          F.a <- pnorm(ylim[1],s.init[i,g+1,2],sigma.move.int[g])
+          F.b <- pnorm(ylim[2],s.init[i,g+1,2],sigma.move.int[g])
+          s.init[i,g,2] <- qnorm(runif(1,F.a,F.b),s.init[i,g+1,2],sigma.move.int[g])
         }
       }
       #Simulate forwards from last detection primary occasion
       if(last.det < n.primary){
         for(g in (last.det+1):n.primary){
-          F.a <- pnorm(xlim[1],s.init[i,g-1,1],sigma.move.init)
-          F.b <- pnorm(xlim[2],s.init[i,g-1,1],sigma.move.init)
-          s.init[i,g,1] <- qnorm(runif(1,F.a,F.b),s.init[i,g-1,1],sigma.move.init)
-          F.a <- pnorm(ylim[1],s.init[i,g-1,2],sigma.move.init)
-          F.b <- pnorm(ylim[2],s.init[i,g-1,2],sigma.move.init)
-          s.init[i,g,2] <- qnorm(runif(1,F.a,F.b),s.init[i,g-1,2],sigma.move.init)
+          F.a <- pnorm(xlim[1],s.init[i,g-1,1],sigma.move.int[g-1])
+          F.b <- pnorm(xlim[2],s.init[i,g-1,1],sigma.move.int[g-1])
+          s.init[i,g,1] <- qnorm(runif(1,F.a,F.b),s.init[i,g-1,1],sigma.move.int[g-1])
+          F.a <- pnorm(ylim[1],s.init[i,g-1,2],sigma.move.int[g-1])
+          F.b <- pnorm(ylim[2],s.init[i,g-1,2],sigma.move.int[g-1])
+          s.init[i,g,2] <- qnorm(runif(1,F.a,F.b),s.init[i,g-1,2],sigma.move.int[g-1])
         }
       }
       #fill in gaps between detections with linear interpolation
@@ -53,12 +54,12 @@ initialize.s <- function(sigma.move.sex.init=NA,sex.init=NA,z.super.init=NA,y=NA
       #Undetected z.super=1 individual - simulate full trajectory from random start
       s.init[i,1,] <- c(runif(1,xlim[1],xlim[2]),runif(1,ylim[1],ylim[2]))
       for(g in 2:n.primary){
-        F.a <- pnorm(xlim[1],s.init[i,g-1,1],sigma.move.init)
-        F.b <- pnorm(xlim[2],s.init[i,g-1,1],sigma.move.init)
-        s.init[i,g,1] <- qnorm(runif(1,F.a,F.b),s.init[i,g-1,1],sigma.move.init)
-        F.a <- pnorm(ylim[1],s.init[i,g-1,2],sigma.move.init)
-        F.b <- pnorm(ylim[2],s.init[i,g-1,2],sigma.move.init)
-        s.init[i,g,2] <- qnorm(runif(1,F.a,F.b),s.init[i,g-1,2],sigma.move.init)
+        F.a <- pnorm(xlim[1],s.init[i,g-1,1],sigma.move.int[g-1])
+        F.b <- pnorm(xlim[2],s.init[i,g-1,1],sigma.move.int[g-1])
+        s.init[i,g,1] <- qnorm(runif(1,F.a,F.b),s.init[i,g-1,1],sigma.move.int[g-1])
+        F.a <- pnorm(ylim[1],s.init[i,g-1,2],sigma.move.int[g-1])
+        F.b <- pnorm(ylim[2],s.init[i,g-1,2],sigma.move.int[g-1])
+        s.init[i,g,2] <- qnorm(runif(1,F.a,F.b),s.init[i,g-1,2],sigma.move.int[g-1])
       }
     }
   }
@@ -1141,7 +1142,7 @@ zSampler <- nimbleFunction(
           model$s[pick,1,1:2] <<- c(runif(1,xlim[1],xlim[2]),runif(1,ylim[1],ylim[2]))
           for(g in 2:n.primary){
             model$s[pick,g,1:2] <<- rTruncNorm(1,s.prev=model$s[pick,g-1,1:2],
-                                               sigma.move=model$sigma.move.sex[sex.prop+1],
+                                               sigma.move=model$sigma.move.sex.int[sex.prop+1,g-1],
                                                xlim=xlim,ylim=ylim,z.super=1)
           }
           model$calculate(pd.nodes[pick.idx]) #update pd nodes when z.super/z/sex/s changes
@@ -1412,6 +1413,7 @@ truncGammaPoisSampler <- nimbleFunction(
   setup = function(model,mvSaved,target,control){
     calcNodes <- model$getDependencies(target)
     upper <- model$getBound(target,"upper")
+    tau <- control$tau
     n.recruit <- length(model$N.recruit.M)
     sex.ind <- 1
     g <- 1
@@ -1445,7 +1447,7 @@ truncGammaPoisSampler <- nimbleFunction(
         }else{
           count <- count+model$N.recruit.F[j]
         }
-        rate <- rate+model$N[j]
+        rate <- rate+model$N[j]*tau[j]
       }
     }else{
       if(sex.ind==1){
@@ -1453,7 +1455,7 @@ truncGammaPoisSampler <- nimbleFunction(
       }else{
         count <- model$N.recruit.F[g]
       }
-      rate <- model$N[g]
+      rate <- model$N[g]*tau[g]
     }
     if(rate>0){
       shape <- count+1
@@ -1467,39 +1469,3 @@ truncGammaPoisSampler <- nimbleFunction(
   },
   methods=list(reset=function(){})
 )
-
-phiGibbsSampler <- nimbleFunction(
-  contains=sampler_BASE,
-  setup=function(model,mvSaved,target,control){
-    calcNodes <- model$getDependencies(target)
-    M <- control$M
-    n.primary <- control$n.primary
-    sex.specific <- control$sex.specific
-    occasion.specific <- control$occasion.specific
-    shape1 <- model$getParam(target,"shape1")
-    shape2 <- model$getParam(target,"shape2")
-    s <- control$s
-    g <- control$g
-  },
-  run=function(){
-    success <- 0
-    failure <- 0
-    for(j in 1:(n.primary-1)){
-      if(!occasion.specific | j==g){
-        for(i in 1:M){
-          if(model$z.super[i]==1 & (!sex.specific | model$sex[i]+1==s)){
-            if(model$z.start[i]<=j & model$z.stop[i]>=j){
-              success <- success+model$z[i,j+1]
-              failure <- failure+1-model$z[i,j+1]
-            }
-          }
-        }
-      }
-    }
-    model[[target]] <<- rbeta(1,shape1+success,shape2+failure)
-    model$calculate(calcNodes)
-    copy(from=model,to=mvSaved,row=1,nodes=calcNodes,logProb=TRUE)
-  },
-  methods=list(reset=function(){})
-)
-

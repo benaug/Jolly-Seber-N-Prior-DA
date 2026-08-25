@@ -20,13 +20,13 @@ NimModel <- nimbleCode({
   gamma.sex[2] ~ dunif(0,2)
   for(g in 1:(n.primary-1)){
     #fixed gamma.sex
-    ER.M[g] <- N[g]*gamma.sex[1] #male expected recruits per total N
-    ER.F[g] <- N[g]*gamma.sex[2] #female expected recruits per total N
+    ER.M[g] <- N[g]*gamma.sex[1]*tau[g] #male expected recruits per total N
+    ER.F[g] <- N[g]*gamma.sex[2]*tau[g] #female expected recruits per total N
     #gamma.sex by primary occasion
     # gamma.sex[1,g] ~ dunif(0,2) #male recruitment priors by primary occasion
     # gamma.sex[2,g] ~ dunif(0,2) #female recruitment priors by primary occasion
-    # ER.M[g] <- N[g]*gamma.sex[1,g] #male expected recruits per total N
-    # ER.F[g] <- N[g]*gamma.sex[2,g] #female expected recruits per total N
+    # ER.M[g] <- N[g]*gamma.sex[1,g]*tau[g] #male expected recruits per total N
+    # ER.F[g] <- N[g]*gamma.sex[2,g]*tau[g] #female expected recruits per total N
     N.recruit.M[g] ~ dpois(ER.M[g]) #male realized recruits
     N.recruit.F[g] ~ dpois(ER.F[g]) #female realized recruits
   }
@@ -34,6 +34,10 @@ NimModel <- nimbleCode({
   #Individual covariates. individual sex info derived from recruitment model
   sigma.move.sex[1] ~ dunif(0,5) #male movement sigma
   sigma.move.sex[2] ~ dunif(0,5) #female movement sigma
+  for(g in 1:(n.primary-1)){#time scaled sigma move
+    sigma.move.sex.int[1,g] <- sigma.move.sex[1]*sqrt(tau[g])
+    sigma.move.sex.int[2,g] <- sigma.move.sex[2]*sqrt(tau[g])
+  }
   for(i in 1:M){
     #1st primary occasion ACs
     # s[i,1,1] ~ dunif(xlim[1],xlim[2])
@@ -43,10 +47,10 @@ NimModel <- nimbleCode({
     s[i,1,1:2] ~ dunif2D(xlim=xlim[1:2],ylim=ylim[1:2],z.super=z.super[i])
     for(g in 2:n.primary){
       #If you change movement distribution, need to modify custom s updates (3rd one for z.super=0)
-      # s[i,g,1] ~ T(dnorm(s[i,g-1,1],sd=sigma.move.sex[sex[i]+1]),xlim[1],xlim[2])
-      # s[i,g,2] ~ T(dnorm(s[i,g-1,2],sd=sigma.move.sex[sex[i]+1]),ylim[1],ylim[2])
+      # s[i,g,1] ~ T(dnorm(s[i,g-1,1],sd=sigma.move.sex.int[sex[i]+1,g-1]),xlim[1],xlim[2])
+      # s[i,g,2] ~ T(dnorm(s[i,g-1,2],sd=sigma.move.sex.int[sex[i]+1,g-1]),ylim[1],ylim[2])
       #same as above, but vectorized and gated by z.super
-      s[i,g,1:2] ~ dTruncNorm(s.prev=s[i,g-1,1:2],sigma.move=sigma.move.sex[sex[i]+1], 
+      s[i,g,1:2] ~ dTruncNorm(s.prev=s[i,g-1,1:2],sigma.move=sigma.move.sex.int[sex[i]+1,g-1], 
                               xlim=xlim[1:2],ylim=ylim[1:2],
                               z.super=z.super[i])
     }
@@ -55,33 +59,40 @@ NimModel <- nimbleCode({
   ##Survival##
   #phi must have M x (n.primary-1) dimension for custom updates to work
   
-  #OPTION 1: one phi shared by sexes and primary occasions
+  #OPTION 1: one unit-time phi shared by sexes and primary occasions
   #phi.sex[1,1] ~ dbeta(1,1)
   #phi.sex[2,1] <- phi.sex[1,1]
-  #for(g in 2:(n.primary-1)){
-  #  phi.sex[1,g] <- phi.sex[1,1]
-  #  phi.sex[2,g] <- phi.sex[1,1]
+  #for(g in 1:(n.primary-1)){
+  #  phi.sex.int[1,g] <- phi.sex[1,1]^tau[g]
+  #  phi.sex.int[2,g] <- phi.sex[1,1]^tau[g]
   #}
-  #OPTION 2: occasion-specific phi shared by sexes
+  
+  #OPTION 2: occasion-specific unit-time phi shared by sexes
   #for(g in 1:(n.primary-1)){
   #  phi.sex[1,g] ~ dbeta(1,1)
   #  phi.sex[2,g] <- phi.sex[1,g]
+  #  phi.sex.int[1,g] <- phi.sex[1,g]^tau[g]
+  #  phi.sex.int[2,g] <- phi.sex[1,g]^tau[g]
   #}
-  #OPTION 3: fixed sex-specific phi
+  
+  #OPTION 3: fixed sex-specific unit-time phi
   phi.sex[1,1] ~ dbeta(1,1) #male survival
   phi.sex[2,1] ~ dbeta(1,1) #female survival
-  for(g in 2:(n.primary-1)){
-    phi.sex[1,g] <- phi.sex[1,1]
-    phi.sex[2,g] <- phi.sex[2,1]
+  for(g in 1:(n.primary-1)){
+    phi.sex.int[1,g] <- phi.sex[1,1]^tau[g]
+    phi.sex.int[2,g] <- phi.sex[2,1]^tau[g]
   }
-  #OPTION 4: sex-specific phi varies by primary occasion
+  
+  #OPTION 4: sex-specific unit-time phi varies by primary occasion
   # for(g in 1:(n.primary-1)){
   #   phi.sex[1,g] ~ dbeta(1,1) #male survival
   #   phi.sex[2,g] ~ dbeta(1,1) #female survival
+  #   phi.sex.int[1,g] <- phi.sex[1,g]^tau[g]
+  #   phi.sex.int[2,g] <- phi.sex[2,g]^tau[g]
   # }
   for(i in 1:M){
     for(g in 1:(n.primary-1)){
-      phi[i,g] <- phi.sex[sex[i]+1,g]
+      phi[i,g] <- phi.sex.int[sex[i]+1,g]
     }
     z[i,1:n.primary] ~ dSurvival(phi=phi[i,1:(n.primary-1)],z.start=z.start[i],z.stop=z.stop[i],z.super=z.super[i])
   }
