@@ -6,7 +6,6 @@ NimModel <- nimbleCode({
   for(g in 1:(n.primary-1)){
     gamma[g] ~ dunif(0,1)
   }
- 
   beta0.phi ~ dlogis(0,1)
   beta1.phi ~ dnorm(0,sd=10) #individual covariate effect
   #population dynamics
@@ -23,7 +22,6 @@ NimModel <- nimbleCode({
     logit(phi[i]) <- beta0.phi + phi.cov[i]*beta1.phi #individual survival prob
     for(g in 2:n.primary){
       Ez[i,g-1] <- z[i,g-1]*phi[i] + (1-a[i,g-1])*gamma[g-1] #variable gamma
-      # Ez[i,g-1] <- z[i,g-1]*phi[i] + (1-a[i,g-1])*gamma #fixed gamma
       z[i,g] ~ dbern(Ez[i,g-1])
       a[i,g] <- max(a[i,g-1],z[i,g]) #not available to recruit if previously alive
     }

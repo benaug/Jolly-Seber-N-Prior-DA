@@ -87,6 +87,7 @@ conf$addSampler(target=c(z.nodes,z.super.nodes),type=zSampler,
                              first.det=first.det,last.det=last.det))
 
 #add conjugate updates for eta that nimble does not recognize
+#Note: if you add time scaling to model file, need to include that in custom update
 for(g in 2:(n.primary-1)){
   target <- paste0("eta[",g,"]")
   conf$removeSamplers(target)
