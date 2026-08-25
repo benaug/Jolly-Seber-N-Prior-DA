@@ -283,15 +283,14 @@ sSampler3 <- nimbleFunction(
     xlim <- control$xlim
     ylim <- control$ylim
     jump.multiplier <- control$jump.multiplier
-    sig.move.fixed <- control$sig.move.fixed
     calcNodes <- control$calcNodes
   },
   run = function(){
-    if(model$z.super[i]==1){#fixed sigma.move
-      if(sig.move.fixed==TRUE){
-        scale.jump <- jump.multiplier*model$sigma.move[1]
-      }else{#individual sigma.move
-        scale.jump <- jump.multiplier*model$sigma.move[i]
+    if(model$z.super[i]==1){
+      if(g==1){
+        scale.jump <- jump.multiplier * model$sigma.move.int[1]
+      }else{
+        scale.jump <- jump.multiplier * model$sigma.move.int[g-1]
       }
       s.cand <- c(rnorm(1,model$s[i,g,1],scale.jump),
                   rnorm(1,model$s[i,g,2],scale.jump))

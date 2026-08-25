@@ -337,11 +337,10 @@ for(i in 1:M){
                     type = 'sSampler2',control=list(i=i,g=g,xlim=xlim,ylim=ylim,
                                                     calcNodes=calcNodes,scale=1),silent=TRUE)
     #proposal sigma is sigma.move*jump.multiplier so it scales with sigma.move.
-    #sig.move.fixed=TRUE for shared parameter, FALSE for individual-specific
     conf$addSampler(target = paste0("s[",i,",",g,",1:2]"),
                     type = 'sSampler3',control=list(i=i,g=g,xlim=xlim,ylim=ylim,
                                                     calcNodes=calcNodes,
-                                                    jump.multiplier=2,sig.move.fixed=TRUE),
+                                                    jump.multiplier=2),
                     silent = TRUE)
   }
 }
