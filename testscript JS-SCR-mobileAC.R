@@ -15,7 +15,8 @@ source("sSampler Mobile.R")
 n.primary <- 5 #number of primary occasions
 lambda.y1 <- 100 #expected N in primary occasion 1
 gamma <- rep(0.2,n.primary-1) #per-capita recruitment by primary occasion
-tau <- rep(1,n.primary-1) #duration of each primary-occasion interval
+tau <- rep(1,n.primary-1) #elapsed time between primary occasions for survival and recruitment
+tau.move <- rep(1,n.primary-1) #movement time between primary occasions; set to 1 for discrete AC shifts
 beta0.phi <- qlogis(0.85) #survival intercept
 beta1.phi <- 0.5 #phi response to individual covariate
 p0 <- rep(0.1,n.primary) #detection probabilities at activity center by primary occasion
@@ -29,9 +30,10 @@ for(g in 1:n.primary){ #using same trapping array every primary occasion here
   X[[g]] <- as.matrix(expand.grid(3:11,3:11))
 }
 
-data <- sim.JS.SCR(lambda.y1=lambda.y1,gamma=gamma,n.primary=n.primary,tau=tau,
-            beta0.phi=beta0.phi,beta1.phi=beta1.phi,
-            p0=p0,sigma=sigma,X=X,buff=buff,K=K,sigma.move=sigma.move)
+data <- sim.JS.SCR(lambda.y1=lambda.y1,gamma=gamma,n.primary=n.primary,
+                   tau=tau,tau.move=tau.move,
+                   beta0.phi=beta0.phi,beta1.phi=beta1.phi,
+                   p0=p0,sigma=sigma,X=X,buff=buff,K=K,sigma.move=sigma.move)
 
 data$truth$N.super #N.super
 
@@ -106,7 +108,8 @@ sigma.move.init <- sigma.move
 s.init <- initialize.s(sigma.move.init,z.super.init,y=y.nim,X=X.nim,xlim=xlim,ylim=ylim,tau=data$tau)
 
 #constants for Nimble
-constants <- list(n.primary=n.primary,tau=data$tau,M=M,J=J,xlim=xlim,ylim=ylim,K1D=K1D)
+constants <- list(n.primary=n.primary,tau=data$tau,tau.move=data$tau.move,
+                  M=M,J=J,xlim=xlim,ylim=ylim,K1D=K1D)
 #inits for Nimble
 Niminits <- list(N=N.init,lambda.y1=N.init[1], #initialize consistent with N[1] for faster convergence
                  N.survive=N.survive.init,N.recruit=N.recruit.init,
