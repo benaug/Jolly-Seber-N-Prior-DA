@@ -6,7 +6,8 @@ e2dist <- function (x, y){
 
 sim.JS.SCR <- function(lambda.y1=NA,gamma=NA,n.primary=NA,
                        beta0.phi=NA,beta1.phi=NA,
-                   p0=NA,sigma=NA,X=NA,buff=buff,tau=NA,K=NA,sigma.move=NULL){
+                       p0=NA,sigma=NA,X=NA,buff=buff,tau=NA,tau.move=NA,
+                       K=NA,sigma.move=NULL){
   #Population dynamics
   N <- rep(NA,n.primary)
   N.recruit <- N.survive <- ER <- rep(NA,n.primary-1)
@@ -63,7 +64,7 @@ sim.JS.SCR <- function(lambda.y1=NA,gamma=NA,n.primary=NA,
     s <- array(NA,dim=c(N.super,n.primary,2))
     s[,1,] <- cbind(runif(N.super, xlim[1],xlim[2]), runif(N.super,ylim[1],ylim[2]))
     for(g in 2:n.primary){
-      sigma.move.int <- sigma.move*sqrt(tau[g-1])
+      sigma.move.int <- sigma.move*sqrt(tau.move[g-1])
       s[,g,1] <- rtruncnorm(N.super,mean=s[,g-1,1],sd=sigma.move.int,a=xlim[1],b=xlim[2])
       s[,g,2] <- rtruncnorm(N.super,mean=s[,g-1,2],sd=sigma.move.int,a=ylim[1],b=ylim[2])
     }
@@ -100,6 +101,6 @@ sim.JS.SCR <- function(lambda.y1=NA,gamma=NA,n.primary=NA,
     s <- s[keep.idx,]
   }
   return(list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,X=X,K=K,
-              n.primary=n.primary,tau=tau,s=s,
-              xlim=xlim,ylim=ylim,truth=truth))
+              n.primary=n.primary,tau=tau,tau.move=tau.move,
+              s=s,xlim=xlim,ylim=ylim,truth=truth))
 }

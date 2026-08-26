@@ -5,9 +5,10 @@ e2dist <- function (x, y){
 }
 
 sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
-                            gamma=NA,n.primary=NA,beta0.phi=NA,beta1.phi=NA,
-                   p0=NA,sigma=NA,sigma.move=NA,rsf.beta=NA,
-                   X=NA,buff=buff,tau=NA,K=NA,xlim=NA,ylim=NA,res=NA){
+                                     gamma=NA,n.primary=NA,beta0.phi=NA,beta1.phi=NA,
+                                     p0=NA,sigma=NA,sigma.move=NA,rsf.beta=NA,
+                                     X=NA,buff=buff,tau=NA,tau.move=NA,
+                                     K=NA,xlim=NA,ylim=NA,res=NA){
   #Population dynamics
   N <- rep(NA,n.primary)
   N.recruit <- N.survive <- ER <- rep(NA,n.primary-1)
@@ -83,7 +84,7 @@ sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   rsf <- exp(rsf.beta*D.cov)
   rsf[InSS==0] <- 0 #disallow individuals moving into nonhabitat
   for(g in 2:n.primary){
-    sigma.move.int <- sigma.move*sqrt(tau[g-1])
+    sigma.move.int <- sigma.move*sqrt(tau.move[g-1])
     for(i in 1:N.super){
       avail.dist[i,g-1,] <- getAvail(s=s[i,g-1,1:2],sigma=sigma.move.int,res=res,x.vals=x.vals,
                                      y.vals=y.vals,n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
@@ -129,7 +130,8 @@ sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   cov <- cov[keep.idx]
   s <- s[keep.idx,,]
   s.cell <- s.cell[keep.idx,]
-  return(list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,X=X,K=K,n.primary=n.primary,tau=tau,
+  return(list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,X=X,K=K,n.primary=n.primary,
+              tau=tau,tau.move=tau.move,
               xlim=xlim,ylim=ylim,x.vals=x.vals,y.vals=y.vals,dSS=dSS,cells=cells,
               n.cells=n.cells,n.cells.x=n.cells.x,n.cells.y=n.cells.y,s.cell=s.cell,s=s,
               D.cov=D.cov,InSS=InSS,res=res,cellArea=cellArea,lambda.y1=lambda.y1,

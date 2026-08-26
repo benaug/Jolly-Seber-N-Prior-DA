@@ -1,12 +1,12 @@
 #function to initialize s consistent with sex-specific movement sigma
-initialize.s <- function(sigma.move.sex.init=NA,sex.init=NA,z.super.init=NA,y=NA,X=NA,xlim=NA,ylim=NA,tau=NA){
+initialize.s <- function(sigma.move.sex.init=NA,sex.init=NA,z.super.init=NA,y=NA,X=NA,xlim=NA,ylim=NA,tau.move=NA){
   M <- nrow(y)
   n.primary <- dim(y)[2]
   s.init <- array(0, dim=c(M,n.primary,2)) #initialize all to 0, keep 0 if z.super[i]=0
   on.inds <- which(z.super.init==1)
   for(i in on.inds){
     sigma.move.init <- sigma.move.sex.init[sex.init[i]+1]
-    sigma.move.int <- sigma.move.init*sqrt(tau)
+    sigma.move.int <- sigma.move.init*sqrt(tau.move)
     dets <- which(rowSums(matrix(y[i,,],nrow=n.primary))>0)
     if(length(dets)>0){
       first.det <- min(dets)

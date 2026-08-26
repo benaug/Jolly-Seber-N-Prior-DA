@@ -35,8 +35,8 @@ NimModel <- nimbleCode({
   sigma.move.sex[1] ~ dunif(0,5) #male movement sigma
   sigma.move.sex[2] ~ dunif(0,5) #female movement sigma
   for(g in 1:(n.primary-1)){#time scaled sigma move
-    sigma.move.sex.int[1,g] <- sigma.move.sex[1]*sqrt(tau[g])
-    sigma.move.sex.int[2,g] <- sigma.move.sex[2]*sqrt(tau[g])
+    sigma.move.sex.int[1,g] <- sigma.move.sex[1]*sqrt(tau.move[g])
+    sigma.move.sex.int[2,g] <- sigma.move.sex[2]*sqrt(tau.move[g])
   }
   for(i in 1:M){
     #1st primary occasion ACs

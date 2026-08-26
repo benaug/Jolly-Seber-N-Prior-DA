@@ -25,7 +25,8 @@ lambda.y1.M <- 75 #expected male N in primary occasion 1
 lambda.y1.F <- 75 #expected female N in primary occasion 1
 #per-capita recruitment
 gamma.sex <- c(0.15,0.1) #male, then female, fixed across primary occasions
-tau <- rep(1,n.primary-1) #duration of each primary-occasion interval
+tau <- rep(1,n.primary-1) #elapsed time between primary occasions for survival and recruitment
+tau.move <- rep(1,n.primary-1) #movement time between primary occasions; set to 1 for discrete AC shifts
 #sex-specific survival
 phi.sex <- c(0.75,0.95) #male, then female, fixed across primary occasions
 #sex-specific p0
@@ -48,7 +49,8 @@ for(g in 1:n.primary){ #using same trapping array every primary occasion here
 }
 
 data <- sim.JS.SCR.SexPopDy(lambda.y1.M=lambda.y1.M,lambda.y1.F=lambda.y1.F,
-                            n.primary=n.primary,tau=tau,gamma.sex=gamma.sex,phi.sex=phi.sex,
+                            n.primary=n.primary,tau=tau,tau.move=tau.move,
+                            gamma.sex=gamma.sex,phi.sex=phi.sex,
                             p0.sex=p0.sex,sigma.sex=sigma.sex,X=X,buff=buff,K=K,p.obs.sex=p.obs.sex,
                             sigma.move.sex=sigma.move.sex)
 
@@ -134,11 +136,12 @@ for(g in 1:n.primary){
 
 sigma.move.sex.init <- sigma.move.sex
 #initialize s consistent with sigma.move.sex.init and sex.init
-s.init <- initialize.s(sigma.move.sex.init,sex.init,z.super.init,y=y.nim,X=X.nim,xlim=xlim,ylim=ylim,tau=tau)
+s.init <- initialize.s(sigma.move.sex.init,sex.init,z.super.init,y=y.nim,X=X.nim,xlim=xlim,ylim=ylim,tau.move=data$tau.move)
 
 
 #constants for Nimble
-constants <- list(n.primary=n.primary,tau=data$tau,M=M,J=J,xlim=xlim,ylim=ylim,K1D=K1D)
+constants <- list(n.primary=n.primary,tau=data$tau,tau.move=data$tau.move,
+                  M=M,J=J,xlim=xlim,ylim=ylim,K1D=K1D)
 #inits for Nimble
 Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
                  N.M=N.M.init,N.survive.M=N.survive.M.init,N.recruit.M=N.recruit.M.init,

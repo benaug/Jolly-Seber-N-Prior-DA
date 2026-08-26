@@ -36,7 +36,7 @@ NimModel <- nimbleCode({
   rsf.beta ~ dnorm(0,sd=10)
   sigma.move ~ dunif(0,100) #activity center relocation spatial scale parameter (BVN sd)
   for(g in 1:(n.primary-1)){#time scaled sigma move
-    sigma.move.int[g] <- sigma.move*sqrt(tau[g])
+    sigma.move.int[g] <- sigma.move*sqrt(tau.move[g])
   }
   #Resource selection function evaluated across all cells for activity center relocation
   rsf[1:n.cells] <- InSS[1:n.cells]*exp(rsf.beta*D.cov[1:n.cells])

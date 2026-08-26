@@ -1,6 +1,6 @@
 initialize.s.hab <- function(sigma.move.init=NA,rsf.beta.init=0,z.super.init=NA,
                              D.beta1.init=NA,y=NA,X=NA,xlim=NA,ylim=NA,dSS=NA,
-                             cells=NA,res=NA,D.cov=NA,InSS=NA,x.vals=NA,y.vals=NA,tau=NA){
+                             cells=NA,res=NA,D.cov=NA,InSS=NA,x.vals=NA,y.vals=NA,tau.move=NA){
   M <- nrow(y)
   n.primary <- dim(y)[2]
   n.cells <- nrow(dSS)
@@ -8,7 +8,7 @@ initialize.s.hab <- function(sigma.move.init=NA,rsf.beta.init=0,z.super.init=NA,
   n.cells.y <- length(y.vals)
   s.init <- array(0, dim=c(M, n.primary, 2))
   #time-scaled movement sigma
-  sigma.move.int <- sigma.move.init*sqrt(tau)
+  sigma.move.int <- sigma.move.init*sqrt(tau.move)
   #compute pi.cell from D.beta1.init
   lambda.cell <- InSS*exp(D.beta1.init*D.cov)
   pi.cell <- lambda.cell / sum(lambda.cell)

@@ -22,7 +22,7 @@ NimModel <- nimbleCode({
   phi.cov.sd ~ T(dt(mu=0, sigma=1, df=7), 0, Inf) #phi individual covariate sd prior
   sigma.move ~ dunif(0,2)
   for(g in 1:(n.primary-1)){#time scaled sigma move
-    sigma.move.int[g] <- sigma.move*sqrt(tau[g])
+    sigma.move.int[g] <- sigma.move*sqrt(tau.move[g])
   }
   for(i in 1:M){
     phi.cov[i] ~ dnorm(phi.cov.mu,sd=phi.cov.sd)
