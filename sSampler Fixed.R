@@ -15,6 +15,11 @@ sSampler <- nimbleFunction(
     ## node list generation
     # targetAsScalar <- model$expandNodeNames(target, returnScalarComponents = TRUE)
     calcNodes <- model$getDependencies(target)
+    #separate observation nodes so fixed AC proposals only recalculate years where z=1
+    pd.nodes <- calcNodes[grepl("^pd\\[",calcNodes)]
+    y.nodes <- calcNodes[grepl("^y\\[",calcNodes)]
+    s.nodes <- calcNodes[!grepl("^(pd|y)\\[",calcNodes)]
+    n.primary <- length(pd.nodes)
     # calcNodesNoSelf <- model$getDependencies(target, self = FALSE)
     # isStochCalcNodesNoSelf <- model$isStoch(calcNodesNoSelf)   ## should be made faster
     # calcNodesNoSelfDeterm <- calcNodesNoSelf[!isStochCalcNodesNoSelf]
@@ -42,15 +47,32 @@ sSampler <- nimbleFunction(
     z.super <- model$z.super[i]
     if(z.super==0){#propose from uniform prior
       model$s[i, 1:2] <<- c(runif(1, xlim[1], xlim[2]), runif(1, ylim[1], ylim[2]))
-      model$calculate(calcNodes)
-      copy(from = model, to = mvSaved, row = 1, nodes = calcNodes, logProb = TRUE)
+      #model$calculate(calcNodes)
+      #copy(from = model, to = mvSaved, row = 1, nodes = calcNodes, logProb = TRUE)
+      #observation nodes are gated off when z.super=0, so only update non-observation dependencies
+      model$calculate(s.nodes)
+      copy(from = model, to = mvSaved, row = 1, nodes = s.nodes, logProb = TRUE)
     }else{#MH
-      s.cand=c(rnorm(1,model$s[i,1],scale), rnorm(1,model$s[i,2],scale))
-      inbox= s.cand[1]< xlim[2] & s.cand[1]> xlim[1] & s.cand[2] < ylim[2] & s.cand[2] > ylim[1]
+      s.cand <- c(rnorm(1,model$s[i,1],scale), rnorm(1,model$s[i,2],scale))
+      inbox <- s.cand[1]< xlim[2] & s.cand[1]> xlim[1] & s.cand[2] < ylim[2] & s.cand[2] > ylim[1]
       if(inbox){
-        model_lp_initial <- model$getLogProb(calcNodes)
+        #model_lp_initial <- model$getLogProb(calcNodes)
+        #only observation likelihoods in primary occasions where this individual is alive can change
+        model_lp_initial <- model$getLogProb(s.nodes)
+        for(g in 1:n.primary){
+          if(model$z[i,g]==1){
+            model_lp_initial <- model_lp_initial+model$getLogProb(y.nodes[g])
+          }
+        }
         model$s[i, 1:2] <<- s.cand
-        model_lp_proposed <- model$calculate(calcNodes)
+        #model_lp_proposed <- model$calculate(calcNodes)
+        model_lp_proposed <- model$calculate(s.nodes)
+        for(g in 1:n.primary){
+          if(model$z[i,g]==1){
+            model$calculate(pd.nodes[g])
+            model_lp_proposed <- model_lp_proposed+model$calculate(y.nodes[g])
+          }
+        }
         log_MH_ratio <- model_lp_proposed - model_lp_initial
         accept <- decide(log_MH_ratio)
         if(accept) {
