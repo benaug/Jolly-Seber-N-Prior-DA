@@ -529,7 +529,15 @@ zSampler <- nimbleFunction(
           lp.initial.entry.M <- lp.initial.entry.M + model$getLogProb(N.recruit.M.nodes)
           lp.initial.entry.F <- model$getLogProb(N.F.nodes[1])
           lp.initial.entry.F <- lp.initial.entry.F + model$getLogProb(N.recruit.F.nodes)
-          lp.initial.y <- model$getLogProb(y.nodes[i.idx])
+          # lp.initial.y <- model$getLogProb(y.nodes[i.idx])
+          #restrict y nodes to those where z and/or sex changed
+          if(model$sex[i]!=sex.curr){
+            y.idx.changed <- i.idx
+          }else{
+            z.changed <- which(z.prop!=z.curr)
+            y.idx.changed <- i.idx[z.changed]
+          }
+          lp.initial.y <- model$getLogProb(y.nodes[y.idx.changed])
           #lp.initial.surv <- model$getLogProb(z.nodes[i]) #cancels exactly with backwards survival proposal probability
           #log.prior.curr <- - (lgamma(M+1) - sum(lgamma(entry.counts.curr + 1))) #full multinomial coefficient replaced by exact ratio below
           
@@ -598,8 +606,10 @@ zSampler <- nimbleFunction(
           lp.proposed.entry.M <- lp.proposed.entry.M + model$calculate(N.recruit.M.nodes)
           lp.proposed.entry.F <- model$calculate(N.F.nodes[1])
           lp.proposed.entry.F <- lp.proposed.entry.F + model$calculate(N.recruit.F.nodes)
-          model$calculate(pd.nodes[i.idx]) #update pd nodes when z/sex changes
-          lp.proposed.y <- model$calculate(y.nodes[i.idx])
+          # model$calculate(pd.nodes[i.idx]) #update pd nodes when z/sex changes
+          # lp.proposed.y <- model$calculate(y.nodes[i.idx])
+          model$calculate(pd.nodes[y.idx.changed]) #update pd nodes when z/sex changes
+          lp.proposed.y <- model$calculate(y.nodes[y.idx.changed])
           #lp.proposed.surv <- model$calculate(z.nodes[i]) #cancels exactly with forwards survival proposal probability
           
           #update entry counts and use the exact local multinomial coefficient ratio
@@ -681,7 +691,9 @@ zSampler <- nimbleFunction(
             model$calculate(N.recruit.F.nodes)
             model$calculate(phi.nodes[i.idx2])
             #model$calculate(z.nodes[i]) #not needed because survival logProb was never recalculated for the proposal
-            model$calculate(y.nodes[i.idx])
+            # model$calculate(y.nodes[i.idx])
+            # model$calculate(y.nodes[i.idx])
+            model$calculate(y.nodes[y.idx.changed])
           }
         }
       }

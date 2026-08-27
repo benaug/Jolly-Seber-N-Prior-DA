@@ -403,7 +403,11 @@ zSampler <- nimbleFunction(
           #get initial logProbs
           lp.initial.entry <- model$getLogProb(N.nodes[1])
           lp.initial.entry <- lp.initial.entry + model$getLogProb(N.recruit.nodes)
-          lp.initial.y <- model$getLogProb(y.nodes[i.idx])
+          # lp.initial.y <- model$getLogProb(y.nodes[i.idx])
+          #restrict y nodes to those where z changed
+          z.changed <- which(z.prop!=z.curr)
+          y.idx.changed <- i.idx[z.changed]
+          lp.initial.y <- model$getLogProb(y.nodes[y.idx.changed])
           #lp.initial.surv <- model$getLogProb(z.nodes[i]) #cancels exactly with backwards survival proposal probability
           #log.prior.curr <- - (lgamma(M+1) - sum(lgamma(entry.counts.curr + 1))) #full multinomial coefficient calculation replaced by exact ratio below
           model$z[i,] <<- z.prop
@@ -422,11 +426,13 @@ zSampler <- nimbleFunction(
           #3) Update N.survive
           model$N.survive <<- model$N[2:n.primary]-model$N.recruit #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
           model$calculate(ER.nodes) #update ER when N updated
-          model$calculate(pd.nodes[i.idx]) #update pd nodes when z changes
+          # model$calculate(pd.nodes[i.idx]) #update pd nodes when z changes
+          model$calculate(pd.nodes[y.idx.changed])
           #get proposed logProbs
           lp.proposed.entry <- model$calculate(N.nodes[1])
           lp.proposed.entry <- lp.proposed.entry + model$calculate(N.recruit.nodes)
-          lp.proposed.y <- model$calculate(y.nodes[i.idx])
+          # lp.proposed.y <- model$calculate(y.nodes[i.idx])
+          lp.proposed.y <- model$calculate(y.nodes[y.idx.changed])
           #lp.proposed.surv <- model$calculate(z.nodes[i]) #cancels exactly with forwards survival proposal probability
           # Full multinomial coefficient prior for proposed configuration
           entry.counts.prop <- entry.counts.curr
@@ -482,7 +488,8 @@ zSampler <- nimbleFunction(
               }
             }
             #set these logProbs back
-            model$calculate(y.nodes[i.idx])
+            # model$calculate(y.nodes[i.idx])
+            model$calculate(y.nodes[y.idx.changed])
             model$calculate(N.nodes[1])
             model$calculate(N.recruit.nodes)
             #model$calculate(z.nodes[i]) #not needed because survival logProb was never recalculated for the proposal
