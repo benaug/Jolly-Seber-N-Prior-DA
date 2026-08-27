@@ -641,7 +641,14 @@ zSampler <- nimbleFunction(
           #get initial logProbs
           lp.initial.N <- model$getLogProb(N.nodes[1])
           lp.initial.N.recruit <- model$getLogProb(N.recruit.nodes)
-          lp.initial.y <- model$getLogProb(y.nodes[pick.idx])
+          #lp.initial.y <- model$getLogProb(y.nodes[pick.idx])
+          #only currently alive primary occasions can change when this individual is removed
+          lp.initial.y <- 0
+          for(g in 1:n.primary){
+            if(z.curr[g]==1){
+              lp.initial.y <- lp.initial.y+model$getLogProb(y.nodes[pick.idx[g]])
+            }
+          }
           #lp.initial.surv <- model$getLogProb(z.nodes[pick]) #survival likelihood cancels exactly with reverse survival proposal probability
           
           #propose new N.super/z.super/z.start/z.stop
@@ -673,7 +680,8 @@ zSampler <- nimbleFunction(
           #get proposed logProbs
           lp.proposed.N <- model$calculate(N.nodes[1])
           lp.proposed.N.recruit <- model$calculate(N.recruit.nodes)
-          lp.proposed.y <- model$calculate(y.nodes[pick.idx])
+          #lp.proposed.y <- model$calculate(y.nodes[pick.idx])
+          lp.proposed.y <- 0 #all focal observation likelihood terms are zero when z.super=0
           
           #survival target/proposal terms cancel exactly
           lp.initial.total <- lp.initial.N + lp.initial.y + lp.initial.N.recruit
@@ -688,20 +696,22 @@ zSampler <- nimbleFunction(
           noff.back <- noff.curr+1
           log.p.select.back <- log(1/noff.back)
           
-          log.z.prior.ratio <- log(entry.counts.curr[n.primary+1]+1) -
-            log(entry.counts.curr[z.start.curr])
+          log.z.prior.ratio <- log(entry.counts.curr[n.primary+1]+1) - log(entry.counts.curr[z.start.curr])
           log.prop.for <- 0
           
           #MH step
-          log_MH_ratio <- (lp.proposed.total + log.z.prior.ratio +
-                             log.p.select.back + log.prop.back) -
-            (lp.initial.total + log.p.select.for + log.prop.for)
+          log_MH_ratio <- (lp.proposed.total + log.z.prior.ratio + log.p.select.back + log.prop.back) - (lp.initial.total + log.p.select.for + log.prop.for)
           
           accept <- decide(log_MH_ratio)
-          
           if(accept){
             #survival term cancelled from MH ratio, but cached logProb must
             #be synchronized to the accepted z.super=0 state
+            #synchronize focal observation nodes only in primary occasions that were alive before removal
+            for(g in 1:n.primary){
+              if(z.curr[g]==1){
+                model$calculate(y.nodes[pick.idx[g]])
+              }
+            }
             model$calculate(z.nodes[pick])
             
             mvSaved["z.start",1][pick] <<- model[["z.start"]][pick]
@@ -735,7 +745,8 @@ zSampler <- nimbleFunction(
             model[["ER"]] <<- mvSaved["ER",1]
             
             #set these logProbs back
-            model$calculate(y.nodes[pick.idx])
+            #model$calculate(y.nodes[pick.idx])
+            #not needed: focal y logProbs were not recalculated for the rejected removal proposal
             model$calculate(z.nodes[pick])
             model$calculate(N.nodes[1])
             model$calculate(N.recruit.nodes)
@@ -743,7 +754,6 @@ zSampler <- nimbleFunction(
         }
         
       }else{#add
-        
         if(model$N.super[1] < M){
           #find all z's currently off and undetected
           noff.init <- noff.curr
@@ -759,7 +769,8 @@ zSampler <- nimbleFunction(
             #get initial logProbs
             lp.initial.N <- model$getLogProb(N.nodes[1])
             lp.initial.N.recruit <- model$getLogProb(N.recruit.nodes)
-            lp.initial.y <- model$getLogProb(y.nodes[pick.idx])
+            #lp.initial.y <- model$getLogProb(y.nodes[pick.idx])
+            lp.initial.y <- 0 #all focal observation likelihood terms are zero when z.super=0
             #lp.initial.surv <- model$getLogProb(z.nodes[pick]) #cancels with forward survival proposal
             
             #propose entry cohort
@@ -775,8 +786,7 @@ zSampler <- nimbleFunction(
             
             if(z.start.prop < n.primary){
               for(g in (z.start.prop+1):n.primary){
-                model$z[pick,g] <<-
-                  rbinom(1,1,model$phi[pick,g-1]*model$z[pick,g-1])
+                model$z[pick,g] <<- rbinom(1,1,model$phi[pick,g-1]*model$z[pick,g-1])
               }
             }
             
@@ -794,8 +804,7 @@ zSampler <- nimbleFunction(
             
             #update N.recruit
             if(model$z.start[pick] > 1){
-              model$N.recruit[z.start.prop-1] <<-
-                model$N.recruit[z.start.prop-1] + 1
+              model$N.recruit[z.start.prop-1] <<- model$N.recruit[z.start.prop-1] + 1
             }
             
             #update N.survive
@@ -805,7 +814,13 @@ zSampler <- nimbleFunction(
             #get proposed logProbs
             lp.proposed.N <- model$calculate(N.nodes[1])
             lp.proposed.N.recruit <- model$calculate(N.recruit.nodes)
-            lp.proposed.y <- model$calculate(y.nodes[pick.idx])
+            #lp.proposed.y <- model$calculate(y.nodes[pick.idx])
+            lp.proposed.y <- 0
+            for(g in 1:n.primary){
+              if(model$z[pick,g]==1){
+                lp.proposed.y <- lp.proposed.y+model$calculate(y.nodes[pick.idx[g]])
+              }
+            }
             
             #survival target/proposal terms cancel exactly
             lp.initial.total <- lp.initial.N + lp.initial.y + lp.initial.N.recruit
@@ -820,17 +835,13 @@ zSampler <- nimbleFunction(
             non.back <- non.curr+1
             log.p.select.back <- log(1/non.back)
             
-            log.z.prior.ratio <- log(entry.counts.curr[z.start.prop]+1) -
-              log(entry.counts.curr[n.primary+1])
+            log.z.prior.ratio <- log(entry.counts.curr[z.start.prop]+1) - log(entry.counts.curr[n.primary+1])
             log.prop.back <- 0
             
             #MH step
-            log_MH_ratio <- (lp.proposed.total + log.z.prior.ratio +
-                               log.p.select.back + log.prop.back) -
-              (lp.initial.total + log.p.select.for + log.prop.for)
+            log_MH_ratio <- (lp.proposed.total + log.z.prior.ratio + log.p.select.back + log.prop.back) - (lp.initial.total + log.p.select.for + log.prop.for)
             
             accept <- decide(log_MH_ratio)
-            
             if(accept){
               #survival term cancelled from MH ratio, but cached logProb must
               #be synchronized to the accepted z.super=1 survival history
@@ -867,7 +878,11 @@ zSampler <- nimbleFunction(
               model[["ER"]] <<- mvSaved["ER",1]
               
               #set these logProbs back
-              model$calculate(y.nodes[pick.idx])
+              #model$calculate(y.nodes[pick.idx])
+              #only the proposed alive primary occasions had their focal y logProbs changed
+              for(g in z.start.prop:z.stop.prop){
+                model$calculate(y.nodes[pick.idx[g]])
+              }
               model$calculate(z.nodes[pick])
               model$calculate(N.nodes[1])
               model$calculate(N.recruit.nodes)
@@ -876,6 +891,7 @@ zSampler <- nimbleFunction(
         }
       }
     }
+    
     #copy back to mySaved to update logProbs.
     copy(from = model, to = mvSaved, row = 1, nodes = calcNodes, logProb = TRUE)
   },

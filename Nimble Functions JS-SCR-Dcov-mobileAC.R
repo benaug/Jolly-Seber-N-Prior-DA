@@ -1133,7 +1133,14 @@ zSampler <- nimbleFunction(
           #get initial logProbs
           lp.initial.N <- model$getLogProb(N.nodes[1])
           lp.initial.N.recruit <- model$getLogProb(N.recruit.nodes)
-          lp.initial.y <- model$getLogProb(y.nodes[pick.idx])
+          #lp.initial.y <- model$getLogProb(y.nodes[pick.idx])
+          #only currently alive primary occasions can change when this individual is removed
+          lp.initial.y <- 0
+          for(g in 1:n.primary){
+            if(z.curr[g]==1){
+              lp.initial.y <- lp.initial.y+model$getLogProb(y.nodes[pick.idx[g]])
+            }
+          }
           #The s trajectory is proposed exactly from its model prior, and the z survival path is
           #proposed exactly from its survival model. Their target and proposal terms therefore cancel
           #exactly in the MH ratio, so we do not need to evaluate them before the MH decision.
@@ -1166,7 +1173,9 @@ zSampler <- nimbleFunction(
           for(g in 1:(n.primary-1)){
             model$avail.dist[pick,g,1:n.cells] <<- rep(0,n.cells)
           }
-          model$calculate(pd.nodes[pick.idx]) #update pd nodes when z changes
+          #model$calculate(pd.nodes[pick.idx]) #update pd nodes when z changes
+          #When z.super is proposed off, focal pd is known to be zero.
+          #Delay synchronizing pd until the proposal is accepted.
           
           #Reverse proposal probs
           recruit.probs.back <- c(model$lambda.y1, model$ER)
@@ -1186,7 +1195,8 @@ zSampler <- nimbleFunction(
           #get proposed logProbs for N, N.recruit, y, s, and survival
           lp.proposed.N <- model$calculate(N.nodes[1])
           lp.proposed.N.recruit <- model$calculate(N.recruit.nodes)
-          lp.proposed.y <- model$calculate(y.nodes[pick.idx]) #will always be 0
+          #lp.proposed.y <- model$calculate(y.nodes[pick.idx]) #will always be 0
+          lp.proposed.y <- 0 #all focal observation likelihood terms are zero when z.super=0
           #Do not calculate s or survival here. Their target terms cancel their proposal terms exactly.
           #If accepted, calculate them once below only to synchronize the stored model logProbs.
           #lp.proposed.s <- model$calculate(s.nodes[pick.idx]) #will always be 0
@@ -1197,7 +1207,6 @@ zSampler <- nimbleFunction(
           #lp.proposed.total <- lp.proposed.N + lp.proposed.y + lp.proposed.N.recruit + lp.proposed.surv + lp.proposed.s
           lp.initial.total <- lp.initial.N + lp.initial.y + lp.initial.N.recruit
           lp.proposed.total <- lp.proposed.N + lp.proposed.y + lp.proposed.N.recruit
-          
           
           #backwards prior and select probs
           #move from class z.start.curr in z.super==1 to off class
@@ -1223,13 +1232,23 @@ zSampler <- nimbleFunction(
           #Old MH ratio including the cancelling terms:
           #log_MH_ratio <- (lp.proposed.total + log.z.prior.ratio + log.p.select.back + log.prop.back.z + log.prop.back.s) -
           #(lp.initial.total + log.p.select.for + log.prop.for.z + log.prop.for.s)
-          log_MH_ratio <- (lp.proposed.total + log.z.prior.ratio + log.p.select.back + log.prop.back.z) -
-            (lp.initial.total + log.p.select.for + log.prop.for.z)
+          log_MH_ratio <- (lp.proposed.total + log.z.prior.ratio + log.p.select.back + log.prop.back.z) - (lp.initial.total + log.p.select.for + log.prop.for.z)
           accept <- decide(log_MH_ratio)
           if(accept){
             #s and survival were intentionally not calculated before the MH decision because their
             #target/proposal terms cancel. Calculate them once now to synchronize accepted logProbs.
             model$calculate(s.nodes[pick.idx])
+            #synchronize focal observation nodes only in primary occasions that were alive before removal
+            for(g in 1:n.primary){
+              if(z.curr[g]==1){
+                model$calculate(pd.nodes[pick.idx[g]])
+              }
+            }
+            for(g in 1:n.primary){
+              if(z.curr[g]==1){
+                model$calculate(y.nodes[pick.idx[g]])
+              }
+            }
             model$calculate(z.nodes[pick])
             mvSaved["z.start",1][pick] <<- model[["z.start"]][pick]
             mvSaved["z.stop",1][pick] <<- model[["z.stop"]][pick]
@@ -1280,7 +1299,8 @@ zSampler <- nimbleFunction(
             #their original values their stored logProbs are already correct.
             #model$calculate(s.nodes[pick.idx])
             #model$calculate(z.nodes[pick])
-            model$calculate(y.nodes[pick.idx])
+            #model$calculate(y.nodes[pick.idx])
+            #not needed: focal y logProbs were not recalculated for the rejected removal proposal
             model$calculate(N.nodes[1])
             model$calculate(N.recruit.nodes)
           }
@@ -1303,7 +1323,8 @@ zSampler <- nimbleFunction(
             #get initial logProbs
             lp.initial.N <- model$getLogProb(N.nodes[1])
             lp.initial.N.recruit <- model$getLogProb(N.recruit.nodes)
-            lp.initial.y <- model$getLogProb(y.nodes[pick.idx]) #will always be 0
+            #lp.initial.y <- model$getLogProb(y.nodes[pick.idx]) #will always be 0
+            lp.initial.y <- 0 #all focal observation likelihood terms are zero when z.super=0
             #The proposed s trajectory is drawn exactly from its model prior, and the proposed z
             #survival path is drawn exactly from its survival model. Their target/proposal terms
             #therefore cancel exactly in the MH ratio.
@@ -1351,29 +1372,30 @@ zSampler <- nimbleFunction(
             #simulate new s trajectory exactly from its model prior; its proposal density
             #therefore cancels the s prior density in the MH ratio
             #propose primary occasion 1 from the density-covariate surface
-            model$s[pick,1,1:2] <<- rHab1(1,pi.cell=model$pi.cell[1:n.cells],
-                                          cells=cells[1:n.cells.x,1:n.cells.y],
-                                          dSS=dSS[1:n.cells,1:2],res=res,
-                                          xlim=xlim,ylim=ylim,z.super=1)
+            model$s[pick,1,1:2] <<- rHab1(1,pi.cell=model$pi.cell[1:n.cells], cells=cells[1:n.cells.x,1:n.cells.y], dSS=dSS[1:n.cells,1:2],res=res, xlim=xlim,ylim=ylim,z.super=1)
             #propose subsequent primary occasions from the RSF movement prior
             for(g in 2:n.primary){
-              model$avail.dist[pick,g-1,1:n.cells] <<- getAvail(s=model$s[pick,g-1,1:2],
-                                                                sigma=model$sigma.move.int[g-1],res=res,
-                                                                x.vals=x.vals,y.vals=y.vals,
-                                                                n.cells.x=n.cells.x,n.cells.y=n.cells.y,
-                                                                z.super=1)
-              model$s[pick,g,1:2] <<- rHabMove(1,s.prev=model$s[pick,g-1,1:2],
-                                               rsf=model$rsf[1:n.cells],
-                                               avail.dist=model$avail.dist[pick,g-1,1:n.cells],
-                                               dSS=dSS[1:n.cells,1:2],
-                                               cells=cells[1:n.cells.x,1:n.cells.y],
+              model$avail.dist[pick,g-1,1:n.cells] <<- getAvail(s=model$s[pick,g-1,1:2], sigma=model$sigma.move.int[g-1],res=res, x.vals=x.vals,y.vals=y.vals, n.cells.x=n.cells.x,n.cells.y=n.cells.y, z.super=1)
+              model$s[pick,g,1:2] <<- rHabMove(1,s.prev=model$s[pick,g-1,1:2], rsf=model$rsf[1:n.cells], avail.dist=model$avail.dist[pick,g-1,1:n.cells], dSS=dSS[1:n.cells,1:2], cells=cells[1:n.cells.x,1:n.cells.y],
                                                res=res,sigma.move=model$sigma.move.int[g-1],z.super=1)
             }
-            model$calculate(pd.nodes[pick.idx]) #update pd nodes when z and s change
+            #model$calculate(pd.nodes[pick.idx]) #update pd nodes when z and s change
+            #only proposed alive primary occasions can have nonzero focal detection nodes
+            for(g in 1:n.primary){
+              if(model$z[pick,g]==1){
+                model$calculate(pd.nodes[pick.idx[g]])
+              }
+            }
             #get proposed logprobs for N, y, s, and survival
             lp.proposed.N <- model$calculate(N.nodes[1])
             lp.proposed.N.recruit <- model$calculate(N.recruit.nodes)
-            lp.proposed.y <- model$calculate(y.nodes[pick.idx])
+            #lp.proposed.y <- model$calculate(y.nodes[pick.idx])
+            lp.proposed.y <- 0
+            for(g in 1:n.primary){
+              if(model$z[pick,g]==1){
+                lp.proposed.y <- lp.proposed.y+model$calculate(y.nodes[pick.idx[g]])
+              }
+            }
             #Do not calculate s or survival here because their target/proposal terms cancel exactly.
             #If accepted, calculate them once below only to synchronize the stored model logProbs.
             #lp.proposed.s <- model$calculate(s.nodes[pick.idx])
@@ -1384,7 +1406,6 @@ zSampler <- nimbleFunction(
             #lp.proposed.total <- lp.proposed.N + lp.proposed.y + lp.proposed.N.recruit + lp.proposed.surv + lp.proposed.s
             lp.initial.total <- lp.initial.N + lp.initial.y + lp.initial.N.recruit
             lp.proposed.total <- lp.proposed.N + lp.proposed.y + lp.proposed.N.recruit
-            
             
             #backwards prior and select probs
             #move from off class to class g in z.super==1
@@ -1411,8 +1432,7 @@ zSampler <- nimbleFunction(
             #Old MH ratio including the cancelling terms:
             #log_MH_ratio <- (lp.proposed.total + log.z.prior.ratio + log.p.select.back + log.prop.back.z + log.prop.back.s) -
             #(lp.initial.total + log.p.select.for + log.prop.for.z + log.prop.for.s)
-            log_MH_ratio <- (lp.proposed.total + log.z.prior.ratio + log.p.select.back + log.prop.back.z) -
-              (lp.initial.total + log.p.select.for + log.prop.for.z)
+            log_MH_ratio <- (lp.proposed.total + log.z.prior.ratio + log.p.select.back + log.prop.back.z) - (lp.initial.total + log.p.select.for + log.prop.for.z)
             accept <- decide(log_MH_ratio)
             if(accept){
               #s and survival were intentionally not calculated before the MH decision because their
@@ -1464,7 +1484,11 @@ zSampler <- nimbleFunction(
                 }
               }
               #set these logProbs back
-              model$calculate(y.nodes[pick.idx])
+              #model$calculate(y.nodes[pick.idx])
+              #only the proposed alive primary occasions had their focal y logProbs changed
+              for(g in z.start.prop:z.stop.prop){
+                model$calculate(y.nodes[pick.idx[g]])
+              }
               #s and survival logProbs were never recalculated for the proposal, so after restoring
               #their original values their stored logProbs are already correct.
               #model$calculate(z.nodes[pick])
@@ -1476,6 +1500,7 @@ zSampler <- nimbleFunction(
         }
       }
     }
+    
     #copy back to mySaved to update logProbs.
     copy(from = model, to = mvSaved, row = 1, nodes = calcNodes, logProb = TRUE)
   },

@@ -676,7 +676,14 @@ zSampler <- nimbleFunction(
           lp.initial.N.F <- model$getLogProb(N.F.nodes[1])
           lp.initial.N.recruit.M <- model$getLogProb(N.recruit.M.nodes)
           lp.initial.N.recruit.F <- model$getLogProb(N.recruit.F.nodes)
-          lp.initial.y <- model$getLogProb(y.nodes[pick.idx])
+          #lp.initial.y <- model$getLogProb(y.nodes[pick.idx])
+          #only currently alive primary occasions can change when this individual is removed
+          lp.initial.y <- 0
+          for(g in 1:n.primary){
+            if(z.curr[g]==1){
+              lp.initial.y <- lp.initial.y+model$getLogProb(y.nodes[pick.idx[g]])
+            }
+          }
           #lp.initial.surv <- model$getLogProb(z.nodes[pick]) #cancels exactly with reverse survival proposal probability
           
           # propose new N.super/z.super
@@ -714,8 +721,7 @@ zSampler <- nimbleFunction(
           
           #Reverse proposal probability: only sex/entry-cohort probability is needed.
           #The reverse survival proposal is exactly the current survival likelihood and cancels.
-          recruit.probs.back <- c(model$lambda.y1.M, model$ER.M,
-                                  model$lambda.y1.F, model$ER.F)
+          recruit.probs.back <- c(model$lambda.y1.M, model$ER.M, model$lambda.y1.F, model$ER.F)
           recruit.probs.back <- recruit.probs.back/sum(recruit.probs.back)
           log.prop.back <- log(recruit.probs.back[cohort.curr])
           #if(z.start.curr < n.primary){
@@ -729,13 +735,12 @@ zSampler <- nimbleFunction(
           lp.proposed.N.F <- model$calculate(N.F.nodes[1])
           lp.proposed.N.recruit.M <- model$calculate(N.recruit.M.nodes)
           lp.proposed.N.recruit.F <- model$calculate(N.recruit.F.nodes)
-          lp.proposed.y <- model$calculate(y.nodes[pick.idx]) #will always be 0
+          #lp.proposed.y <- model$calculate(y.nodes[pick.idx]) #will always be 0
+          lp.proposed.y <- 0 #all focal observation likelihood terms are zero when z.super=0
           #lp.proposed.surv <- model$calculate(z.nodes[pick]) #cancels exactly with reverse survival proposal probability
           
-          lp.initial.total <- lp.initial.N.M + lp.initial.N.F + lp.initial.y +
-            lp.initial.N.recruit.M + lp.initial.N.recruit.F
-          lp.proposed.total <- lp.proposed.N.M + lp.proposed.N.F + lp.proposed.y +
-            lp.proposed.N.recruit.M + lp.proposed.N.recruit.F
+          lp.initial.total <- lp.initial.N.M + lp.initial.N.F + lp.initial.y + lp.initial.N.recruit.M + lp.initial.N.recruit.F
+          lp.proposed.total <- lp.proposed.N.M + lp.proposed.N.F + lp.proposed.y + lp.proposed.N.recruit.M + lp.proposed.N.recruit.F
           
           #local multinomial coefficient ratio for moving current sex/entry cohort to z.super=0
           entry.counts.prop <- entry.counts.curr
@@ -749,13 +754,17 @@ zSampler <- nimbleFunction(
           log.prop.for <- 0
           
           #MH step
-          log_MH_ratio <- (lp.proposed.total + log.z.prior.ratio + log.p.select.back + log.prop.back) -
-            (lp.initial.total + log.p.select.for + log.prop.for)
+          log_MH_ratio <- (lp.proposed.total + log.z.prior.ratio + log.p.select.back + log.prop.back) - (lp.initial.total + log.p.select.for + log.prop.for)
           accept <- decide(log_MH_ratio)
-          
           if(accept){
             #survival logProb was omitted from the MH calculation because it cancels with the proposal;
             #calculate it once now to synchronize the accepted model state
+            #synchronize focal observation nodes only in primary occasions that were alive before removal
+            for(g in 1:n.primary){
+              if(z.curr[g]==1){
+                model$calculate(y.nodes[pick.idx[g]])
+              }
+            }
             model$calculate(z.nodes[pick])
             mvSaved["z.start",1][pick] <<- model[["z.start"]][pick]
             mvSaved["z.stop",1][pick] <<- model[["z.stop"]][pick]
@@ -805,7 +814,8 @@ zSampler <- nimbleFunction(
             #set these logProbs back
             model$calculate(N.M.nodes[1])
             model$calculate(N.F.nodes[1])
-            model$calculate(y.nodes[pick.idx])
+            #model$calculate(y.nodes[pick.idx])
+            #not needed: focal y logProbs were not recalculated for the rejected removal proposal
             model$calculate(N.recruit.M.nodes)
             model$calculate(N.recruit.F.nodes)
             #model$calculate(z.nodes[pick]) #not needed because survival logProb was never recalculated for the proposal
@@ -827,12 +837,12 @@ zSampler <- nimbleFunction(
           lp.initial.N.F <- model$getLogProb(N.F.nodes[1])
           lp.initial.N.recruit.M <- model$getLogProb(N.recruit.M.nodes)
           lp.initial.N.recruit.F <- model$getLogProb(N.recruit.F.nodes)
-          lp.initial.y <- model$getLogProb(y.nodes[pick.idx]) #will always be 0
+          #lp.initial.y <- model$getLogProb(y.nodes[pick.idx]) #will always be 0
+          lp.initial.y <- 0 #all focal observation likelihood terms are zero when z.super=0
           #lp.initial.surv <- model$getLogProb(z.nodes[pick]) #cancels exactly with forward survival proposal probability
           
           #propose sex and entry cohort
-          recruit.probs.for <- c(model$lambda.y1.M, model$ER.M,
-                                 model$lambda.y1.F, model$ER.F)
+          recruit.probs.for <- c(model$lambda.y1.M, model$ER.M, model$lambda.y1.F, model$ER.F)
           recruit.probs.for <- recruit.probs.for/sum(recruit.probs.for)
           cohort.prop <- rcat(1,recruit.probs.for)
           log.prop.for <- log(recruit.probs.for[cohort.prop])
@@ -901,13 +911,17 @@ zSampler <- nimbleFunction(
           lp.proposed.N.F <- model$calculate(N.F.nodes[1])
           lp.proposed.N.recruit.M <- model$calculate(N.recruit.M.nodes)
           lp.proposed.N.recruit.F <- model$calculate(N.recruit.F.nodes)
-          lp.proposed.y <- model$calculate(y.nodes[pick.idx])
+          #lp.proposed.y <- model$calculate(y.nodes[pick.idx])
+          lp.proposed.y <- 0
+          for(g in 1:n.primary){
+            if(model$z[pick,g]==1){
+              lp.proposed.y <- lp.proposed.y+model$calculate(y.nodes[pick.idx[g]])
+            }
+          }
           #lp.proposed.surv <- model$calculate(z.nodes[pick]) #cancels exactly with forward survival proposal probability
           
-          lp.initial.total <- lp.initial.N.M + lp.initial.N.F + lp.initial.y +
-            lp.initial.N.recruit.M + lp.initial.N.recruit.F
-          lp.proposed.total <- lp.proposed.N.M + lp.proposed.N.F + lp.proposed.y +
-            lp.proposed.N.recruit.M + lp.proposed.N.recruit.F
+          lp.initial.total <- lp.initial.N.M + lp.initial.N.F + lp.initial.y + lp.initial.N.recruit.M + lp.initial.N.recruit.F
+          lp.proposed.total <- lp.proposed.N.M + lp.proposed.N.F + lp.proposed.y + lp.proposed.N.recruit.M + lp.proposed.N.recruit.F
           
           #local multinomial coefficient ratio for moving z.super=0 to proposed sex/entry cohort
           entry.counts.prop <- entry.counts.curr
@@ -921,8 +935,7 @@ zSampler <- nimbleFunction(
           log.prop.back <- 0
           
           #MH step
-          log_MH_ratio <- (lp.proposed.total + log.z.prior.ratio + log.p.select.back + log.prop.back) -
-            (lp.initial.total + log.p.select.for + log.prop.for)
+          log_MH_ratio <- (lp.proposed.total + log.z.prior.ratio + log.p.select.back + log.prop.back) - (lp.initial.total + log.p.select.for + log.prop.for)
           accept <- decide(log_MH_ratio)
           if(accept){
             #survival logProb was omitted from the MH calculation because it cancels with the proposal;
@@ -985,7 +998,11 @@ zSampler <- nimbleFunction(
             model$calculate(N.F.nodes[1])
             model$calculate(N.recruit.M.nodes)
             model$calculate(N.recruit.F.nodes)
-            model$calculate(y.nodes[pick.idx])
+            #model$calculate(y.nodes[pick.idx])
+            #only the proposed alive primary occasions had their focal y logProbs changed
+            for(g in z.start.prop:z.stop.prop){
+              model$calculate(y.nodes[pick.idx[g]])
+            }
             #model$calculate(z.nodes[pick]) #not needed because survival logProb was never recalculated for the proposal
           }
         }
