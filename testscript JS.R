@@ -67,7 +67,8 @@ for(g in 2:n.primary){
 phi.cov.data <- c(data$cov,rep(NA,M-length(data$cov)))
 cov.up <- which(is.na(phi.cov.data)) #which individuals have missing cov values, used below to help nimble assign samplers
 #constants for Nimble
-constants <- list(n.primary=n.primary,tau=data$tau,K=K,M=M)
+tau <- data$tau
+constants <- list(n.primary=n.primary,tau=tau,K=K,M=M)
 
 #inits for Nimble
 Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
@@ -78,18 +79,17 @@ Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
 #data for Nimble
 Nimdata <- list(y=y.nim,phi.cov=phi.cov.data)
 
-# set parameters to monitor
+#set parameters to monitor
 parameters <- c('N','gamma','N.recruit','N.survive','p','beta0.phi',
               'beta1.phi','lambda.y1','N.super','phi.cov.mu','phi.cov.sd')
 nt <- 1 #thinning rate
 
-# Build the model, configure the mcmc, and compile
+#Build the model, configure the mcmc, and compile
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
 #if you add/remove parameters in model file, do so in config.nodes
 config.nodes <- c('beta0.phi','beta1.phi','gamma','p','lambda.y1',paste('phi.cov[',cov.up,']'),
                'phi.cov.mu','phi.cov.sd')
-# config.nodes <- c()
 conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,nodes=config.nodes)
 
 #Add N/z samplers
@@ -114,16 +114,16 @@ conf$addSampler(target = c("z"),
 #Typically gives you much greater ESS that propagates to N/N.recruit
 #Note: if you add time scaling to model file, need to include that in custom update
 conf$removeSamplers("lambda.y1")
-conf$addSampler(target="lambda.y1",type=truncGammaPoisSampler,control=list(tau=data$tau))#add tau here to make nimble happy
+conf$addSampler(target="lambda.y1",type=truncGammaPoisSampler,control=list(tau=tau))#add tau here to make nimble happy
 #if one gamma per primary occasion
 for(g in 1:(n.primary-1)){
   target <- paste0("gamma[",g,"]")
   conf$removeSamplers(target)
-  conf$addSampler(target=target,type=truncGammaPoisSampler,control=list(tau=data$tau))
+  conf$addSampler(target=target,type=truncGammaPoisSampler,control=list(tau=tau))
 }
 # #if gamma is fixed
 # conf$removeSamplers("gamma")
-# conf$addSampler(target="gamma",type=truncGammaPoisSampler,control=list(tau = tau))
+# conf$addSampler(target="gamma",type=truncGammaPoisSampler,control=list(tau=tau))
 
 #optional but recommended, can add full conditionals for p that nimble does not recognize due to custom distribution
 #must keep beta prior for p
@@ -144,18 +144,18 @@ for(g in 1:n.primary){
 conf$addSampler(target = c("beta0.phi","beta1.phi"),type = 'RW_block',
                 control = list(adaptive=TRUE),silent = TRUE)
 
-# Build and compile
+#Build and compile
 Rmcmc <- buildMCMC(conf)
-# runMCMC(Rmcmc,niter=10) #this will run in R, used for better debugging
+#runMCMC(Rmcmc,niter=10) #this will run in R, used for better debugging
 Cmodel <- compileNimble(Rmodel)
 Cmcmc <- compileNimble(Rmcmc, project = Rmodel)
 
-# Run the model.
+#Run the model.
 start.time2 <- Sys.time()
 Cmcmc$run(5000,reset=FALSE) #can extend run by rerunning this line
 end.time <- Sys.time()
-time1 <- end.time-start.time  # total time for compilation, replacing samplers, and fitting
-time2 <- end.time-start.time2 # post-compilation run time
+time1 <- end.time-start.time  #total time for compilation, replacing samplers, and fitting
+time2 <- end.time-start.time2 #post-compilation run time
 
 mvSamples <- as.matrix(Cmcmc$mvSamples)
 plot(mcmc(mvSamples[-c(1:250),]))
