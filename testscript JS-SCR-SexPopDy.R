@@ -13,7 +13,7 @@ library(coda)
 source("sim.JS.SCR.SexPopDy.R")
 source("Nimble Model JS-SCR-SexPopDy.R")
 source("Nimble Functions JS-SCR-SexPopDy.R") #contains custom distributions and updates
-source("sSampler Fixed.R") # activity center sampler that proposes from prior when z.super=0.
+source("sSampler Fixed.R") #activity center sampler that proposes from prior when z.super=0.
 #this one works for fixed activity centers over primary occasions only
 
 #you must run this line 
@@ -54,7 +54,7 @@ data$truth$N.super #N.super
 #Hard to predict appropriate M, depends on many factors like detection prob, number of primary occasions
 #level of population turnover. Maybe make sure it is at least 1.6*N.super to start
 M <- 300 #data augmentation level.
-# IMPORTANT: Check N.super posterior to make sure it never hits M. Otherwise, estimates will be biased.
+#IMPORTANT: Check N.super posterior to make sure it never hits M. Otherwise, estimates will be biased.
 N.super.init <- nrow(data$y)
 X <- data$X #pull X from data (won't be in environment if not simulated directly above)
 K <- data$K #same for K
@@ -135,7 +135,8 @@ for(i in idx){
 }
 
 #constants for Nimble
-constants <- list(n.primary=n.primary,tau=data$tau,M=M,J=J,xlim=xlim,ylim=ylim,K1D=K1D)
+tau <- data$tau
+constants <- list(n.primary=n.primary,tau=tau,M=M,J=J,xlim=xlim,ylim=ylim,K1D=K1D)
 #inits for Nimble
 Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
                  N.M=N.M.init,N.survive.M=N.survive.M.init,N.recruit.M=N.recruit.M.init,
@@ -148,7 +149,7 @@ Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
 #data for Nimble
 Nimdata <- list(y=y.nim,sex=sex.data,X=X.nim)
 
-# set parameters to monitor
+#set parameters to monitor
 parameters <- c('N','N.M',"N.F",'N.super','N.recruit','N.recruit.M','N.recruit.F',
                 'N.survive','N.survive.M','N.survive.F','lambda.y1.M','lambda.y1.F','gamma.sex','phi.sex',
                 'p0.sex','sigma.sex')
@@ -156,7 +157,7 @@ parameters2 <- c('sex') #might want to monitor sex if interested in unobserved s
 
 nt <- 1 #thinning rate
 
-# Build the model, configure the mcmc, and compile
+#Build the model, configure the mcmc, and compile
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
 #if you add/remove parameters in model file, do so in config.nodes
@@ -231,18 +232,18 @@ for(target in targets){
   conf$addSampler(target=target,type=truncGammaPoisSampler,control=list(tau=tau))
 }
 
-# Build and compile
+#Build and compile
 Rmcmc <- buildMCMC(conf)
-# runMCMC(Rmcmc,niter=10) #this will run in R, used for better debugging
+#runMCMC(Rmcmc,niter=10) #this will run in R, used for better debugging
 Cmodel <- compileNimble(Rmodel)
 Cmcmc <- compileNimble(Rmcmc, project = Rmodel)
 
-# Run the model.
+#Run the model.
 start.time2 <- Sys.time()
 Cmcmc$run(2500,reset=FALSE) #can extend run by rerunning this line
 end.time <- Sys.time()
-time1 <- end.time-start.time  # total time for compilation, replacing samplers, and fitting
-time2 <- end.time-start.time2 # post-compilation run time
+time1 <- end.time-start.time  #total time for compilation, replacing samplers, and fitting
+time2 <- end.time-start.time2 #post-compilation run time
 
 mvSamples <-  as.matrix(Cmcmc$mvSamples)
 plot(mcmc(mvSamples[-c(1:500),]))

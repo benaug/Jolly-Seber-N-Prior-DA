@@ -87,7 +87,8 @@ N.survive.init <- N.survive.M.init + N.survive.F.init
 N.recruit.init <- N.recruit.M.init + N.recruit.F.init
 
 #constants for Nimble
-constants <- list(n.primary=n.primary,tau=data$tau,M=M,K=K)
+tau <- data$tau
+constants <- list(n.primary=n.primary,tau=tau,M=M,K=K)
 #inits for Nimble
 Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
                  N.M=N.M.init,N.survive.M=N.survive.M.init,N.recruit.M=N.recruit.M.init,
@@ -101,7 +102,7 @@ Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
 #data for Nimble
 Nimdata <- list(y=y.nim,sex=sex.data)
 
-# set parameters to monitor
+#set parameters to monitor
 parameters <- c('N','N.M',"N.F",'N.super','N.recruit','N.recruit.M','N.recruit.F',
                 'N.survive','N.survive.M','N.survive.F','lambda.y1.M','lambda.y1.F','gamma.sex','phi.sex',
                 'p.sex')
@@ -109,7 +110,7 @@ parameters2 <- c('sex') #might want to monitor sex if interested in unobserved s
 
 nt <- 1 #thinning rate
 
-# Build the model, configure the mcmc, and compile
+#Build the model, configure the mcmc, and compile
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
 #if you add/remove parameters in model file, do so in config.nodes
@@ -202,18 +203,18 @@ if(p.spec=="sex.occasion"){
   }
 }
 
-# Build and compile
+#Build and compile
 Rmcmc <- buildMCMC(conf)
-# runMCMC(Rmcmc,niter=10) #this will run in R, used for better debugging
+#runMCMC(Rmcmc,niter=10) #this will run in R, used for better debugging
 Cmodel <- compileNimble(Rmodel)
 Cmcmc <- compileNimble(Rmcmc, project = Rmodel)
 
-# Run the model.
+#Run the model.
 start.time2 <- Sys.time()
 Cmcmc$run(5000,reset=FALSE) #can extend run by rerunning this line
 end.time <- Sys.time()
-time1 <- end.time-start.time  # total time for compilation, replacing samplers, and fitting
-time2 <- end.time-start.time2 # post-compilation run time
+time1 <- end.time-start.time  #total time for compilation, replacing samplers, and fitting
+time2 <- end.time-start.time2 #post-compilation run time
 
 mvSamples <-  as.matrix(Cmcmc$mvSamples)
 plot(mcmc(mvSamples[-c(1:50),]))

@@ -545,7 +545,6 @@ zSampler <- nimbleFunction(
           lp.initial.entry.M <- lp.initial.entry.M + model$getLogProb(N.recruit.M.nodes)
           lp.initial.entry.F <- model$getLogProb(N.F.nodes[1])
           lp.initial.entry.F <- lp.initial.entry.F + model$getLogProb(N.recruit.F.nodes)
-          # lp.initial.y <- model$getLogProb(y.nodes[i.idx])
           #restrict y nodes to those where z and/or sex changed
           if(model$sex[i]!=sex.curr){
             y.idx.changed <- i.idx
@@ -755,7 +754,6 @@ zSampler <- nimbleFunction(
           lp.initial.N.F <- model$getLogProb(N.F.nodes[1])
           lp.initial.N.recruit.M <- model$getLogProb(N.recruit.M.nodes)
           lp.initial.N.recruit.F <- model$getLogProb(N.recruit.F.nodes)
-          #lp.initial.y <- model$getLogProb(y.nodes[pick.idx])
           #only currently alive primary occasions can change when this individual is removed
           lp.initial.y <- 0
           for(g in 1:n.primary){

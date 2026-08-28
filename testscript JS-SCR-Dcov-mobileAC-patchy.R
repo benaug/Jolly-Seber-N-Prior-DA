@@ -8,7 +8,7 @@ library(coda)
 source("sim.JS.SCR.Dcov.mobileAC.R")
 source("Nimble Model JS-SCR-Dcov-mobileAC.R")
 source("Nimble Functions JS-SCR-Dcov-mobileAC.R") #contains custom distributions and updates
-source("sSampler Dcov MobileAC.R") # required activity center samplers
+source("sSampler Dcov MobileAC.R") #required activity center samplers
 source("mask.check.R")
 
 #you must run this line 
@@ -32,7 +32,7 @@ for(g in 1:n.primary){ #using same trapping array every primary occasion here
   X[[g]] <- as.matrix(expand.grid(3:14,3:14))
 }
 
-### Habitat Covariate stuff###
+###Habitat Covariate stuff###
 #buffer maximal trap extent
 X.all <- matrix(NA,nrow=0,ncol=2)
 for(g in 1:n.primary){
@@ -236,6 +236,8 @@ y.vals <- data$y.vals
 n.cells <- data$n.cells
 n.cells.x <- data$n.cells.x
 n.cells.y <- data$n.cells.y
+tau <- data$tau
+tau.move <- data$tau.move
 
 #initialize s consistent with these inits
 sigma.move.init <- sigma.move
@@ -256,7 +258,7 @@ points(s.init[,,1],s.init[,,2],pch=16)
 
 #constants for Nimble
 #might want to center D.cov here. Simulated D.cov in this testscript is already effectively centered.
-constants <- list(n.primary=n.primary,tau=data$tau,tau.move=data$tau.move,
+constants <- list(n.primary=n.primary,tau=tau,tau.move=tau.move,
                   M=M,J=J,K1D=K1D,D.cov=D.cov,
                   n.cells=n.cells,n.cells.x=n.cells.x,
                   n.cells.y=n.cells.y,res=res,
@@ -275,7 +277,7 @@ Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
 #data for Nimble
 Nimdata <- list(y=y.nim,phi.cov=phi.cov.data,X=X.nim,dSS=dSS,cells=cells,InSS=InSS)
 
-# set parameters to monitor
+#set parameters to monitor
 parameters <- c('N','gamma','N.recruit','N.survive','N.super','lambda.y1',
                 'beta0.phi','beta1.phi','phi.cov.mu','phi.cov.sd','p0','sigma',
                 'D0','D.beta1','rsf.beta','sigma.move')
@@ -283,13 +285,12 @@ parameters2 <- c("s")
 nt <- 1 #thinning rate
 nt2 <- 2
 
-# Build the model, configure the mcmc, and compile
+#Build the model, configure the mcmc, and compile
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
 
 config.nodes <- c('beta0.phi','beta1.phi','gamma',paste('phi.cov[',cov.up,']'),
                'phi.cov.mu','phi.cov.sd','p0','sigma','rsf.beta','sigma.move')
-# config.nodes <- c()
 conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,
                       monitors2=parameters2, thin2=nt2,
                       nodes=config.nodes,useConjugacy = FALSE)
@@ -356,7 +357,7 @@ for(i in 1:M){
 # for(g in 1:(n.primary-1)){
 #   target <- paste0("gamma[",g,"]")
 #   conf$removeSamplers(target)
-#   conf$addSampler(target=target,type=truncGammaPoisSampler,control=list(tau=data$tau))
+#   conf$addSampler(target=target,type=truncGammaPoisSampler,control=list(tau=tau))
 # }
 #if gamma is fixed
 conf$removeSamplers("gamma")
@@ -368,18 +369,18 @@ conf$addSampler(target = c("beta0.phi","beta1.phi"),type = 'RW_block',
 conf$addSampler(target = c("D0","D.beta1"),
                 type = 'AF_slice',control=list(adaptive=TRUE),silent = TRUE)
 
-# Build and compile
+#Build and compile
 Rmcmc <- buildMCMC(conf)
-# runMCMC(Rmcmc,niter=10) #this will run in R, used for better debugging
+#runMCMC(Rmcmc,niter=10) #this will run in R, used for better debugging
 Cmodel <- compileNimble(Rmodel)
 Cmcmc <- compileNimble(Rmcmc, project = Rmodel)
 
-# Run the model.
+#Run the model.
 start.time2 <- Sys.time()
 Cmcmc$run(2500,reset=FALSE) #can extend run by rerunning this line
 end.time <- Sys.time()
-time1 <- end.time-start.time  # total time for compilation, replacing samplers, and fitting
-time2 <- end.time-start.time2 # post-compilation run time
+time1 <- end.time-start.time  #total time for compilation, replacing samplers, and fitting
+time2 <- end.time-start.time2 #post-compilation run time
 
 mvSamples <- as.matrix(Cmcmc$mvSamples)
 plot(mcmc(mvSamples[-c(1:500),]))
@@ -410,7 +411,7 @@ ind.cols <- c("#E63946","#FF9F1C","#FFDD00","#2EC4B6","#3A86FF",
               "#EF476F","#FFC8DD","#B5E48C","#00BBF9","#9B5DE5",
               "#F15BB5","#00F5D4","#FEE440","#FF595E","#6A4C93")
 ind.cols2 <- adjustcolor(ind.cols,alpha.f=0.5) 
-# plot(NA,xlim=xlim,ylim=ylim)
+#plot(NA,xlim=xlim,ylim=ylim)
 image(x.vals,y.vals,matrix(InSS,n.cells.x,n.cells.y),main="Habitat",col=cols1)
 for(g in 1:n.primary){
   points(mvSamples2[,idx.x[g]],mvSamples2[,idx.y[g]],col=ind.cols2[g],pch=16)

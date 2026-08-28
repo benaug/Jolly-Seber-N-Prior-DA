@@ -150,6 +150,7 @@ y.vals <- data$y.vals
 n.cells <- data$n.cells
 n.cells.x <- data$n.cells.x
 n.cells.y <- data$n.cells.y
+tau <- data$tau
 
 y.nim <- array(0,dim=c(M,n.primary,J.max))
 y.nim[1:N.super.init,1:n.primary,1:J.max] <- data$y #all these guys must be observed
@@ -231,7 +232,7 @@ for(i in 1:M){
 
 #constants for Nimble
 #might want to center D.cov here. Simulated D.cov in this testscript is already effectively centered.
-constants <- list(n.primary=n.primary,tau=data$tau,M=M,J=J,xlim=xlim,ylim=ylim,K1D=K1D,
+constants <- list(n.primary=n.primary,tau=tau,M=M,J=J,xlim=xlim,ylim=ylim,K1D=K1D,
                   D.cov=D.cov,cellArea=cellArea,n.cells=n.cells,
                   res=res)
 #inits for Nimble
@@ -247,13 +248,13 @@ dummy.data <- rep(0,M) #dummy data not used, doesn't really matter what the valu
 Nimdata <- list(y=y.nim,phi.cov=phi.cov.data,X=X.nim,
                 dummy.data=dummy.data,cells=cells,InSS=InSS)
 
-# set parameters to monitor
+#set parameters to monitor
 parameters <- c('N','gamma','N.recruit','N.survive','N.super','lambda.y1',
                 'beta0.phi','beta1.phi','phi.cov.mu','phi.cov.sd','p0','sigma',
                 'D0','D.beta1')
 nt <- 1 #thinning rate
 
-# Build the model, configure the mcmc, and compile
+#Build the model, configure the mcmc, and compile
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
 #if you add/remove parameters in model file, do so in config.nodes
@@ -303,11 +304,11 @@ for(i in 1:M){
 for(g in 1:(n.primary-1)){
   target <- paste0("gamma[",g,"]")
   conf$removeSamplers(target)
-  conf$addSampler(target=target,type=truncGammaPoisSampler,control=list(tau=data$tau))
+  conf$addSampler(target=target,type=truncGammaPoisSampler,control=list(tau=tau))
 }
 # #if gamma is fixed
 # conf$removeSamplers("gamma")
-# conf$addSampler(target="gamma",type=truncGammaPoisSampler,control=list(tau=data$tau))
+# conf$addSampler(target="gamma",type=truncGammaPoisSampler,control=list(tau=tau))
 
 #optional (but recommended!) blocking 
 # conf$removeSampler(c("beta0.phi"))
@@ -317,18 +318,18 @@ conf$addSampler(target = c("beta0.phi","beta1.phi"),type = 'RW_block',
 conf$addSampler(target = c("D0","D.beta1"),
                 type = 'AF_slice',control=list(adaptive=TRUE),silent = TRUE)
 
-# Build and compile
+#Build and compile
 Rmcmc <- buildMCMC(conf)
-# runMCMC(Rmcmc,niter=10) #this will run in R, used for better debugging
+#runMCMC(Rmcmc,niter=10) #this will run in R, used for better debugging
 Cmodel <- compileNimble(Rmodel)
 Cmcmc <- compileNimble(Rmcmc, project = Rmodel)
 
-# Run the model.
+#Run the model.
 start.time2 <- Sys.time()
 Cmcmc$run(2500,reset=FALSE) #can extend run by rerunning this line
 end.time <- Sys.time()
-time1 <- end.time-start.time  # total time for compilation, replacing samplers, and fitting
-time2 <- end.time-start.time2 # post-compilation run time
+time1 <- end.time-start.time  #total time for compilation, replacing samplers, and fitting
+time2 <- end.time-start.time2 #post-compilation run time
 
 mvSamples <-  as.matrix(Cmcmc$mvSamples)
 plot(mcmc(mvSamples[-c(1:500),]))

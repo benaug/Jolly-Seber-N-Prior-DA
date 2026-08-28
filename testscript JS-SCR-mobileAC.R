@@ -62,6 +62,8 @@ y.vals <- data$y.vals
 n.cells <- data$n.cells
 n.cells.x <- data$n.cells.x
 n.cells.y <- data$n.cells.y
+tau <- data$tau
+tau.move <- data$tau.move
 
 y.nim <- array(0,dim=c(M,n.primary,J.max))
 y.nim[1:N.super.init,1:n.primary,1:J.max] <- data$y #all these guys must be observed
@@ -105,10 +107,10 @@ for(g in 1:n.primary){
 
 sigma.move.init <- sigma.move
 #initialize s consistent with sigma.move.init. will throw an error if starting logProb for s is not finite
-s.init <- initialize.s(sigma.move.init,z.super.init,y=y.nim,X=X.nim,xlim=xlim,ylim=ylim,tau=data$tau)
+s.init <- initialize.s(sigma.move.init,z.super.init,y=y.nim,X=X.nim,xlim=xlim,ylim=ylim,tau.move=tau.move)
 
 #constants for Nimble
-constants <- list(n.primary=n.primary,tau=data$tau,tau.move=data$tau.move,
+constants <- list(n.primary=n.primary,tau=tau,tau.move=tau.move,
                   M=M,J=J,xlim=xlim,ylim=ylim,K1D=K1D)
 #inits for Nimble
 Niminits <- list(N=N.init,lambda.y1=N.init[1], #initialize consistent with N[1] for faster convergence
@@ -121,13 +123,13 @@ Niminits <- list(N=N.init,lambda.y1=N.init[1], #initialize consistent with N[1] 
 #data for Nimble
 Nimdata <- list(y=y.nim,phi.cov=phi.cov.data,X=X.nim)
 
-# set parameters to monitor
+#set parameters to monitor
 parameters <- c('N','gamma','N.recruit','N.survive','N.super',
                 'lambda.y1','beta0.phi','beta1.phi',
                 'phi.cov.mu','phi.cov.sd','p0','sigma','sigma.move')
 nt <- 1 #thinning rate
 
-# Build the model, configure the mcmc, and compile
+#Build the model, configure the mcmc, and compile
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
 #if you add/remove parameters in model file, do so in config.nodes
@@ -188,12 +190,12 @@ conf$addSampler(target='sigma.move',type='slice')
 #Typically gives you much greater ESS that propagates to N/N.recruit
 #Note: if you add time scaling to model file, need to include that in custom update
 conf$removeSamplers("lambda.y1")
-conf$addSampler(target="lambda.y1",type=truncGammaPoisSampler,control=list(tau=data$tau))#add tau here to make nimble happy
+conf$addSampler(target="lambda.y1",type=truncGammaPoisSampler,control=list(tau=tau))#add tau here to make nimble happy
 #if one gamma per primary occasion
 # for(g in 1:(n.primary-1)){
 #   target <- paste0("gamma[",g,"]")
 #   conf$removeSamplers(target)
-#   conf$addSampler(target=target,type=truncGammaPoisSampler,control=list(tau=data$tau))
+#   conf$addSampler(target=target,type=truncGammaPoisSampler,control=list(tau=tau))
 # }
 # #if gamma is fixed
 conf$removeSamplers("gamma")
@@ -203,13 +205,13 @@ conf$addSampler(target="gamma",type=truncGammaPoisSampler,control=list(tau=tau))
 conf$addSampler(target = c("beta0.phi","beta1.phi"),type = 'RW_block',
                 control = list(adaptive=TRUE),silent = TRUE)
 
-# Build and compile
+#Build and compile
 Rmcmc <- buildMCMC(conf)
-# runMCMC(Rmcmc,niter=10) #this will run in R, used for better debugging
+#runMCMC(Rmcmc,niter=10) #this will run in R, used for better debugging
 Cmodel <- compileNimble(Rmodel)
 Cmcmc <- compileNimble(Rmcmc, project = Rmodel)
 
-# Run the model.
+#Run the model.
 start.time2 <- Sys.time()
 Cmcmc$run(5000,reset=FALSE) #can extend run by rerunning this line
 end.time <- Sys.time()

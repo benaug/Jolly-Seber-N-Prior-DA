@@ -629,7 +629,6 @@ zSampler <- nimbleFunction(
             model$calculate(N.recruit.F.nodes)
             model$calculate(phi.nodes[i.idx2])
             #model$calculate(z.nodes[i]) #not needed because survival logProb was never recalculated for the proposal
-            # model$calculate(y.nodes[i.idx])
             model$calculate(y.nodes[y.idx.changed])
           }
         }

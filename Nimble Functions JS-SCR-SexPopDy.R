@@ -388,7 +388,7 @@ zSampler <- nimbleFunction(
           model$calculate(pd.nodes[y.idx])
           lp.y <- model$calculate(y.nodes[y.idx])
           lp.surv <- model$calculate(z.nodes[i])
-          #no prior term, z.stop update does not change it
+          #no prior, lp.N1 terms, z.stop update does not change them
           lp.stop[g] <- lp.N.recruit.M + lp.N.recruit.F + lp.y + lp.surv
         }
         maxlp <- max(lp.stop) #deal with overflow
@@ -607,7 +607,6 @@ zSampler <- nimbleFunction(
           lp.proposed.entry.F <- model$calculate(N.F.nodes[1])
           lp.proposed.entry.F <- lp.proposed.entry.F + model$calculate(N.recruit.F.nodes)
           # model$calculate(pd.nodes[i.idx]) #update pd nodes when z/sex changes
-          # lp.proposed.y <- model$calculate(y.nodes[i.idx])
           model$calculate(pd.nodes[y.idx.changed]) #update pd nodes when z/sex changes
           lp.proposed.y <- model$calculate(y.nodes[y.idx.changed])
           #lp.proposed.surv <- model$calculate(z.nodes[i]) #cancels exactly with forwards survival proposal probability
@@ -739,7 +738,6 @@ zSampler <- nimbleFunction(
           lp.initial.N.F <- model$getLogProb(N.F.nodes[1])
           lp.initial.N.recruit.M <- model$getLogProb(N.recruit.M.nodes)
           lp.initial.N.recruit.F <- model$getLogProb(N.recruit.F.nodes)
-          #lp.initial.y <- model$getLogProb(y.nodes[pick.idx])
           #only currently alive primary occasions can change when this individual is removed
           lp.initial.y <- 0
           for(g in 1:n.primary){

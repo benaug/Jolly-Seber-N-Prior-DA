@@ -60,7 +60,7 @@ data$truth$N.super #N.super
 #Hard to predict appropriate M, depends on many factors like detection prob, number of primary occasions
 #level of population turnover. Maybe make sure it is at least 1.6*N.super to start
 M <- 400 #data augmentation level.
-# IMPORTANT: Check N.super posterior to make sure it never hits M. Otherwise, estimates will be biased.
+#IMPORTANT: Check N.super posterior to make sure it never hits M. Otherwise, estimates will be biased.
 N.super.init <- nrow(data$y)
 X <- data$X #pull X from data (won't be in environment if not simulated directly above)
 K <- data$K #same for K
@@ -82,6 +82,8 @@ y.vals <- data$y.vals
 n.cells <- data$n.cells
 n.cells.x <- data$n.cells.x
 n.cells.y <- data$n.cells.y
+tau <- data$tau
+tau.move <- data$tau.move
 
 y.nim <- array(0,dim=c(M,n.primary,J.max))
 y.nim[1:N.super.init,1:n.primary,1:J.max] <- data$y #all these guys must be observed
@@ -136,11 +138,11 @@ for(g in 1:n.primary){
 
 sigma.move.sex.init <- sigma.move.sex
 #initialize s consistent with sigma.move.sex.init and sex.init
-s.init <- initialize.s(sigma.move.sex.init,sex.init,z.super.init,y=y.nim,X=X.nim,xlim=xlim,ylim=ylim,tau.move=data$tau.move)
+s.init <- initialize.s(sigma.move.sex.init,sex.init,z.super.init,y=y.nim,X=X.nim,xlim=xlim,ylim=ylim,tau.move=tau.move)
 
 
 #constants for Nimble
-constants <- list(n.primary=n.primary,tau=data$tau,tau.move=data$tau.move,
+constants <- list(n.primary=n.primary,tau=tau,tau.move=tau.move,
                   M=M,J=J,xlim=xlim,ylim=ylim,K1D=K1D)
 #inits for Nimble
 Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
@@ -154,7 +156,7 @@ Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
 #data for Nimble
 Nimdata <- list(y=y.nim,sex=sex.data,X=X.nim)
 
-# set parameters to monitor
+#set parameters to monitor
 parameters <- c('N','N.M',"N.F",'N.super',
                 'N.recruit','N.recruit.M','N.recruit.F',
                 'N.survive','N.survive.M','N.survive.F',
@@ -164,7 +166,7 @@ parameters2 <- c('sex') #might want to monitor sex if interested in unobserved s
 
 nt <- 1 #thinning rate
 
-# Build the model, configure the mcmc, and compile
+#Build the model, configure the mcmc, and compile
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
 #if you add/remove parameters in model file, do so in config.nodes
@@ -258,18 +260,18 @@ for(i in 1:2){
   conf$addSampler(target=paste("sigma.move.sex[",i,"]"),type='slice')
 }
 
-# Build and compile
+#Build and compile
 Rmcmc <- buildMCMC(conf)
-# runMCMC(Rmcmc,niter=10) #this will run in R, used for better debugging
+#runMCMC(Rmcmc,niter=10) #this will run in R, used for better debugging
 Cmodel <- compileNimble(Rmodel)
 Cmcmc <- compileNimble(Rmcmc, project = Rmodel)
 
-# Run the model.
+#Run the model.
 start.time2 <- Sys.time()
 Cmcmc$run(2000,reset=FALSE) #can extend run by rerunning this line
 end.time <- Sys.time()
-time1 <- end.time-start.time  # total time for compilation, replacing samplers, and fitting
-time2 <- end.time-start.time2 # post-compilation run time
+time1 <- end.time-start.time  #total time for compilation, replacing samplers, and fitting
+time2 <- end.time-start.time2 #post-compilation run time
 
 mvSamples <-  as.matrix(Cmcmc$mvSamples)
 plot(mcmc(mvSamples[-c(1:500),]))

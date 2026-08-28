@@ -141,11 +141,10 @@ zSampler <- nimbleFunction(
           }
           #3) Update N.survive
           model$N.survive <<- model$N[2:n.primary]-model$N.recruit #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
-          #only ER nodes before first detection can change across z.start candidates
-          #model$calculate(ER.nodes) #update ER when N updated
+          #update ER when N updated, only ER nodes before first detection can change across z.start candidates
           model$calculate(ER.nodes[1:(first.det-1)])
           #only pd nodes before first detection can change across z.start candidates
-          #model$calculate(pd.nodes[i.idx]) #update pd nodes when a z changes
+          #update pd nodes when a z changes
           model$calculate(pd.nodes[y.idx])
           #get these logProbs
           #lp.N1 <- model$calculate(N.nodes[1])
@@ -159,10 +158,8 @@ zSampler <- nimbleFunction(
             lp.N1 <- lp.N1.not1
           }
           #only recruitment likelihoods before first detection can change
-          #lp.N.recruit <- model$calculate(N.recruit.nodes)
           lp.N.recruit <- model$calculate(N.recruit.nodes[1:(first.det-1)])
           #only observation likelihoods before first detection can change
-          #lp.y <- model$calculate(y.nodes[i.idx])
           lp.y <- model$calculate(y.nodes[y.idx])
           lp.surv <- model$calculate(z.nodes[i])
           # Add the full multinomial coefficient prior log-prob for this proposed configuration
@@ -198,15 +195,13 @@ zSampler <- nimbleFunction(
             model$N.recruit[z.start.prop-1] <<- N.recruit.curr[z.start.prop-1] + 1
           }
           model$N.survive <<- model$N[2:n.primary]-model$N.recruit #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
-          #model$calculate(ER.nodes) #update ER when N updated
+          #update ER when N updated
           model$calculate(ER.nodes[1:(first.det-1)])
-          #model$calculate(pd.nodes[i.idx]) #update pd nodes
+          #update pd nodes
           model$calculate(pd.nodes[y.idx])
           #update these logProbs
-          #model$calculate(y.nodes[i.idx])
           model$calculate(y.nodes[y.idx])
           model$calculate(N.nodes[1])
-          #model$calculate(N.recruit.nodes)
           model$calculate(N.recruit.nodes[1:(first.det-1)])
           model$calculate(z.nodes[i])
           mvSaved["z.start",1][i] <<- model[["z.start"]][i]
@@ -216,7 +211,6 @@ zSampler <- nimbleFunction(
           mvSaved["N.recruit",1] <<- model[["N.recruit"]]
           mvSaved["ER",1] <<- model[["ER"]]
           #only pd nodes before first detection changed
-          #for(g in 1:n.primary){
           for(g2 in 1:(first.det-1)){
             for(j in 1:J[g2]){
               mvSaved["pd",1][i,g2,j] <<- model[["pd"]][i,g2,j]
@@ -235,7 +229,6 @@ zSampler <- nimbleFunction(
           model[["N.recruit"]] <<- mvSaved["N.recruit",1]
           model[["ER"]] <<- mvSaved["ER",1]
           #only pd nodes before first detection changed
-          #for(g in 1:n.primary){
           for(g2 in 1:(first.det-1)){
             for(j in 1:J[g2]){
               model[["pd"]][i,g2,j] <<- mvSaved["pd",1][i,g2,j]
@@ -243,9 +236,7 @@ zSampler <- nimbleFunction(
           }
           #set these logProbs back
           model$calculate(N.nodes[1])
-          #model$calculate(N.recruit.nodes)
           model$calculate(N.recruit.nodes[1:(first.det-1)])
-          #model$calculate(y.nodes[i.idx])
           model$calculate(y.nodes[y.idx])
           model$calculate(z.nodes[i])
         }
@@ -274,12 +265,10 @@ zSampler <- nimbleFunction(
           #update N, number of recruits does not change going backwards
           model$N <<- N.curr - z.curr + z.prop
           #only ER nodes after last detection can change across z.stop candidates
-          #model$calculate(ER.nodes) #update ER when N updated
           if(last.det < n.primary-1){
             model$calculate(ER.nodes[(last.det+1):(n.primary-1)])
           }
           #only pd nodes after last detection can change across z.stop candidates
-          #model$calculate(pd.nodes[i.idx]) #update pd nodes when z changes
           model$calculate(pd.nodes[y.idx])
           #get these logProbs
           #lp.N1 <- model$calculate(N.nodes[1])
@@ -290,11 +279,9 @@ zSampler <- nimbleFunction(
           }else{
             lp.N.recruit <- 0
           }
-          #lp.y <- model$calculate(y.nodes[i.idx])
           lp.y <- model$calculate(y.nodes[y.idx])
           lp.surv <- model$calculate(z.nodes[i])
-          #no prior term, z.stop update does not change it
-          #lp.stop[g] <- lp.N1 + lp.N.recruit + lp.y + lp.surv
+          #no prior, lp.N1 terms, z.stop update does not change them
           lp.stop[g] <- lp.N.recruit + lp.y + lp.surv
         }
         maxlp <- max(lp.stop) #deal with overflow
@@ -302,7 +289,7 @@ zSampler <- nimbleFunction(
         prop.probs <- prop.probs/sum(prop.probs)
         z.stop.prop <- rcat(1,prop.probs)
         model$z.stop[i] <<- z.stop.curr #set back to original
-        if(model$z.stop[i]!=z.stop.prop){#if proposal differs from current
+        if(model$z.stop[i]!=z.stop.prop){ #if proposal differs from current
           model$z.stop[i] <<- z.stop.prop
           z.prop <- rep(0,n.primary)
           z.prop[last.det:model$z.stop[i]] <- 1 #must be alive between last detection and this z.stop
@@ -310,19 +297,16 @@ zSampler <- nimbleFunction(
           model$z[i,] <<- z.prop
           model$N <<- N.curr - z.curr + z.prop
           model$N.survive <<- model$N[2:n.primary]-model$N.recruit #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
-          #model$calculate(ER.nodes) #update ER when N updated
+          #update ER when N updated
           if(last.det < n.primary-1){
             model$calculate(ER.nodes[(last.det+1):(n.primary-1)])
           }
-          #model$calculate(pd.nodes[i.idx]) #update pd nodes when z changes
           model$calculate(pd.nodes[y.idx])
           #update these logProbs
           #model$calculate(N.nodes[1]) #N[1] does not change in a z.stop update
-          #model$calculate(N.recruit.nodes)
           if(last.det < n.primary-1){
             model$calculate(N.recruit.nodes[(last.det+1):(n.primary-1)])
           }
-          #model$calculate(y.nodes[i.idx])
           model$calculate(y.nodes[y.idx])
           model$calculate(z.nodes[i])
           mvSaved["z.stop",1][i] <<- model[["z.stop"]][i]
@@ -331,7 +315,6 @@ zSampler <- nimbleFunction(
           mvSaved["N.survive",1] <<- model[["N.survive"]]
           mvSaved["ER",1] <<- model[["ER"]]
           #only pd nodes after last detection changed
-          #for(g in 1:n.primary){
           for(g2 in (last.det+1):n.primary){
             for(j in 1:J[g2]){
               mvSaved["pd",1][i,g2,j] <<- model[["pd"]][i,g2,j]
@@ -344,7 +327,6 @@ zSampler <- nimbleFunction(
           model[["N.survive"]] <<- mvSaved["N.survive",1]
           model[["ER"]] <<- mvSaved["ER",1]
           #only pd nodes after last detection changed
-          #for(g in 1:n.primary){
           for(g2 in (last.det+1):n.primary){
             for(j in 1:J[g2]){
               model[["pd"]][i,g2,j] <<- mvSaved["pd",1][i,g2,j]
@@ -352,11 +334,9 @@ zSampler <- nimbleFunction(
           }
           #set these logProbs back
           #model$calculate(N.nodes[1]) #N[1] does not change in a z.stop update
-          #model$calculate(N.recruit.nodes)
           if(last.det < n.primary-1){
             model$calculate(N.recruit.nodes[(last.det+1):(n.primary-1)])
           }
-          #model$calculate(y.nodes[i.idx])
           model$calculate(y.nodes[y.idx])
           model$calculate(z.nodes[i])
         }
@@ -488,7 +468,6 @@ zSampler <- nimbleFunction(
               }
             }
             #set these logProbs back
-            # model$calculate(y.nodes[i.idx])
             model$calculate(y.nodes[y.idx.changed])
             model$calculate(N.nodes[1])
             model$calculate(N.recruit.nodes)
@@ -850,9 +829,7 @@ zSampler <- nimbleFunction(
           #backwards selection probability
           noff.back <- noff.curr+1
           log.p.select.back <- log(1/noff.back)
-          
           log.z.prior.ratio <- log(entry.counts.curr[n.primary+1]+1) - log(entry.counts.curr[z.start.curr])
-          
           log.prop.for <- 0
           
           #MH step
@@ -874,7 +851,6 @@ zSampler <- nimbleFunction(
               }
             }
             model$calculate(z.nodes[pick])
-            
             mvSaved["z.start",1][pick] <<- model[["z.start"]][pick]
             mvSaved["z.stop",1][pick] <<- model[["z.stop"]][pick]
             mvSaved["z",1][pick,] <<- model[["z"]][pick,]
@@ -884,22 +860,18 @@ zSampler <- nimbleFunction(
             mvSaved["N.recruit",1] <<- model[["N.recruit"]]
             mvSaved["N.super",1][1] <<- model[["N.super"]]
             mvSaved["ER",1] <<- model[["ER"]]
-            
             for(g2 in 1:n.primary){
               for(j in 1:J[g2]){
                 mvSaved["pd",1][pick,g2,j] <<- model[["pd"]][pick,g2,j]
               }
             }
-            
             entry.counts.curr <- entry.counts.prop
-            
             #move guy from on list to off list
             z.on[pick.pos] <- z.on[non.curr]
             z.on[non.curr] <- 0
             non.curr <- non.curr-1
             noff.curr <- noff.curr+1
             z.off[noff.curr] <- pick
-            
           }else{
             model[["z.start"]][pick] <<- mvSaved["z.start",1][pick]
             model[["z.stop"]][pick] <<- mvSaved["z.stop",1][pick]
@@ -910,13 +882,11 @@ zSampler <- nimbleFunction(
             model[["N.recruit"]] <<- mvSaved["N.recruit",1]
             model[["N.super"]] <<- mvSaved["N.super",1][1]
             model[["ER"]] <<- mvSaved["ER",1]
-            
             for(g2 in 1:n.primary){
               for(j in 1:J[g2]){
                 model[["pd"]][pick,g2,j] <<- mvSaved["pd",1][pick,g2,j]
               }
             }
-            
             #set these logProbs back
             #model$calculate(y.nodes[pick.idx])
             #not needed: focal y logProbs were not recalculated for the rejected removal proposal
@@ -925,12 +895,10 @@ zSampler <- nimbleFunction(
             model$calculate(N.recruit.nodes)
           }
         }
-        
       }else{#add
         if(model$N.super[1] < M){
           #find all z's currently off and undetected
           noff.init <- noff.curr
-          
           if(noff.init>0){
             pick.pos <- rcat(1,rep(1/noff.init,noff.init))
             pick <- z.off[pick.pos]
@@ -956,7 +924,6 @@ zSampler <- nimbleFunction(
             #simulate survival path
             model$z[pick,] <<- 0
             model$z[pick,z.start.prop] <<- 1
-            
             if(z.start.prop < n.primary){
               for(g in (z.start.prop+1):n.primary){
                 model$z[pick,g] <<- rbinom(1,1, model$phi[pick,g-1] * model$z[pick,g-1])
@@ -984,7 +951,6 @@ zSampler <- nimbleFunction(
             model$N.survive <<- model$N[2:n.primary]-model$N.recruit
             
             model$calculate(ER.nodes)
-            #model$calculate(pd.nodes[pick.idx])
             #only proposed alive primary occasions can have nonzero focal detection nodes
             for(g in 1:n.primary){
               if(model$z[pick,g]==1){
@@ -995,7 +961,6 @@ zSampler <- nimbleFunction(
             #get proposed logProbs
             lp.proposed.N <- model$calculate(N.nodes[1])
             lp.proposed.N.recruit <- model$calculate(N.recruit.nodes)
-            #lp.proposed.y <- model$calculate(y.nodes[pick.idx])
             lp.proposed.y <- 0
             for(g in 1:n.primary){
               if(model$z[pick,g]==1){
@@ -1005,7 +970,6 @@ zSampler <- nimbleFunction(
             
             #survival target/proposal terms cancel
             lp.initial.total <- lp.initial.N + lp.initial.y + lp.initial.N.recruit
-            
             lp.proposed.total <- lp.proposed.N + lp.proposed.y + lp.proposed.N.recruit
             
             #multinomial coefficient ratio
@@ -1016,20 +980,18 @@ zSampler <- nimbleFunction(
             #backwards selection probability
             non.back <- non.curr+1
             log.p.select.back <- log(1/non.back)
-            
             log.z.prior.ratio <- log(entry.counts.curr[z.start.prop]+1) - log(entry.counts.curr[n.primary+1])
-            
             log.prop.back <- 0
             
             #MH step
-            log_MH_ratio <- (lp.proposed.total + log.z.prior.ratio + log.p.select.back + log.prop.back) - (lp.initial.total + log.p.select.for + log.prop.for)
+            log_MH_ratio <- (lp.proposed.total + log.z.prior.ratio + log.p.select.back + log.prop.back) -
+              (lp.initial.total + log.p.select.for + log.prop.for)
             
             accept <- decide(log_MH_ratio)
             if(accept){
               #survival term cancelled from the MH ratio, but synchronize
               #the cached survival logProb to the accepted z.super=1 history
               model$calculate(z.nodes[pick])
-              
               mvSaved["z.start",1][pick] <<- model[["z.start"]][pick]
               mvSaved["z.stop",1][pick] <<- model[["z.stop"]][pick]
               mvSaved["z",1][pick,] <<- model[["z"]][pick,]
@@ -1039,22 +1001,18 @@ zSampler <- nimbleFunction(
               mvSaved["N.recruit",1] <<- model[["N.recruit"]]
               mvSaved["N.super",1][1] <<- model[["N.super"]]
               mvSaved["ER",1] <<- model[["ER"]]
-              
               for(g2 in 1:n.primary){
                 for(j in 1:J[g2]){
                   mvSaved["pd",1][pick,g2,j] <<- model[["pd"]][pick,g2,j]
                 }
               }
-              
               entry.counts.curr <- entry.counts.prop
-              
               #move guy from off list to on list
               z.off[pick.pos] <- z.off[noff.curr]
               z.off[noff.curr] <- 0
               noff.curr <- noff.curr-1
               non.curr <- non.curr+1
               z.on[non.curr] <- pick
-              
             }else{
               model[["z.start"]][pick] <<- mvSaved["z.start",1][pick]
               model[["z.stop"]][pick] <<- mvSaved["z.stop",1][pick]
@@ -1065,13 +1023,11 @@ zSampler <- nimbleFunction(
               model[["N.recruit"]] <<- mvSaved["N.recruit",1]
               model[["N.super"]] <<- mvSaved["N.super",1][1]
               model[["ER"]] <<- mvSaved["ER",1]
-              
               for(g2 in 1:n.primary){
                 for(j in 1:J[g2]){
                   model[["pd"]][pick,g2,j] <<- mvSaved["pd",1][pick,g2,j]
                 }
               }
-              
               #set these logProbs back
               #model$calculate(y.nodes[pick.idx])
               #only the proposed alive primary occasions had their focal y logProbs changed

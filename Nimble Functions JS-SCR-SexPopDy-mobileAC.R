@@ -536,7 +536,7 @@ zSampler <- nimbleFunction(
           model$calculate(pd.nodes[y.idx])
           lp.y <- model$calculate(y.nodes[y.idx])
           lp.surv <- model$calculate(z.nodes[i])
-          #no prior term, z.stop update does not change it
+          #no prior, lp.N1 terms, z.stop update does not change them
           lp.stop[g] <- lp.N.recruit.M + lp.N.recruit.F + lp.y + lp.surv
         }
         maxlp <- max(lp.stop) #deal with overflow
@@ -769,7 +769,6 @@ zSampler <- nimbleFunction(
             lp.proposed.s <- 0
           }
           # model$calculate(pd.nodes[i.idx]) #update pd nodes when z/sex changes
-          # lp.proposed.y <- model$calculate(y.nodes[i.idx])
           model$calculate(pd.nodes[y.idx.changed]) #update pd nodes when z/sex changes
           lp.proposed.y <- model$calculate(y.nodes[y.idx.changed])
           #lp.proposed.surv <- model$calculate(z.nodes[i]) #cancels exactly with forwards survival proposal probability
@@ -1284,7 +1283,6 @@ zSampler <- nimbleFunction(
             model$calculate(N.F.nodes[1])
             model$calculate(N.recruit.M.nodes)
             model$calculate(N.recruit.F.nodes)
-            #model$calculate(y.nodes[pick.idx])
             #only the proposed alive primary occasions had their focal y logProbs changed
             for(g in z.start.prop:z.stop.prop){
               model$calculate(y.nodes[pick.idx[g]])
