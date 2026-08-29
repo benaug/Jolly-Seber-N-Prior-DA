@@ -93,10 +93,10 @@ sum(lambda.cell) #expected N in state space
 
 #simulate some data
 data <- sim.JS.SCR.Dcov.mobileAC(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,InSS=InSS,
-            gamma=gamma,n.primary=n.primary,tau=tau,tau.move=tau.move,
-            beta0.phi=beta0.phi,beta1.phi=beta1.phi,
-            p0=p0,sigma=sigma,sigma.move=sigma.move,rsf.beta=rsf.beta,
-            X=X,K=K,xlim=xlim,ylim=ylim,res=res)
+                                 gamma=gamma,n.primary=n.primary,tau=tau,tau.move=tau.move,
+                                 beta0.phi=beta0.phi,beta1.phi=beta1.phi,
+                                 p0=p0,sigma=sigma,sigma.move=sigma.move,rsf.beta=rsf.beta,
+                                 X=X,K=K,xlim=xlim,ylim=ylim,res=res)
 
 #these plots are cool, you should look at these.
 
@@ -175,6 +175,7 @@ data$truth$N.super #N.super
 #Hard to predict appropriate M, depends on many factors like detection prob, number of primary occasions
 #level of population turnover. Maybe make sure it is at least 1.6*N.super to start
 M <- 250 #data augmentation level. Check N.super posterior to make sure it never hits M
+n.primary <- data$n.primary
 N.super.init <- nrow(data$y)
 X <- data$X #pull X from data (won't be in environment if not simulated directly above)
 K <- data$K #same for K
@@ -246,10 +247,16 @@ rsf.beta.init <- 0
 #but if we init z.super to only be 1 for detected guys as is set up above
 #it will not be used
 D.beta1.init <- 0
+#these are used to speed up avail.dist computations. used in s initializer and model
+avail.z <- qnorm(1-1e-8) #standard-normal cutoff for trimming negligible movement availability outside +/- avail.z SD
+x.vals.edges <- c(x.vals-res/2,x.vals[n.cells.x]+0.5*res)
+y.vals.edges <- c(y.vals-res/2,y.vals[n.cells.y]+0.5*res)
+
 s.init <- initialize.s.hab(sigma.move.init=sigma.move.init,rsf.beta.init=rsf.beta.init,
-                            z.super.init=z.super.init,D.beta1.init=D.beta1.init,
-                            y=y.nim,X=X.nim,xlim=xlim,ylim=ylim,dSS=dSS,tau.move=data$tau.move,
-                            cells=cells,res=res,D.cov=D.cov,InSS=InSS,x.vals=x.vals,y.vals=y.vals)
+                           z.super.init=z.super.init,D.beta1.init=D.beta1.init,
+                           y=y.nim,X=X.nim,xlim=xlim,ylim=ylim,dSS=dSS,tau.move=tau.move,
+                           cells=cells,res=res,D.cov=D.cov,InSS=InSS,avail.z=avail.z,
+                           x.vals.edges=x.vals.edges,y.vals.edges=y.vals.edges)
 
 #can verify all s start inside habitat mask
 image(data$x.vals,data$y.vals,matrix(data$InSS,data$n.cells.x,data$n.cells.y),
@@ -262,10 +269,10 @@ constants <- list(n.primary=n.primary,tau=tau,tau.move=tau.move,
                   M=M,J=J,K1D=K1D,D.cov=D.cov,
                   n.cells=n.cells,n.cells.x=n.cells.x,
                   n.cells.y=n.cells.y,res=res,
-                  x.vals=x.vals,y.vals=y.vals,
+                  x.vals.edges=x.vals.edges,y.vals.edges=y.vals.edges,
                   xlim=xlim,ylim=ylim,
                   cellArea=cellArea,n.cells=n.cells,
-                  res=res)
+                  res=res,avail.z=avail.z)
 
 #inits for Nimble
 Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
@@ -290,7 +297,7 @@ start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
 
 config.nodes <- c('beta0.phi','beta1.phi','gamma',paste('phi.cov[',cov.up,']'),
-               'phi.cov.mu','phi.cov.sd','p0','sigma','rsf.beta','sigma.move')
+                  'phi.cov.mu','phi.cov.sd','p0','sigma','rsf.beta','sigma.move')
 conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,
                       monitors2=parameters2, thin2=nt2,
                       nodes=config.nodes,useConjugacy = FALSE)
@@ -316,8 +323,9 @@ cells.double <- matrix(as.double(cells),n.cells.x,n.cells.y)
 conf$addSampler(target = c("z"),
                 type = 'zSampler',control = list(M=M,n.primary=n.primary,J=J,cells=cells.double,
                                                  dSS=dSS,res=res,n.cells=n.cells,
-                                                 xlim=xlim,ylim=ylim,x.vals=x.vals,y.vals=y.vals,
-                                                 n.cells.x=n.cells.x,n.cells.y=n.cells.y,
+                                                 xlim=xlim,ylim=ylim,
+                                                 x.vals.edges=x.vals.edges,y.vals.edges=y.vals.edges,
+                                                 n.cells.x=n.cells.x,n.cells.y=n.cells.y,avail.z=avail.z,
                                                  z.obs=z.obs,z.super.ups=z.super.ups,
                                                  y.nodes=y.nodes,pd.nodes=pd.nodes,N.nodes=N.nodes,
                                                  z.nodes=z.nodes,ER.nodes=ER.nodes,s.nodes=s.nodes,
@@ -419,10 +427,9 @@ for(g in 1:n.primary){
 for(g in 1:n.primary){
   points(data$s[i,g,1],data$s[i,g,2],col="black",pch=16,cex=1)
   if(g>1){
-  lines(x=c(data$s[i,g-1,1],data$s[i,g,1]),
-        y=c(data$s[i,g-1,2],data$s[i,g,2]))
+    lines(x=c(data$s[i,g-1,1],data$s[i,g,1]),
+          y=c(data$s[i,g-1,2],data$s[i,g,2]))
   }
 }
 y2D[i,]
-
 

@@ -255,10 +255,16 @@ rsf.beta.init <- 0
 #but if we init z.super to only be 1 for detected guys as is set up above
 #it will not be used
 D.beta1.init <- 0
+#these are used to speed up avail.dist computations. used in s initializer and model
+avail.z <- qnorm(1-1e-8) #standard-normal cutoff for trimming negligible movement availability outside +/- avail.z SD
+x.vals.edges <- c(x.vals-res/2,x.vals[n.cells.x]+0.5*res)
+y.vals.edges <- c(y.vals-res/2,y.vals[n.cells.y]+0.5*res)
+
 s.init <- initialize.s.hab(sigma.move.init=sigma.move.init,rsf.beta.init=rsf.beta.init,
-                            z.super.init=z.super.init,D.beta1.init=D.beta1.init,
-                            y=y.nim,X=X.nim,xlim=xlim,ylim=ylim,dSS=dSS,tau.move=tau.move,
-                            cells=cells,res=res,D.cov=D.cov,InSS=InSS,x.vals=x.vals,y.vals=y.vals)
+                           z.super.init=z.super.init,D.beta1.init=D.beta1.init,
+                           y=y.nim,X=X.nim,xlim=xlim,ylim=ylim,dSS=dSS,tau.move=tau.move,
+                           cells=cells,res=res,D.cov=D.cov,InSS=InSS,avail.z=avail.z,
+                           x.vals.edges=x.vals.edges,y.vals.edges=y.vals.edges)
 
 #can verify all s start inside habitat mask
 image(data$x.vals,data$y.vals,matrix(data$InSS,data$n.cells.x,data$n.cells.y),
@@ -271,10 +277,10 @@ constants <- list(n.primary=n.primary,tau=tau,tau.move=tau.move,
                   M=M,J=J,K1D=K1D,D.cov=D.cov,
                   n.cells=n.cells,n.cells.x=n.cells.x,
                   n.cells.y=n.cells.y,res=res,
-                  x.vals=x.vals,y.vals=y.vals,
+                  x.vals.edges=x.vals.edges,y.vals.edges=y.vals.edges,
                   xlim=xlim,ylim=ylim,
                   cellArea=cellArea,n.cells=n.cells,
-                  res=res)
+                  res=res,avail.z=avail.z)
 
 #inits for Nimble
 Niminits <- list(N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
@@ -322,8 +328,9 @@ cells.double <- matrix(as.double(cells),n.cells.x,n.cells.y)
 conf$addSampler(target = c("z"),
                 type = 'zSampler',control = list(M=M,n.primary=n.primary,J=J,cells=cells.double,
                                                  dSS=dSS,res=res,n.cells=n.cells,
-                                                 xlim=xlim,ylim=ylim,x.vals=x.vals,y.vals=y.vals,
-                                                 n.cells.x=n.cells.x,n.cells.y=n.cells.y,
+                                                 xlim=xlim,ylim=ylim,
+                                                 x.vals.edges=x.vals.edges,y.vals.edges=y.vals.edges,
+                                                 n.cells.x=n.cells.x,n.cells.y=n.cells.y,avail.z=avail.z,
                                                  z.obs=z.obs,z.super.ups=z.super.ups,
                                                  y.nodes=y.nodes,pd.nodes=pd.nodes,N.nodes=N.nodes,
                                                  z.nodes=z.nodes,ER.nodes=ER.nodes,s.nodes=s.nodes,
@@ -376,7 +383,7 @@ Cmcmc <- compileNimble(Rmcmc, project = Rmodel)
 
 #Run the model.
 start.time2 <- Sys.time()
-Cmcmc$run(2500,reset=FALSE) #can extend run by rerunning this line
+Cmcmc$run(250,reset=FALSE) #can extend run by rerunning this line
 end.time <- Sys.time()
 time1 <- end.time-start.time  #total time for compilation, replacing samplers, and fitting
 time2 <- end.time-start.time2 #post-compilation run time

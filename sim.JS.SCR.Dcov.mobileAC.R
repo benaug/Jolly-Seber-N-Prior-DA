@@ -8,7 +8,7 @@ sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
                                      gamma=NA,n.primary=NA,beta0.phi=NA,beta1.phi=NA,
                                      p0=NA,sigma=NA,sigma.move=NA,rsf.beta=NA,
                                      X=NA,buff=buff,tau=NA,tau.move=NA,
-                                     K=NA,xlim=NA,ylim=NA,res=NA){
+                                     K=NA,xlim=NA,ylim=NA,res=NA,avail.z=qnorm(1-1e-8)){
   #Population dynamics
   N <- rep(NA,n.primary)
   N.recruit <- N.survive <- ER <- rep(NA,n.primary-1)
@@ -27,6 +27,9 @@ sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   n.cells <- nrow(dSS)
   n.cells.x <- length(x.vals)
   n.cells.y <- length(y.vals)
+  #constants used by factorized 1-D availability calculations
+  x.vals.edges <- c(x.vals-res/2,x.vals[n.cells.x]+0.5*res)
+  y.vals.edges <- c(y.vals-res/2,y.vals[n.cells.y]+0.5*res)
   
   #Easiest to increase dimension of z as we simulate bc size not known in advance.
   z <- matrix(0,N[1],n.primary)
@@ -80,16 +83,23 @@ sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
     s[i,1,2] <- runif(1,s.ylim[1],s.ylim[2])
   }
   #subsequent primary sessions
+  avail.x <- array(NA,dim=c(N.super,n.primary-1,n.cells.x))
+  avail.y <- array(NA,dim=c(N.super,n.primary-1,n.cells.y))
   avail.dist <- use.dist <- array(NA,dim=c(N.super,n.primary-1,n.cells))
+  use.dist <- array(NA,dim=c(N.super,n.primary-1,n.cells))
   rsf <- exp(rsf.beta*D.cov)
   rsf[InSS==0] <- 0 #disallow individuals moving into nonhabitat
   for(g in 2:n.primary){
     sigma.move.int <- sigma.move*sqrt(tau.move[g-1])
     for(i in 1:N.super){
-      avail.dist[i,g-1,] <- getAvail(s=s[i,g-1,1:2],sigma=sigma.move.int,res=res,x.vals=x.vals,
-                                     y.vals=y.vals,n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
-      use.dist[i,g-1,] <- rsf*avail.dist[i,g-1,]
-      use.dist[i,g-1,] <- use.dist[i,g-1,]/sum(use.dist[i,g-1,])
+      avail.x[i,g-1,] <- getAvail1D(s=s[i,g-1,1],sigma=sigma.move.int,res=res,
+                                     vals.edges=x.vals.edges,n.cells=n.cells.x,avail.z=avail.z,z.super=1)
+      avail.y[i,g-1,] <- getAvail1D(s=s[i,g-1,2],sigma=sigma.move.int,res=res,
+                                     vals.edges=y.vals.edges,n.cells=n.cells.y,avail.z=avail.z,z.super=1)
+      avail.dist[i,g-1,] <- c(outer(avail.x[i,g-1,],avail.y[i,g-1,]))
+      avail.dist[i,g-1,] <- avail.dist[i,g-1,]/sum(avail.dist[i,g-1,])
+      use.dist[i,g-1,] <- getUseFactored(rsf=rsf,avail.x=avail.x[i,g-1,],avail.y=avail.y[i,g-1,],
+                                         n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
       #move AC - select new cell
       s.cell[i,g] <- sample(1:n.cells,1,replace=TRUE,prob=use.dist[i,g-1,])
       #choose location inside cell
@@ -122,7 +132,7 @@ sim.JS.SCR.Dcov.mobileAC <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   #store true data for model building/debugging
   truth <- list(y=y,cov=cov,N=N,N.recruit=N.recruit,N.survive=N.survive,
                 N.super=N[1]+sum(N.recruit),z=z,s=s,s.cell=s.cell,pi.cell=pi.cell,
-                avail.dist=avail.dist,use.dist=use.dist)
+                avail.x=avail.x,avail.y=avail.y,avail.dist=avail.dist,use.dist=use.dist)
 
   #discard undetected individuals
   keep.idx <- which(rowSums(y)>0)
