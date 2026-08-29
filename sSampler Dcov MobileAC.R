@@ -148,7 +148,7 @@ sSampler2 <- nimbleFunction(
     ## control list extraction
     # logScale            <- extractControlElement(control, 'log',                 FALSE)
     # reflective          <- extractControlElement(control, 'reflective',          FALSE)
-    adaptive            <- extractControlElement(control, 'adaptive',            TRUE)
+    adaptive            <- extractControlElement(control, 'adaptive',            FALSE)
     adaptInterval       <- extractControlElement(control, 'adaptInterval',       200)
     adaptFactorExponent <- extractControlElement(control, 'adaptFactorExponent', 0.8)
     scale               <- extractControlElement(control, 'scale',               1)
@@ -156,6 +156,8 @@ sSampler2 <- nimbleFunction(
     # targetAsScalar <- model$expandNodeNames(target, returnScalarComponents = TRUE)
     # calcNodes <- model$getDependencies(target)
     calcNodes <- control$calcNodes
+    #only movement nodes needed when z is off
+    calcNodes <- calcNodes[grepl("^s\\[",calcNodes) | grepl("^avail\\.dist\\[",calcNodes)]
     # calcNodesNoSelf <- model$getDependencies(target, self = FALSE)
     # isStochCalcNodesNoSelf <- model$isStoch(calcNodesNoSelf)   ## should be made faster
     # calcNodesNoSelfDeterm <- calcNodesNoSelf[!isStochCalcNodesNoSelf]

@@ -143,12 +143,12 @@ sSampler2 <- nimbleFunction(
   setup = function(model, mvSaved, target, control) {
     g <- control$g
     i <- control$i
-    xlim<-control$xlim
-    ylim<-control$ylim
+    xlim <- control$xlim
+    ylim <- control$ylim
     ## control list extraction
     # logScale            <- extractControlElement(control, 'log',                 FALSE)
     # reflective          <- extractControlElement(control, 'reflective',          FALSE)
-    adaptive            <- extractControlElement(control, 'adaptive',            TRUE)
+    adaptive            <- extractControlElement(control, 'adaptive',            FALSE)
     adaptInterval       <- extractControlElement(control, 'adaptInterval',       200)
     adaptFactorExponent <- extractControlElement(control, 'adaptFactorExponent', 0.8)
     scale               <- extractControlElement(control, 'scale',               1)
