@@ -294,7 +294,7 @@ These models may also require substantially more MCMC iterations to obtain adequ
 
 8. **JS-SCR-SexPopDy-mobileAC**
 
-   Version of model 8 with sex-specific population dynamics, detection parameters, and movement parameters.
+   Version of model 7 with sex-specific population dynamics, detection parameters, and movement parameters.
 
 9. **JS-SCR-Dcov-mobileAC**
 
@@ -344,11 +344,93 @@ $$
 
 Thus, cell selection depends jointly on proximity to the previous activity center and selection for the spatial covariate. Because $r_c=0$ when $I_c=0$, only cells within the habitat state space can be selected. After a cell is selected, each activity center coordinate is drawn from its normal movement distribution centered on the previous activity center and truncated to the boundaries of the selected cell. This produces a continuous activity center location rather than assigning the individual to the cell centroid.
 
-This movement formulation is a cell-integrated version of the movement model described by [Bischof et al. (2020)](https://doi.org/10.1073/pnas.2011383117). The initial point process formulations differ: Bischof et al. use an inhomogeneous binomial point process conditional on a fixed augmented population size, whereas this model assigns a Poisson distribution to initial abundance, so the activity centers of individuals present during the first primary occasion form an inhomogeneous Poisson point process. The movement models are otherwise equivalent when the spatial covariate is constant within each grid cell. Bischof et al. define the transition density as the normalized product of an isotropic Gaussian movement kernel centered on the previous activity center and a resource selection weight. Integrating that density over cell $c$ gives a cell-selection probability proportional to $a_{i,g,c}r_c$, matching the cell-level probability used in this implementation. Conditional on selecting cell $c$, drawing the new activity center from the Gaussian movement distribution truncated to that cell recovers the same continuous transition density as Bischof et al. Thus, the two approaches differ in computational representation rather than in the underlying movement model.
 
-This normalized product of a movement kernel and resource selection weight was used in the spatially explicit habitat-selection model of [Rhodes et al. (2005)](https://doi.org/10.1890/04-0912) and is also the standard structure of step selection functions, in which a resource-independent movement kernel is multiplied by a resource selection function and normalized over possible endpoints ([Forester et al. 2009](https://doi.org/10.1890/08-0874.1)).
+The movement model is equivalent to that described by [Bischof et al. (2020)](https://doi.org/10.1073/pnas.2011383117) when the spatial covariate is constant within each grid cell. Bischof et al. define the continuous transition density as the normalized product of an isotropic Gaussian movement kernel centered on the previous activity center and a resource-selection weight. Their computational implementation (in `nimbleSCR`), obtains the required normalizing constant by integrating this intensity over habitat grid cells. The implementation here uses the same cell-integrated representation but exploits the separability of the Gaussian movement kernel on a regular rectangular grid to calculate the cell probabilities from one-dimensional normal integrals and to reuse these quantities across MCMC calculations.
 
-In this implementation, the bivariate normal probability mass within each rectangular cell is calculated analytically from differences of univariate normal cumulative distribution functions, and calculations are restricted to cells with non-negligible probability mass. Storing the availability distributions allows them to be reused when updating $\beta^{\mathrm{RSF}}$. These computational savings come at the cost of increased RAM use.
+The normalized product of a movement kernel and resource-selection weight was also used in the spatially explicit habitat-selection model of [Rhodes et al. (2005)](https://doi.org/10.1890/04-0912) and is the standard structure of step-selection functions, in which a resource-independent movement kernel is multiplied by a resource-selection function and normalized over possible endpoints ([Forester et al. 2009](https://doi.org/10.1890/08-0874.1)).
+
+#### Computational implementation
+
+For the rectangular grid used here, the isotropic bivariate normal movement kernel is separable across the two spatial coordinates. If cell $c=(j,k)$ has horizontal boundaries $(l^x_j,u^x_j)$ and vertical boundaries $(l^y_k,u^y_k)$, define the one-dimensional availability probabilities
+
+$$
+a^x_{i,g,j}
+=
+\Phi\left(
+\frac{u^x_j-s_{i,g-1,x}}{\sigma_{\mathrm{move}}}
+\right)
+-
+\Phi\left(
+\frac{l^x_j-s_{i,g-1,x}}{\sigma_{\mathrm{move}}}
+\right)
+$$
+
+and
+
+$$
+a^y_{i,g,k}
+=
+\Phi\left(
+\frac{u^y_k-s_{i,g-1,y}}{\sigma_{\mathrm{move}}}
+\right)
+-
+\Phi\left(
+\frac{l^y_k-s_{i,g-1,y}}{\sigma_{\mathrm{move}}}
+\right).
+$$
+
+Because the two coordinates are conditionally independent under the isotropic Gaussian movement kernel, the bivariate normal probability mass within cell $c=(j,k)$ factorizes as
+
+$$
+a_{i,g,c}
+=
+a^x_{i,g,j}a^y_{i,g,k}.
+$$
+
+This factorization avoids calculating the normal interval probabilities separately for every grid cell. For a grid with $n_x$ columns and $n_y$ rows, only $n_x+n_y$ univariate normal interval probabilities are required, after which the $n_xn_y$ cell availability probabilities are obtained by multiplication. For additional computational savings, the implementation trims the one-dimensional availability distributions by excluding cells in the extreme tails of the movement distribution whose probability mass is below the specified numerical tolerance. Therefore, only combinations of $x$ and $y$ cells having non-negligible availability need to be considered when constructing the cell-level use distribution.
+
+The normalizing constant for the resource-selection movement distribution is
+
+$$
+D_{i,g}
+=
+\sum_{c=1}^{C}r_ca_{i,g,c}
+=
+\sum_{j=1}^{n_x}\sum_{k=1}^{n_y}
+r_{j,k}a^x_{i,g,j}a^y_{i,g,k}.
+$$
+
+The probability of selecting cell $c=(j,k)$ is therefore
+
+$$
+u_{i,g,c}
+=
+\frac{
+r_ca^x_{i,g,j}a^y_{i,g,k}
+}{
+D_{i,g}
+}.
+$$
+
+For a continuous activity center $\mathbf{s}_{i,g}$ in cell $c$, the corresponding transition density is
+
+$$
+p(\mathbf{s}_{i,g}\mid\mathbf{s}_{i,g-1})
+=
+\frac{
+r_c
+\phi(s_{i,g,x}\mid s_{i,g-1,x},\sigma_{\mathrm{move}})
+\phi(s_{i,g,y}\mid s_{i,g-1,y},\sigma_{\mathrm{move}})
+}{
+D_{i,g}
+},
+$$
+
+where $\phi(\cdot\mid\mu,\sigma)$ denotes a univariate normal density. The cell availability probabilities do not appear explicitly in this continuous density because they cancel when the probability of selecting the cell is multiplied by the conditional density of the continuous location within that cell.
+
+Simulation from the transition distribution uses the same factorization. First, cell $c=(j,k)$ is selected according to $u_{i,g,c}$. Conditional on the selected cell, the $x$ and $y$ coordinates are drawn independently from their univariate normal movement distributions truncated to the corresponding cell boundaries. The conditional coordinate densities contain the factors $1/a^x_{i,g,j}$ and $1/a^y_{i,g,k}$, which cancel the corresponding availability probabilities in the cell-selection probability and recover the continuous transition density above. Thus, the two-stage procedure produces an exact draw from the continuous movement distribution without requiring rejection sampling within the selected cell.
+
+The implementation also stores movement quantities that can be reused across MCMC calculations until one of their inputs changes. In particular, the one-dimensional availability distributions depend on the previous activity center and movement scale but not on the resource-selection coefficient, so they can be reused when updating $\beta^{\mathrm{RSF}}$. The normalizing constant can likewise be reused for repeated evaluations of the movement density while its inputs remain unchanged. These features reduce repeated normal-CDF calculations and normalization operations during MCMC at the cost of additional memory use.
 
 
 10. **JS-SCR-Dcov-mobileAC-patchy**
