@@ -355,11 +355,11 @@ For the rectangular grid used here, the isotropic bivariate normal movement kern
 
 $$
 a^x_{i,g,j}
-=
+\;=\;
 \Phi\left(
 \frac{u^x_j-s_{i,g-1,x}}{\sigma_{\mathrm{move}}}
 \right)
--
+\;-\;
 \Phi\left(
 \frac{l^x_j-s_{i,g-1,x}}{\sigma_{\mathrm{move}}}
 \right)
@@ -369,11 +369,11 @@ and
 
 $$
 a^y_{i,g,k}
-=
+\;=\;
 \Phi\left(
 \frac{u^y_k-s_{i,g-1,y}}{\sigma_{\mathrm{move}}}
 \right)
--
+\;-\;
 \Phi\left(
 \frac{l^y_k-s_{i,g-1,y}}{\sigma_{\mathrm{move}}}
 \right).
@@ -383,7 +383,7 @@ Because the two coordinates are conditionally independent under the isotropic Ga
 
 $$
 a_{i,g,c}
-=
+\;=\;
 a^x_{i,g,j}a^y_{i,g,k}.
 $$
 
@@ -393,9 +393,9 @@ The normalizing constant for the resource-selection movement distribution is
 
 $$
 D_{i,g}
-=
+\;=\;
 \sum_{c=1}^{C}r_ca_{i,g,c}
-=
+\;=\;
 \sum_{j=1}^{n_x}\sum_{k=1}^{n_y}
 r_{j,k}a^x_{i,g,j}a^y_{i,g,k}.
 $$
@@ -404,7 +404,7 @@ The probability of selecting cell $c=(j,k)$ is therefore
 
 $$
 u_{i,g,c}
-=
+\;=\;
 \frac{
 r_ca^x_{i,g,j}a^y_{i,g,k}
 }{
@@ -416,7 +416,7 @@ For a continuous activity center $\mathbf{s}_{i,g}$ in cell $c$, the correspondi
 
 $$
 p(\mathbf{s}_{i,g}\mid\mathbf{s}_{i,g-1})
-=
+\;=\;
 \frac{
 r_c
 \phi(s_{i,g,x}\mid s_{i,g-1,x},\sigma_{\mathrm{move}})
