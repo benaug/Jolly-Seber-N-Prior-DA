@@ -421,7 +421,14 @@ where $\phi(\cdot\mid\mu,\sigma)$ denotes a univariate normal density. The cell 
 
 Simulation from the transition distribution uses the same factorization. First, cell $c=(j,k)$ is selected according to $u_{i,g,c}$. Conditional on the selected cell, the $x$ and $y$ coordinates are drawn independently from their univariate normal movement distributions truncated to the corresponding cell boundaries. The conditional coordinate densities contain the factors $1/a^x_{i,g,j}$ and $1/a^y_{i,g,k}$, which cancel the corresponding availability probabilities in the cell-selection probability and recover the continuous transition density above. Thus, the two-stage procedure produces an exact draw from the continuous movement distribution without requiring rejection sampling within the selected cell.
 
-This implementation also stores movement quantities that can be reused across MCMC calculations until one of their inputs changes. In particular, the one-dimensional availability distributions depend on the previous activity center and movement scale but not on the resource-selection coefficient, so they can be reused when updating $\beta^{\mathrm{RSF}}$. The normalizing constant can likewise be reused for repeated evaluations of the movement density while its inputs remain unchanged. These features reduce repeated normal-CDF calculations and normalization operations during MCMC at the cost of additional memory use. Finally, conditioning the activity center model on $z^{\mathrm{super}}$ removes the need to maintain latent trajectories for individuals outside the superpopulation, reducing unnecessary movement calculations and allowing larger, better-mixing RW updates of $\sigma_{\mathrm{move}}$ because those inactive trajectories do not contribute to its likelihood.
+This implementation also stores movement quantities that can be reused across MCMC calculations until one of their inputs changes.
+In particular, the one-dimensional availability distributions depend on the previous activity center and movement scale but not on
+the resource-selection coefficient, so they can be reused when updating $\beta^{\mathrm{RSF}}$. Further, for each individual,
+the normalizing constant for the transition into occasion $g$ can be reused when updating its activity center on occasion $g$. 
+These features reduce repeated normal-CDF calculations and normalization operations during MCMC at the cost of additional memory use. Finally, 
+conditioning the activity center model on $z^{\mathrm{super}}$ removes the need to maintain latent trajectories for individuals
+outside the superpopulation, reducing unnecessary movement calculations and allowing larger, better-mixing RW updates
+of $\sigma_{\mathrm{move}}$ because those inactive trajectories do not contribute to its likelihood.
 
 
 10. **JS-SCR-Dcov-mobileAC-patchy**
